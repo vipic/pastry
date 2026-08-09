@@ -24,11 +24,11 @@ run = "scripts/check_shell.sh"
 
 [tasks.check]
 description = "Run the standard local validation suite"
-depends = ["lint:scripts", "test:coverage", "coverage", "build:release"]
+run = "mise run lint:scripts && mise run test:coverage && mise run coverage && mise run build:release"
 
 [tasks.ci]
 description = "Run the same checks as GitHub Actions"
-depends = ["lint:scripts", "test:coverage", "coverage:ci", "build:release"]
+run = "mise run lint:scripts && mise run test:coverage && mise run coverage:ci && mise run build:release"
 
 [tasks."coverage:ci"]
 description = "Check coverage with the CI threshold"
