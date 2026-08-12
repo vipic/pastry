@@ -16,17 +16,8 @@ jobs:
       - name: Show Swift Version
         run: swift --version
 
-      - name: Check Shell Scripts
-        run: scripts/check_shell.sh
+      - name: Install mise
+        uses: jdx/mise-action@v2
 
-      - name: Check Design Tokens
-        run: scripts/check_design_tokens.sh
-
-      - name: Run Tests With Coverage
-        run: swift test --enable-code-coverage
-
-      - name: Check Coverage
-        run: scripts/check_coverage.sh 20
-
-      - name: Build Release
-        run: swift build -c release -Xswiftc -Osize
+      - name: Check
+        run: mise run check

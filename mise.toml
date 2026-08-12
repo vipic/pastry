@@ -22,17 +22,13 @@ run = "scripts/check_coverage.sh"
 description = "Check shell scripts for syntax errors"
 run = "scripts/check_shell.sh"
 
+[tasks."lint:design"]
+description = "Check design token usage"
+run = "scripts/check_design_tokens.sh"
+
 [tasks.check]
 description = "Run the standard local validation suite"
-run = "mise run lint:scripts && mise run test:coverage && mise run coverage && mise run build:release"
-
-[tasks.ci]
-description = "Run the same checks as GitHub Actions"
-run = "mise run lint:scripts && mise run test:coverage && mise run coverage:ci && mise run build:release"
-
-[tasks."coverage:ci"]
-description = "Check coverage with the CI threshold"
-run = "scripts/check_coverage.sh 20"
+run = "mise run lint:scripts && mise run lint:design && mise run test:coverage && mise run coverage && mise run build:release"
 
 [tasks.deploy]
 description = "Build, sign, and launch Pastry Dev.app"

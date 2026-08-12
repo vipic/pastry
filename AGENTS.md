@@ -362,7 +362,7 @@ scripts/check_coverage.sh
 
 ## GitHub Actions
 
-- `.github/workflows/tests.yml`：`main` push 和 pull request 自动触发，执行脚本语法检查、`scripts/check_design_tokens.sh`、`swift test --enable-code-coverage`、`scripts/check_coverage.sh 20`、`swift build -c release -Xswiftc -Osize`
+- `.github/workflows/tests.yml`：`main` push 和 pull request 自动触发，执行 `mise run check`，与本地验证入口同源
 - `.github/workflows/release-artifact.yml`：仅 `workflow_dispatch` 手动触发，输入裸版本号，执行 `./release.sh "${{ inputs.version }}" --force` 并上传 DMG artifact；不会自动创建 tag 或 GitHub Release
 
 ## macOS 26 Specifics
