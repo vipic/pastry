@@ -40,6 +40,7 @@ private enum Local {
 // MARK: - 通知
 extension Notification.Name {
     static let overlayRequestDismiss  = Notification.Name("overlayRequestDismiss")
+    static let overlayWillShow       = Notification.Name("overlayWillShow")
     static let overlayDidHide        = Notification.Name("overlayDidHide")
     static let overlaySelectAll      = Notification.Name("overlaySelectAll")
     static let overlayDeleteSelected = Notification.Name("overlayDeleteSelected")
@@ -166,14 +167,15 @@ struct OverlayView: View {
                     cardVisible = true
                     return
                 }
-                resetAllState()
-                refreshAccessibilityPermission()
-                OverlayPanelManager.shared.isHorizontalCardLayout = isHorizontalLayout
-                keyHandler.installMouseMonitor()
-                prefetchAvailableAppIcons()
-                withAnimation(.spring(response: Local.Overlay.animationDuration, dampingFraction: UIConstants.Motion.damping)) {
-                    cardVisible = true
-                }
+                prepareForPresentation()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .overlayWillShow)) { _ in
+                guard !isPipelineWarmup else { return }
+                prepareForPresentation()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .overlayDidHide)) { _ in
+                guard !isPipelineWarmup else { return }
+                tearDownAfterHide()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                 refreshAccessibilityPermission()
@@ -424,6 +426,29 @@ struct OverlayView: View {
         // 打开面板默认选中第一张卡片，便于立刻 Enter / 方向键 / Delete
         selectFirstVisibleCard()
         renderedIds = []
+    }
+
+    private func prepareForPresentation() {
+        resetAllState()
+        refreshAccessibilityPermission()
+        OverlayPanelManager.shared.isHorizontalCardLayout = isHorizontalLayout
+        keyHandler.installMouseMonitor()
+        prefetchAvailableAppIcons()
+        withAnimation(.spring(response: Local.Overlay.animationDuration, dampingFraction: UIConstants.Motion.damping)) {
+            cardVisible = true
+        }
+    }
+
+    private func tearDownAfterHide() {
+        keyHandler.uninstall()
+        iconPrefetchTask?.cancel()
+        iconPrefetchTask = nil
+        cardVisible = false
+        showDeleteConfirm = false
+        pendingDeleteIds = []
+        showSearch = false
+        showFilterPopover = false
+        isSearchFocused = false
     }
 
     /// 当前可见列表的默认键盘落点：第一张卡片（空列表则清空选择）。

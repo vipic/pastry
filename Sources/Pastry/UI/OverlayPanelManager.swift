@@ -331,7 +331,7 @@ final class OverlayPanelManager: @unchecked Sendable {
 
     @MainActor
     func show() {
-        guard panel == nil else { return }
+        guard !isVisible else { return }
         showPanel()
     }
 
@@ -340,7 +340,7 @@ final class OverlayPanelManager: @unchecked Sendable {
     func warmupPipelineIfNeeded() {
         guard !Self.didWarmupPipeline else { return }
         Self.didWarmupPipeline = true
-        guard panel == nil else { return }
+        guard !isVisible else { return }
 
         let t0 = CFAbsoluteTimeGetCurrent()
         let mouseLocation = NSEvent.mouseLocation
@@ -395,6 +395,7 @@ final class OverlayPanelManager: @unchecked Sendable {
 
     @MainActor
     func hide() {
+        guard isVisible || isDragThrough else { return }
         cleanup()
         NotificationCenter.default.post(name: .overlayDidHide, object: nil)
         DeveloperDiagnostics.record(DiagnosticsEvent.overlayDismiss)
@@ -447,7 +448,7 @@ final class OverlayPanelManager: @unchecked Sendable {
 
     @MainActor
     func toggle() {
-        if panel != nil {
+        if isVisible {
             NotificationCenter.default.post(name: .overlayRequestDismiss, object: nil)
         } else {
             show()
@@ -458,7 +459,7 @@ final class OverlayPanelManager: @unchecked Sendable {
     /// 先写剪贴板 + ⌘V，面板隐藏/DB/音效后台收尾，不阻塞粘贴
     @MainActor
     func hideAndPaste(_ item: ClipboardItem) async {
-        guard panel != nil else { return }
+        guard isVisible else { return }
 
         // 关面板前先要权限：未授权时系统弹窗 + 托盘保持打开（⌘1–9 / Enter / 点击同路径）
         let actionStart = CFAbsoluteTimeGetCurrent()
@@ -530,7 +531,7 @@ final class OverlayPanelManager: @unchecked Sendable {
     /// 多选粘贴：将所有选中条目的文本拼接后一次性 ⌘V
     @MainActor
     func hideAndPasteMultiple(_ items: [ClipboardItem]) {
-        guard panel != nil, !items.isEmpty else { return }
+        guard isVisible, !items.isEmpty else { return }
 
         let actionStart = CFAbsoluteTimeGetCurrent()
         guard Self.ensureAccessibilityForPaste() else { return }
@@ -617,7 +618,6 @@ final class OverlayPanelManager: @unchecked Sendable {
         guard isDragThrough else { return }
         if NSEvent.pressedMouseButtons == 0 {
             // 鼠标已释放 → 拖拽完成，直接关闭
-            isDragThrough = false
             hide()
         } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -633,7 +633,7 @@ final class OverlayPanelManager: @unchecked Sendable {
         NotificationCenter.default.post(name: .overlayDidHide, object: nil)
     }
 
-    var isVisible: Bool { panel != nil }
+    var isVisible: Bool { panel?.isVisible == true }
 
     /// 搜索栏是否展开 — ESC 优先级判断
     var isSearchActive = false
@@ -675,43 +675,63 @@ final class OverlayPanelManager: @unchecked Sendable {
 
         let screenFrame = screen.visibleFrame  // 不含菜单栏，保留菜单栏交互
 
-        let newPanel = ClipboardOverlayPanel(
-            contentRect: screenFrame,
-            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
+        let activePanel: ClipboardOverlayPanel
+        let reusedPanel: Bool
+        let t1: CFAbsoluteTime
+        let t2: CFAbsoluteTime
+        let t2a: CFAbsoluteTime
+        let t3: CFAbsoluteTime
 
-        newPanel.isOpaque = false
-        newPanel.backgroundColor = .clear
-        newPanel.hasShadow = false
-        newPanel.level = .popUpMenu
-        newPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        newPanel.isReleasedWhenClosed = false
-        newPanel.ignoresMouseEvents = false
-        newPanel.acceptsMouseMovedEvents = true
-        newPanel.hidesOnDeactivate = false
-        newPanel.animationBehavior = .none
+        if let existingPanel = panel {
+            reusedPanel = true
+            activePanel = existingPanel
+            existingPanel.setFrame(screenFrame, display: false)
+            existingPanel.contentView?.frame = NSRect(origin: .zero, size: screenFrame.size)
+            existingPanel.ignoresMouseEvents = false
+            t1 = CFAbsoluteTimeGetCurrent()
+            t2 = t1
+            t2a = t1
+            NotificationCenter.default.post(name: .overlayWillShow, object: nil)
+            existingPanel.contentView?.layoutSubtreeIfNeeded()
+            t3 = CFAbsoluteTimeGetCurrent()
+        } else {
+            reusedPanel = false
+            let newPanel = ClipboardOverlayPanel(
+                contentRect: screenFrame,
+                styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
 
-        let t1 = CFAbsoluteTimeGetCurrent()
+            newPanel.isOpaque = false
+            newPanel.backgroundColor = .clear
+            newPanel.hasShadow = false
+            newPanel.level = .popUpMenu
+            newPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            newPanel.isReleasedWhenClosed = false
+            newPanel.ignoresMouseEvents = false
+            newPanel.acceptsMouseMovedEvents = true
+            newPanel.hidesOnDeactivate = false
+            newPanel.animationBehavior = .none
+            t1 = CFAbsoluteTimeGetCurrent()
 
-        let overlayView = OverlayView()
-            .environmentObject(StoreManager.shared)
+            let overlayView = OverlayView()
+                .environmentObject(StoreManager.shared)
+            t2 = CFAbsoluteTimeGetCurrent()
 
-        let t2 = CFAbsoluteTimeGetCurrent()
+            let hostingView = NSHostingView(rootView: overlayView)
+            t2a = CFAbsoluteTimeGetCurrent()
 
-        let hostingView = NSHostingView(rootView: overlayView)
+            hostingView.frame = NSRect(origin: .zero, size: screenFrame.size)
+            hostingView.autoresizingMask = [.width, .height]
+            newPanel.contentView = hostingView
+            panel = newPanel
+            activePanel = newPanel
+            t3 = CFAbsoluteTimeGetCurrent()
+        }
 
-        let t2a = CFAbsoluteTimeGetCurrent()
-
-        hostingView.frame = screenFrame
-        hostingView.autoresizingMask = [.width, .height]
-        newPanel.contentView = hostingView
-
-        let t3 = CFAbsoluteTimeGetCurrent()
-
-        newPanel.orderFrontRegardless()
-        newPanel.makeKey()
+        activePanel.orderFrontRegardless()
+        activePanel.makeKey()
 
         let t4 = CFAbsoluteTimeGetCurrent()
 
@@ -726,7 +746,7 @@ final class OverlayPanelManager: @unchecked Sendable {
             if let dispatchMs = hotkeyDispatchMs {
                 perfLine += " | hotkeyDispatch: \(dispatchMs)ms"
             }
-            perfLine += " | panelInit: \(ms(t1-t0))ms | overlayView: \(ms(t2-t1))ms | hostingInit: \(ms(t2a-t2))ms | hostingLayout: \(ms(t3-t2a))ms | orderFront: \(ms(t4-t3))ms | total: \(ms(t4-t0))ms"
+            perfLine += " | reused: \(reusedPanel) | panelInit: \(ms(t1-t0))ms | overlayView: \(ms(t2-t1))ms | hostingInit: \(ms(t2a-t2))ms | hostingLayout: \(ms(t3-t2a))ms | orderFront: \(ms(t4-t3))ms | total: \(ms(t4-t0))ms"
 
             log.info("⏱ \(perfLine, privacy: .public)")
             Self.writePerfLog(perfLine)
@@ -735,7 +755,7 @@ final class OverlayPanelManager: @unchecked Sendable {
 
         // 面板失焦（Cmd+Tab / 点其他 App）→ 自动收起（拖拽穿透 / 预览关合抢焦点除外）
         panelResignKeyObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.didResignKeyNotification, object: newPanel, queue: .main
+            forName: NSWindow.didResignKeyNotification, object: activePanel, queue: .main
         ) { [weak self] _ in
             guard let self, !self.isPasting, !self.alertActive, !self.isDragThrough else { return }
             DispatchQueue.main.async {
@@ -760,7 +780,6 @@ final class OverlayPanelManager: @unchecked Sendable {
             }
         }
 
-        self.panel = newPanel
         DeveloperDiagnostics.record(DiagnosticsEvent.overlayOpen)
         installKeyboardMonitor()
         diagnosticsLog.info(
@@ -768,7 +787,8 @@ final class OverlayPanelManager: @unchecked Sendable {
             event: "overlay.show.completed",
             metadata: [
                 "item_count": String(StoreManager.shared.items.count),
-                "layout": isHorizontalCardLayout ? "horizontal" : "vertical"
+                "layout": isHorizontalCardLayout ? "horizontal" : "vertical",
+                "reused": String(reusedPanel)
             ],
             durationMilliseconds: Int(((t4 - t0) * 1_000).rounded())
         )
@@ -788,7 +808,6 @@ final class OverlayPanelManager: @unchecked Sendable {
         isDragThrough = false
         panel?.ignoresMouseEvents = false
         panel?.orderOut(nil)
-        panel = nil
         previousFrontApp = nil
         isSearchActive = false
         isFilterPopoverActive = false
