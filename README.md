@@ -1,8 +1,8 @@
-# Pastry
-
 <p align="center">
   <img src="docs/screenshots/icon.png" width="96" alt="Pastry icon">
 </p>
+
+<h1 align="center">Pastry</h1>
 
 <p align="center">
   <strong>macOS 剪贴板管理工具</strong>
@@ -12,6 +12,13 @@
   <img src="https://img.shields.io/badge/macOS-26.0-blue" alt="macOS">
   <img src="https://img.shields.io/badge/Swift-6.0-orange" alt="Swift">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+</p>
+
+<p align="center">
+  <a href="#功能特点">功能</a> ·
+  <a href="#安装">安装</a> ·
+  <a href="#文档">文档</a> ·
+  <a href="#关联项目">关联项目</a>
 </p>
 
 Pastry 用来记录历史剪贴板内容，在需要时快速唤起、搜索、预览、选择并粘贴。它是个人工作流里「临时内容回看」的一层，不建议把长期高频文本都塞进剪贴板收藏；这类内容更适合文本扩展工具，比如作者的另一个项目 [TextFlash](https://github.com/vipic/textflash)。
@@ -61,6 +68,11 @@ Vibe 的产物，但细节经过实际使用打磨。布局参考了 [Paste](htt
 - [发布流程](docs/RELEASE.md)：版本号、DMG、GitHub Releases、自动更新排查。
 - [产品说明](docs/PRODUCT.md)：产品定位和功能细节。
 - [Agent Onboarding](AGENTS.md)：给代码代理使用的架构、坑点和约定。
+
+## 关联项目
+
+- [TextFlash](https://github.com/vipic/textflash)：适合保存并用缩写展开长期、高频文本，与 Pastry 的临时剪贴板历史互补。
+- [mac-as-code](https://github.com/vipic/mac-as-code)：可从 GitHub Releases 自动安装 Pastry 的 macOS 配置与恢复脚本。
 
 ## 许可
 
