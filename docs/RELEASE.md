@@ -61,6 +61,22 @@ Pastry 需要辅助功能授权，必须使用稳定代码身份。没有匹配�
 dist/Pastry-1.2.3.dmg
 ```
 
+### DMG 背景生成提示词
+
+背景使用 Codex 内置 ImageGen 生成；生成结果居中裁切后保存为 `Resources/dmg-background@2x.png`（1080×700），再缩放生成 `Resources/dmg-background.png`（540×350）。重建时使用以下提示词：
+
+```text
+Use case: ads-marketing
+Asset type: Retina macOS DMG installer background for Pastry
+Primary request: Create a polished 1080×700 landscape installer background that guides dragging the Pastry app from the left to Applications on the right.
+Scene/backdrop: warm ivory and pale cream surface with an extremely subtle dotted technical grid.
+Style/medium: restrained premium native macOS utility aesthetic, clean flat illustration with very soft depth.
+Composition/framing: exactly two equal-size large rounded-square recessed wells, one centered around x=280 and one centered around x=800, both centered vertically around y=375; a thin muted warm-gray arrow points from the left well to the right well. Leave both wells empty for Finder icons. Keep generous clean margins and uncluttered space.
+Color palette: warm white, cream, muted amber, tiny berry-purple accents.
+Brand motif: a very faint abstract waffle-grid and berry-shaped watermark near the lower center, subtle enough not to compete with icons.
+Constraints: no words, no letters, no labels, no app icons, no folder icons, no logos, no screenshots, no watermark signature. Do not place any object inside the two icon wells. Exact landscape aspect ratio 1080:700.
+```
+
 ## 发布到 GitHub Releases
 
 ```bash
