@@ -1,11 +1,10 @@
 #!/bin/bash
 # Pastry Release — 生产发布
 # 流程：测试 → release 编译 → 去除符号 → 组装 → 签名 → DMG → 烟测 → 可选发布
-# 用法: ./release.sh [version] [--publish]
+# 用法: ./release.sh <version> [--publish] [--allow-dirty]
 #   ./release.sh 1.0.1              # 仅构建 DMG
 #   ./release.sh 1.0.1 --publish    # 构建 + 推 tag + 创建 GitHub Release
-#   ./release.sh --auto-version     # 按 Conventional Commits 计算下一版本
-#   ./release.sh                    # 自动取 git tag，没有则用 1.0
+#   ./release.sh --auto-version     # 自动计算版本，仅构建本地 DMG
 set -e
 set -o pipefail
 
@@ -19,16 +18,19 @@ IDENTITY="${CODESIGN_IDENTITY:-Nekutai}"
 
 # 解析参数
 PUBLISH=false
-FORCE=false
+ALLOW_DIRTY=false
 AUTO_VERSION=false
 VERSION=""
 for arg in "$@"; do
     case "$arg" in
         --publish) PUBLISH=true ;;
-        --force) FORCE=true ;;
+        --allow-dirty) ALLOW_DIRTY=true ;;
         --auto-version) AUTO_VERSION=true ;;
-        --*) ;;
-        *) VERSION="$arg" ;;
+        --*) echo "❌ 未知参数: $arg" >&2; exit 2 ;;
+        *)
+            [[ -z "$VERSION" ]] || { echo "❌ 只能指定一个版本号" >&2; exit 2; }
+            VERSION="$arg"
+            ;;
     esac
 done
 source "$PROJECT_DIR/scripts/lib/command_log.sh"
@@ -36,8 +38,10 @@ COMMAND_WORKFLOW="release"
 $PUBLISH && COMMAND_WORKFLOW="publish"
 command_log_init "$COMMAND_WORKFLOW" "${VERSION:-auto}"
 trap 'command_log_finish $?' EXIT
+cd "$PROJECT_DIR"
 
 if $AUTO_VERSION; then
+	$PUBLISH && { echo "❌ 正式发布必须显式确认版本号，不能使用 --auto-version。" >&2; exit 2; }
     command_log_stage "0-计算下一版本号"
     VERSION_FILE="$(mktemp "${TMPDIR:-/tmp}/pastry-version.XXXXXX")"
     command_log_run_tail version_next 3 /bin/bash -c \
@@ -47,8 +51,12 @@ if $AUTO_VERSION; then
     rm -f "$VERSION_FILE"
 fi
 
-VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null || echo '1.0')}"
+if [[ -z "$VERSION" ]]; then
+    echo "用法: ./release.sh <x.y.z> [--publish] [--allow-dirty] | ./release.sh --auto-version" >&2
+    exit 2
+fi
 VERSION="${VERSION#v}"   # 统一剥掉 v 前缀，内部只用裸版本号
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "❌ 版本号必须是 x.y.z" >&2; exit 2; }
 TAG="v$VERSION"
 BUILD=$(git rev-list --count HEAD)
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
@@ -63,27 +71,54 @@ step() {
     command_log_stage "$1-$2"
 }
 
-# ── 检查：发布输入状态（--force 跳过）───
-if [ -n "$(git status --porcelain)" ] && ! $FORCE; then
-    echo "❌ 工作区有未提交改动。请先提交，或使用 --force 明确跳过。"
+# ── 检查：发布输入状态（本地验收可只放宽脏工作区）───
+if $PUBLISH && $ALLOW_DIRTY; then
+    echo "❌ --allow-dirty 只能用于本地制品验收，不能用于正式发布。"
+    exit 1
+fi
+if [ -n "$(git status --porcelain)" ] && ! $ALLOW_DIRTY; then
+    echo "❌ 工作区有未提交改动。请先提交。"
     exit 1
 fi
 
 EXISTING_TAG=$(git tag --points-at HEAD | head -1)
-if [ -n "$EXISTING_TAG" ] && [ "$EXISTING_TAG" != "$TAG" ] && ! $FORCE; then
+if [ -n "$EXISTING_TAG" ] && [ "$EXISTING_TAG" != "$TAG" ]; then
     echo "❌ 当前 commit 已有 tag \"$EXISTING_TAG\"，没有新代码"
     echo "ℹ️  如需强制重新发布：先 commit 改动后再运行"
     exit 1
 fi
 
 CURRENT_BRANCH=$(git branch --show-current)
-if $PUBLISH && [ "$CURRENT_BRANCH" != "main" ] && ! $FORCE; then
+if $PUBLISH && [ "$CURRENT_BRANCH" != "main" ]; then
     echo "❌ 当前分支是 \"$CURRENT_BRANCH\"，发布必须在 main 分支执行。"
-    echo "ℹ️  如需强制发布：使用 --force。"
     exit 1
 fi
 
-cd "$PROJECT_DIR"
+if [ "$IDENTITY" = "-" ] || ! security find-identity -v -p codesigning | grep -Fq "\"$IDENTITY\""; then
+    echo "❌ 找不到稳定代码签名身份：$IDENTITY；不会回退为 ad-hoc。"
+    exit 1
+fi
+
+if git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null; then
+    echo "❌ 本地版本标签已存在：$TAG"
+    exit 1
+fi
+
+if $PUBLISH; then
+    command -v gh >/dev/null || { echo "❌ 缺少 gh CLI" >&2; exit 1; }
+    git remote get-url origin >/dev/null 2>&1 || { echo "❌ 缺少 Git 远端 origin" >&2; exit 1; }
+    command_log_run_tail gh_auth_status 5 gh auth status
+    REPOSITORY="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+    command_log_run_tail remote_connectivity 3 git ls-remote origin
+    if git ls-remote --tags origin "refs/tags/$TAG" | grep -q .; then
+        echo "❌ 远端版本标签已存在：$TAG"
+        exit 1
+    fi
+    if gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+        echo "❌ GitHub Release 已存在：$TAG；拒绝覆盖正式制品。"
+        exit 1
+    fi
+fi
 
 cleanup() {
     local status=$?
@@ -106,21 +141,11 @@ SWIFT
     command_log_finish "$status"
 }
 
-step 1 "测试"
-# 自动检测：无 Xcode 则跳过测试（XCTest 需要完整 Xcode）
-RUN_TESTS="${RUN_TESTS:-}"
-if [ "$RUN_TESTS" = "" ]; then
-    if xcode-select -p 2>/dev/null | grep -q "/Xcode.app/"; then
-        RUN_TESTS=true
-    else
-        RUN_TESTS=false
-        echo "⚠️  未检测到 Xcode，自动跳过测试（XCTest 需要完整 Xcode）"
-    fi
-fi
-if [ "$RUN_TESTS" = "true" ]; then
-    command_log_run_tail swift_test 5 swift test
-else
-    echo "⚠️  跳过测试"
+step 1 "统一验证"
+command_log_run_tail mise_check 12 mise run check
+if [ -n "$(git status --porcelain)" ] && ! $ALLOW_DIRTY; then
+    echo "❌ 验证过程改变了工作区，停止发布。"
+    exit 1
 fi
 
 step 2 "注入版本号"
@@ -144,7 +169,7 @@ test -f "$BIN" || { echo "❌ 构建失败"; exit 1; }
 
 step 4 "去除调试符号"
 BIN_SIZE_BEFORE=$(stat -f%z "$BIN")
-command_log_run_tail strip_binary 3 strip -S "$BIN" || true
+command_log_run_tail strip_binary 3 strip -S "$BIN"
 BIN_SIZE_AFTER=$(stat -f%z "$BIN")
 echo "✅ 二进制已去除调试符号: $(numfmt --to=iec $BIN_SIZE_BEFORE 2>/dev/null || echo "${BIN_SIZE_BEFORE}") → $(numfmt --to=iec $BIN_SIZE_AFTER 2>/dev/null || echo "${BIN_SIZE_AFTER}")"
 
@@ -217,6 +242,7 @@ if ! command_log_run codesign_app codesign --force --deep --sign "$IDENTITY" "$S
     echo "   请检查钥匙串中是否存在该代码签名证书，或通过 CODESIGN_IDENTITY 指定稳定证书。"
     exit 1
 fi
+command_log_run verify_release "$PROJECT_DIR/scripts/verify_release.sh" "$STAGING/$APP_NAME.app" "$VERSION"
 
 step 7 "DMG 打包和烟测"
 mkdir -p "$DIST_DIR"
@@ -293,77 +319,28 @@ tail -1 "$CONVERT_LOG"
 rm -f "$STAGING/tmp.dmg"
 echo "✅ DMG 已生成: $DMG_PATH"
 command_log_artifact dmg "$DMG_PATH"
-
-echo "🧪 烟测 DMG..."
-SMOKE_ATTACH_LOG="$STAGING/smoke-attach.log"
-if ! command_log_run_tail hdiutil_attach_smoke 3 /bin/bash -c \
-    'hdiutil attach -readonly -noverify -noautoopen "$1" > "$2" 2>&1' \
-    _ "$DMG_PATH" "$SMOKE_ATTACH_LOG"; then
-    echo "❌ DMG 烟测挂载失败"
-    cat "$SMOKE_ATTACH_LOG"
-    exit 1
-fi
-SMOKE_MOUNT=$(cat "$SMOKE_ATTACH_LOG")
-SMOKE_DEVICE=$(echo "$SMOKE_MOUNT" | awk '/\/Volumes\// {print $1; exit}')
-SMOKE_VOLUME=$(echo "$SMOKE_MOUNT" | awk '/\/Volumes\// {for (i=3; i<=NF; i++) printf "%s%s", (i==3 ? "" : " "), $i; print ""; exit}')
-if [ -z "$SMOKE_VOLUME" ] || [ ! -d "$SMOKE_VOLUME" ]; then
-    echo "❌ DMG 烟测挂载失败"
-    exit 1
-fi
-
-SMOKE_APP="$SMOKE_VOLUME/$APP_NAME.app"
-test -d "$SMOKE_APP" || { echo "❌ DMG 内缺少 $APP_NAME.app"; exit 1; }
-command_log_run codesign_verify codesign --verify --deep --strict "$SMOKE_APP"
-COMMAND_LOG_FAILURE_LEVEL=WARN command_log_run_tail gatekeeper_assess 3 spctl --assess --type execute "$SMOKE_APP" \
-    || echo "⚠️  Gatekeeper 评估未通过（自签名或未公证签名时预期可能失败）"
-command_log_run_tail hdiutil_detach_smoke 3 hdiutil detach "${SMOKE_DEVICE:-$SMOKE_VOLUME}" -quiet
-SMOKE_VOLUME=""
+command_log_run_tail hdiutil_verify 3 hdiutil verify "$DMG_PATH"
+CHECKSUM_PATH="$DMG_PATH.sha256"
+shasum -a 256 "$DMG_PATH" > "$CHECKSUM_PATH"
+command_log_artifact checksum "$CHECKSUM_PATH"
+command_log_run release_smoke "$PROJECT_DIR/scripts/release_smoke.sh" "$DMG_PATH" "$VERSION"
 
 if $PUBLISH; then
     step 8 "发布到 GitHub Releases"
     
-    if ! command -v gh &>/dev/null; then
-        echo "❌ 未安装 gh CLI，请先运行: brew install gh && gh auth login"
+    git tag -a "$TAG" -m "$APP_NAME $VERSION"
+    if ! command_log_run_tail git_push_atomic 5 git push --atomic origin "HEAD:refs/heads/main" "refs/tags/$TAG"; then
+        git tag -d "$TAG" >/dev/null
+        echo "❌ 分支与标签推送失败，本地标签已回滚。"
         exit 1
     fi
-    
-    if ! command_log_run_tail gh_auth_status 5 gh auth status; then
-        echo "❌ gh 未登录，请先运行: gh auth login"
+    if ! command_log_run gh_release_create gh release create "$TAG" \
+        --repo "$REPOSITORY" --title "$APP_NAME $VERSION" --generate-notes \
+        "$DMG_PATH" "$CHECKSUM_PATH"; then
+        git push origin ":refs/tags/$TAG" >/dev/null 2>&1 || true
+        git tag -d "$TAG" >/dev/null
+        echo "❌ GitHub Release 创建失败，本轮标签已回滚；已推送的 main 保留。"
         exit 1
-    fi
-    
-    # 创建 tag 并推送
-    if git rev-parse "$TAG" &>/dev/null; then
-        echo "⚠️  tag $TAG 已存在，跳过创建"
-    else
-        echo "🏷  创建 tag $TAG..."
-        git tag "$TAG"
-    fi
-    
-    command_log_run_tail git_push 5 git push origin main "$TAG"
-    
-    # 检查是否已有同名 Release
-    if COMMAND_LOG_FAILURE_LEVEL=WARN command_log_run_tail gh_release_view 5 gh release view "$TAG"; then
-        echo "⚠️  Release $TAG 已存在，仅上传资产..."
-        command_log_run gh_release_upload gh release upload "$TAG" "$DMG_PATH" --clobber
-    else
-        echo "📦 创建 Release $TAG..."
-
-        # 生成更新日志：从上一个 tag 到 HEAD 的 Conventional Commits
-        last_tag=$(git describe --tags --abbrev=0 HEAD~ 2>/dev/null || echo "")
-        if [[ -n "$last_tag" ]]; then
-            changelog=$(git log "${last_tag}..HEAD" --pretty=format:"- %s" --no-merges 2>/dev/null)
-            if [[ -z "$changelog" ]]; then
-                changelog="- $APP_NAME $VERSION 发布"
-            fi
-        else
-            changelog="- $APP_NAME $VERSION 发布"
-        fi
-
-        command_log_run gh_release_create gh release create "$TAG" \
-            --title "$APP_NAME $VERSION" \
-            --notes "$changelog" \
-            "$DMG_PATH"
     fi
     
     echo "✅ 发布完成"

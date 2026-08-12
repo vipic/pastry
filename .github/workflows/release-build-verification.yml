@@ -1,0 +1,26 @@
+name: Release Build Verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-release-build:
+    name: Verify unsigned release build
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2
+
+      - name: Check
+        run: mise run check
+
+      - name: Explain artifact boundary
+        run: |
+          echo "CI 只验证源码与 release 编译。"
+          echo "正式 DMG 必须在持有稳定 Nekutai 签名证书的受控 Mac 上生成，不从 CI 上传。"

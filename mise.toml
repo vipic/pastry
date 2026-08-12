@@ -38,6 +38,10 @@ run = "./deploy.sh"
 description = "Run local UI smoke checks"
 run = "scripts/smoke.sh"
 
+[tasks."smoke:release"]
+description = "Validate and launch a signed production DMG; pass DMG and version after --"
+run = "scripts/release_smoke.sh"
+
 [tasks.populate]
 description = "Populate the pasteboard with sample clipboard data"
 run = "scripts/populate_clipboard.sh"
@@ -95,5 +99,5 @@ description = "Calculate the next version, then run release.sh"
 run = "scripts/tasks/release-auto.sh"
 
 [tasks.publish]
-description = "Publish a GitHub Release; pass a version after -- or omit it to auto-bump"
+description = "Publish a GitHub Release; an explicit version is required after --"
 run = "scripts/tasks/publish.sh"

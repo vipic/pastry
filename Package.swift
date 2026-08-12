@@ -12,6 +12,10 @@ let package = Package(
             name: "Pastry",
             targets: ["Pastry"]
         ),
+        .executable(
+            name: "PastryReleaseSmoke",
+            targets: ["PastryReleaseSmoke"]
+        ),
     ],
     dependencies: [],
     targets: [
@@ -44,6 +48,11 @@ let package = Package(
             dependencies: ["Pastry", "CSQLCipher"],
             path: "Tests/PastryTests",
             exclude: ["__Snapshots__"]
+        ),
+        .executableTarget(
+            name: "PastryReleaseSmoke",
+            path: "Sources/PastryReleaseSmoke",
+            linkerSettings: [.linkedFramework("AppKit")]
         ),
     ],
     // tools 6.0 后默认语言模式为 Swift 6；当前 toolchain 在 SendNonSendable

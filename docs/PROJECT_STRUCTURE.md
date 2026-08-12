@@ -7,7 +7,7 @@ Pastry/
 ├── .github/
 │   └── workflows/
 │       ├── tests.yml                 # CI：shell、设计 token、测试、覆盖率和 release 编译
-│       └── release-artifact.yml      # 手动构建并上传 DMG Artifact，不创建 Release
+│       └── release-build-verification.yml # 手动验证 release 构建，不生成正式 DMG
 │
 ├── Resources/
 │   ├── AppIcon.icns                  # 打包进 App Bundle 的正式应用图标
@@ -28,7 +28,7 @@ Pastry/
 │   │       ├── sqlite3ext.h          # SQLite 扩展接口
 │   │       └── sqlite_cfg.h          # SQLCipher 构建配置头文件
 │   │
-│   └── Pastry/
+│   ├── Pastry/
 │       ├── PastryApp.swift           # @main、AppDelegate、窗口和应用生命周期
 │       │
 │       ├── Core/
@@ -116,6 +116,8 @@ Pastry/
 │           ├── UpdateChecker.swift           # GitHub Release 查询、比较和下载
 │           ├── UpdateInstallScriptBuilder.swift # 更新安装 helper 脚本生成
 │           └── Watchdog.swift                # 主线程卡死检测、采样和恢复
+│   └── PastryReleaseSmoke/
+│       └── main.swift                         # 正式 DMG 首次启动验收器
 │
 ├── Tests/
 │   └── PastryTests/
@@ -190,6 +192,8 @@ Pastry/
 │   ├── check_coverage.sh              # Swift 覆盖率门槛
 │   ├── check_design_tokens.sh         # UI token 防回潮检查
 │   ├── next_version.sh                # Conventional Commits → SemVer
+│   ├── verify_release.sh              # 正式 App 结构、版本和签名检查
+│   ├── release_smoke.sh               # 挂载、复制并首次启动正式 DMG
 │   ├── lib/
 │   │   └── command_log.sh             # deploy/release 命令耗时日志
 │   └── tasks/

@@ -16,6 +16,8 @@ scripts=(
     scripts/diagnostics.sh
     scripts/lib/command_log.sh
     scripts/next_version.sh
+    scripts/verify_release.sh
+    scripts/release_smoke.sh
     scripts/tasks/release.sh
     scripts/tasks/release-auto.sh
     scripts/tasks/publish.sh

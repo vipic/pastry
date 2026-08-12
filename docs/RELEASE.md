@@ -44,15 +44,15 @@ Pastry 需要辅助功能授权，必须使用稳定代码身份。没有匹配�
 
 脚本会执行：
 
-- `swift test`
+- `mise run check`（脚本、设计 token、覆盖率、测试和 release build）
 - 注入 `AppVersion`
 - release 编译
 - 去除调试符号
 - 组装 `.app`
 - 固定作者级证书签名
 - 打包 DMG
-- DMG 烟测
-- 输出 SHA256
+- `hdiutil verify` 与 SHA-256 校验文件
+- 从 DMG 复制并首次启动正式 bundle，验证签名、版本、菜单栏激活策略和图标
 
 产物在：
 
@@ -73,7 +73,7 @@ dist/Pastry-1.2.3.dmg
 - 当前 commit 没有不匹配的 tag
 - `gh auth status` 可用
 
-脚本会推送 tag `v1.2.3` 并创建 GitHub Release。
+脚本会使用 annotated tag `v1.2.3`，原子推送 `main` 与 tag，再创建 GitHub Release。已有同名 tag 或 Release 时会直接停止，不覆盖资产；Release 创建失败时回滚本轮 tag。DMG 和同名 `.sha256` 会一起上传。
 
 GitHub Release notes 由脚本从 Conventional Commits 自动生成。面向用户的白话说明写在仓库根目录 [CHANGELOG.md](../CHANGELOG.md)：发布前把 `Unreleased` 条目挪到对应版本节。
 
@@ -98,33 +98,25 @@ scripts/diagnostics.sh command publish --full
 
 日志只保存在本机 `.local/logs/`，该目录已被 Git 忽略，不会自动上传。应用运行日志的隐私边界和联合排查方式见 [DIAGNOSTICS.md](DIAGNOSTICS.md)。
 
-## GitHub Actions 构建 Artifact
+## GitHub Actions 构建验证
 
 仓库里有两个 workflow：
 
 - `Tests`：`main` 分支 push 和 pull request 自动触发，执行脚本语法检查、`swift test` 和 release build。
-- `Release Artifact`：只支持手动触发，不会因为 push、tag 或 PR 自动运行。
+- `Release Build Verification`：只支持手动触发，不会因为 push、tag 或 PR 自动运行。
 
-手动构建 DMG artifact：
+手动验证发布构建：
 
 1. 打开 GitHub 仓库的 **Actions**
-2. 选择 **Release Artifact**
+2. 选择 **Release Build Verification**
 3. 点击 **Run workflow**
-4. 输入裸版本号，例如 `1.2.3`
-
 该 workflow 会执行：
 
 ```bash
-./release.sh "1.2.3" --force
+mise run check
 ```
 
-然后校验 DMG、校验 `CFBundleShortVersionString`，并上传：
-
-```text
-Pastry-1.2.3.dmg
-```
-
-作为 workflow artifact。它只生成 artifact，不会创建 GitHub Release，也不会推送 tag。
+CI 不导入或保存 `Nekutai` 私钥，因此不会组装、签名或上传正式 DMG。正式制品只在持有稳定证书的受控 Mac 上通过本地 `release.sh` 生成。
 
 ## 已知限制：未公证
 
@@ -150,9 +142,8 @@ Pastry-1.2.3.dmg
 
 ```bash
 git status --short
-swift test
-swift build -c release -Xswiftc -Osize
+mise run check
 ./release.sh 1.2.3
 ```
 
-确认 DMG 可以挂载，拖入 `/Applications` 后应用可启动，再执行 `--publish`。
+脚本已经自动验证 DMG 并从中启动正式应用；人工确认安装盘视觉和面板主要流程后，再执行 `--publish`。本地修改尚未提交时只允许用 `--allow-dirty` 验收本地制品，该参数不能与 `--publish` 同用。

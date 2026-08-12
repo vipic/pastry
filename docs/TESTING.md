@@ -226,10 +226,10 @@ PASTRY_PERF_LOG=1 .build/release/Pastry
 ./release.sh 1.2.3
 ```
 
-跳过工作区/tag/分支保护检查的本地强制构建：
+仅为验收当前未提交修改而放宽脏工作区检查：
 
 ```bash
-./release.sh 1.2.3 --force
+./release.sh 1.2.3 --allow-dirty
 ```
 
 发布到 GitHub Release：
@@ -258,13 +258,13 @@ scripts/check_coverage.sh 20
 swift build -c release -Xswiftc -Osize
 ```
 
-`.github/workflows/release-artifact.yml` 手动触发，核心命令：
+`.github/workflows/release-build-verification.yml` 手动触发，核心命令：
 
 ```bash
-./release.sh <version> --force
+mise run check
 ```
 
-然后验证 DMG、版本号和签名，并上传 artifact。
+CI 只验证源码、测试与 release 编译，不持有稳定签名私钥，也不上传正式 DMG。
 
 ## Recommended Checklist
 
