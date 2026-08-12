@@ -55,7 +55,7 @@ Pastry 是一款 macOS 剪贴板管理器，用来找回刚刚复制过的临时
 • 记录文本、链接、图片、文件、RTF 和 HTML
 • 支持全文搜索、来源与时间筛选
 • 支持收藏备注、多选、预览、拖拽和快捷粘贴
-• 历史数据仅存本机，数据库使用 SQLCipher 加密
+• 历史数据仅存本机，数据库使用 SQLite + FTS5
 
 项目地址：https://github.com/vipic/pastry
 
@@ -71,7 +71,7 @@ sleep "$SLEEP"
 
 # ── 3. HTML ──
 log "html — HTML 片段"
-"$PBWRITE" html "<h2>Pastry HTML 样本</h2><ul><li><b>搜索</b> — 查找历史内容</li><li><b>预览</b> — 查看链接与文件</li><li><b>加密</b> — SQLCipher 本地存储</li></ul><p style='color:#888'>用于检查富文本解析和展示</p>" && ok || err "HTML 写入失败"
+"$PBWRITE" html "<h2>Pastry HTML 样本</h2><ul><li><b>搜索</b> — 查找历史内容</li><li><b>预览</b> — 查看链接与文件</li><li><b>存储</b> — SQLite 本地历史</li></ul><p style='color:#888'>用于检查富文本解析和展示</p>" && ok || err "HTML 写入失败"
 sleep "$SLEEP"
 
 # ── 4. RTF — 写临时文件再用 pbwrite 读取 ──

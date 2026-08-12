@@ -15,7 +15,7 @@ enum AppDirectories {
         let fallback = FileManager.default.temporaryDirectory
             .appendingPathComponent(Constants.appName)
             .appendingPathComponent("ApplicationSupportFallback")
-        // 严重退化：降级到 tmp 意味着加密 DB / 图片缓存将在系统重启时被清除。
+        // 严重退化：降级到 tmp 意味着数据库 / 图片缓存将在系统重启时被清除。
         // 对应 C8 建议，记一条醒目的 log 以便排查。
         log.error("""
             ⚠️ 无法获取 Application Support 目录，降级到临时目录。\

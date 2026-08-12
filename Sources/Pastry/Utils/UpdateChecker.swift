@@ -251,7 +251,7 @@ final class UpdateChecker {
                           userInfo: [NSLocalizedDescriptionKey: "无法解析 DMG 挂载点"])
         }
 
-        defer { _ = try? FileManager.default.removeItem(atPath: volume) }
+        defer { detachVolume(at: volume) }
         let candidate = (volume as NSString).appendingPathComponent("Pastry.app")
         guard FileManager.default.fileExists(atPath: candidate) else {
             throw NSError(domain: "PastryUpdate", code: 3,
@@ -282,6 +282,18 @@ final class UpdateChecker {
         if dvOutput.contains("Signature=adhoc") {
             throw NSError(domain: "PastryUpdate", code: 5,
                           userInfo: [NSLocalizedDescriptionKey: "更新包使用 ad-hoc 签名，拒绝更新"])
+        }
+    }
+
+    private static func detachVolume(at path: String) {
+        let detach = Process()
+        detach.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
+        detach.arguments = ["detach", path, "-quiet"]
+        do {
+            try detach.run()
+            detach.waitUntilExit()
+        } catch {
+            // helper 脚本仍会执行自己的挂载与卸载；预校验清理失败不覆盖原始校验结果。
         }
     }
 

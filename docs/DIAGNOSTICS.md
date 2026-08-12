@@ -47,7 +47,7 @@ mise run logs:publish -- --full
 - `perf.log`：供 `scripts/bench.sh --report`（正式版）或 `--report-dev`（开发版）使用的面板与粘贴性能样本。
 - `usage.json`：功能使用次数累加，不包含操作内容。
 
-结构化日志覆盖应用生命周期、数据库打开与加密、剪贴板监听、全局热键、面板显示/关闭、单选和多选粘贴、更新检查及 watchdog。`runtime.jsonl` 到 5 MB 时轮转，保留 `runtime.1.jsonl` 至 `runtime.3.jsonl`。
+结构化日志覆盖应用生命周期、数据库打开与旧库迁移、剪贴板监听、全局热键、面板显示/关闭、单选和多选粘贴、更新检查及 watchdog。`runtime.jsonl` 到 5 MB 时轮转，保留 `runtime.1.jsonl` 至 `runtime.3.jsonl`。
 
 ### 隐私边界
 

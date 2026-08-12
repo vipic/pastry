@@ -8,16 +8,6 @@ final class RemoteImageLoader {
     private let diagnosticsLog = PastryLogger(category: "remote-image")
 
     private let cache = NSCache<NSString, NSImage>()
-    private let session: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 6
-        config.timeoutIntervalForResource = 10
-        config.httpAdditionalHeaders = [
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
-        ]
-        return URLSession(configuration: config, delegate: RemoteResourceRedirectDelegate.shared, delegateQueue: nil)
-    }()
-
     private init() {
         cache.countLimit = 100
         cache.totalCostLimit = 20 * 1024 * 1024  // 20 MB
@@ -48,7 +38,15 @@ final class RemoteImageLoader {
             return
         }
 
-        session.dataTask(with: url) { [weak self] data, response, error in
+        var request = URLRequest(url: url)
+        request.setValue(
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+            forHTTPHeaderField: "User-Agent"
+        )
+        BoundedRemoteResourceLoader.shared.load(
+            request: request,
+            maxBytes: NetworkAccessPolicy.maxImageBytes
+        ) { [weak self] data, response, error in
             guard let self else {
                 DispatchQueue.main.async { completion(nil) }
                 return
@@ -76,6 +74,6 @@ final class RemoteImageLoader {
             // 缓存开销 = 数据字节数
             self.cache.setObject(image, forKey: key, cost: data.count)
             DispatchQueue.main.async { completion(image) }
-        }.resume()
+        }
     }
 }

@@ -92,59 +92,59 @@ final class DatabaseManagerTests: XCTestCase {
 
     // MARK: - 基本 CRUD
 
-    func testBuildsPreferFileKeyStorage() {
-        XCTAssertTrue(DatabaseManager.prefersFileKeyStorageForTesting)
+    func testPlaintextDatabaseDoesNotCreateKeyFile() {
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tempPath + ".key"))
     }
 
-    func testPlaintextMigrationPreservesRawFormatBlobBytes() throws {
-        let plaintextPath = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pastry-plaintext-\(UUID().uuidString).db")
-            .path
-        defer {
-            try? FileManager.default.removeItem(atPath: plaintextPath)
-            try? FileManager.default.removeItem(atPath: plaintextPath + ".plaintext-backup")
-        }
+    func testLegacyMigratorRemovesStaleKeyBesidePlaintextDatabase() throws {
+        let keyPath = tempPath + ".key"
+        try Data("obsolete".utf8).write(to: URL(fileURLWithPath: keyPath))
 
-        var plainDB: OpaquePointer?
-        XCTAssertEqual(sqlite3_open(plaintextPath, &plainDB), SQLITE_OK)
-        defer { sqlite3_close(plainDB) }
-
-        executeRaw("""
-            CREATE TABLE clips (
-                id TEXT PRIMARY KEY,
-                content TEXT NOT NULL,
-                raw_format_data BLOB,
-                raw_format_type TEXT
-            );
-            """, on: plainDB)
-
-        let rawBytes = Data([0x00, 0x01, 0x27, 0xff, 0x41, 0x00, 0x42])
-        var insertStmt: OpaquePointer?
-        XCTAssertEqual(sqlite3_prepare_v2(plainDB, "INSERT INTO clips VALUES ('blob-test', 'content', ?, 'public.rtf');", -1, &insertStmt, nil), SQLITE_OK)
-        _ = rawBytes.withUnsafeBytes { ptr in
-            sqlite3_bind_blob(insertStmt, 1, ptr.baseAddress, Int32(rawBytes.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
-        }
-        XCTAssertEqual(sqlite3_step(insertStmt), SQLITE_DONE)
-        sqlite3_finalize(insertStmt)
-        sqlite3_close(plainDB)
-        plainDB = nil
-
-        let key = Data(repeating: 7, count: 32)
-        let migrated = DatabaseMigrator(
-            dbPath: plaintextPath,
-            key: key,
+        LegacyEncryptedDatabaseMigrator(
+            dbPath: tempPath,
             log: Logger(subsystem: "com.nekutai.pastry.tests", category: "database-migrator")
-        ).migratePlaintextOrCreateFresh()
-        XCTAssertNotNil(migrated)
-        defer { sqlite3_close(migrated) }
+        ).migrateIfNeeded()
 
-        var queryStmt: OpaquePointer?
-        XCTAssertEqual(sqlite3_prepare_v2(migrated, "SELECT raw_format_data FROM clips WHERE id = 'blob-test';", -1, &queryStmt, nil), SQLITE_OK)
-        XCTAssertEqual(sqlite3_step(queryStmt), SQLITE_ROW)
-        let blob = try XCTUnwrap(sqlite3_column_blob(queryStmt, 0))
-        let len = Int(sqlite3_column_bytes(queryStmt, 0))
-        XCTAssertEqual(Data(bytes: blob, count: len), rawBytes)
-        sqlite3_finalize(queryStmt)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: keyPath))
+        XCTAssertEqual(db.recent().count, 0)
+    }
+
+    func testLegacyMigratorConvertsEncryptedDatabaseToPlaintext() throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pastry-encrypted-\(UUID().uuidString).db").path
+        let keyPath = path + ".key"
+        defer {
+            for suffix in ["", ".key", "-wal", "-shm", ".plaintext-migrate", ".encrypted-backup"] {
+                try? FileManager.default.removeItem(atPath: path + suffix)
+            }
+        }
+
+        let key = Data(repeating: 0x2A, count: 32)
+        var encrypted: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(path, &encrypted), SQLITE_OK)
+        XCTAssertEqual(key.withUnsafeBytes { bytes in
+            sqlite3_key(encrypted, bytes.baseAddress, Int32(key.count))
+        }, SQLITE_OK)
+        executeRaw("CREATE TABLE sample(value TEXT NOT NULL);", on: encrypted)
+        executeRaw("INSERT INTO sample VALUES ('preserved');", on: encrypted)
+        sqlite3_close(encrypted)
+        encrypted = nil
+        try LegacyEncryptedDatabaseMigrator.writeLegacyKeyForTesting(key, to: keyPath)
+
+        LegacyEncryptedDatabaseMigrator(
+            dbPath: path,
+            log: Logger(subsystem: "com.nekutai.pastry.tests", category: "database-migrator")
+        ).migrateIfNeeded()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: keyPath))
+        var plaintext: OpaquePointer?
+        XCTAssertEqual(sqlite3_open_v2(path, &plaintext, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        var statement: OpaquePointer?
+        XCTAssertEqual(sqlite3_prepare_v2(plaintext, "SELECT value FROM sample;", -1, &statement, nil), SQLITE_OK)
+        XCTAssertEqual(sqlite3_step(statement), SQLITE_ROW)
+        XCTAssertEqual(String(cString: sqlite3_column_text(statement, 0)), "preserved")
+        sqlite3_finalize(statement)
+        sqlite3_close(plaintext)
     }
 
     /// 插入一条 → recent() 应包含它

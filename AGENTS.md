@@ -1,6 +1,6 @@
 # Pastry — Agent Onboarding
 
-> macOS 26+ 剪贴板管理器。Swift + SwiftUI，SQLCipher 静态库 vendored 到仓库内，无需包管理器拉第三方依赖。全屏半透明 overlay 面板 + 应用主题色卡片。
+> macOS 26+ 剪贴板管理器。Swift + SwiftUI，带 FTS5 的 SQLite 兼容静态库 vendored 到仓库内，无需包管理器拉第三方依赖。全屏半透明 overlay 面板 + 应用主题色卡片。
 
 ## Build & Deploy
 
@@ -67,15 +67,14 @@ Sources/Pastry/
 │   ├── ClipboardMonitorReaders.swift # 文本/RTF/HTML/文件/图片读取器
 │   └── ImageCacheManager.swift    # 图片缓存与原图映射
 ├── Persistence/
-│   ├── DatabaseManager.swift      # SQLite3 C API + FTS5 全文搜索 + SQLCipher 全库加密
-│   ├── DatabaseKeyManager.swift   # 数据库密钥文件 + 旧 Keychain 迁移
-│   ├── DatabaseMigrator.swift     # 明文数据库 → SQLCipher 迁移
+│   ├── DatabaseManager.swift      # SQLite3 C API + FTS5 全文搜索
+│   ├── LegacyEncryptedDatabaseMigrator.swift # 旧加密库 → 明文 SQLite 一次性迁移
 │   └── StoreManager.swift         # @MainActor ObservableObject 桥接
-├── CSQLCipher/                    # SQLCipher 静态库（vendored，无需外部下载）
+├── CSQLCipher/                    # SQLite 兼容静态库（vendored，无需外部下载）
 │   ├── libsqlcipher.a             # 预编译静态库（CommonCrypto 后端）
 │   ├── include/shim.h             # 定义 SQLITE_HAS_CODEC + SQLCIPHER_CRYPTO_CC
 │   ├── include/module.modulemap   # SPM module 定义
-│   └── include/sqlite3.h          # SQLCipher 头文件
+│   └── include/sqlite3.h          # SQLite C API 头文件
 ├── UI/
 │   ├── OverlayPanelManager.swift  # NSPanel 全屏 overlay 管理
 │   ├── OverlayView.swift          # SwiftUI 内容层（透明底 + 卡片托盘）
@@ -227,33 +226,13 @@ Button(action: { selectedItem = item }) { ... }
 
 `git restore .` 会丢弃所有未跟踪改动，包括之前特意保留的修复。需要先确认是否有需要保留的部分。
 
-## SQLCipher 全库加密
+## SQLite 存储与旧库迁移
 
-### 架构
+`clips.db` 使用明文 SQLite + FTS5。新安装不创建数据库密钥。升级时若数据库旁存在旧 `.key` 且数据库无法按明文读取，`LegacyEncryptedDatabaseMigrator` 会将旧 SQLCipher 数据库一次性导出为明文 SQLite；成功后删除旧加密库备份和 `.key`。
 
-`clips.db` 使用 SQLCipher 全库加密，保护剪贴板历史不被直接读取。密钥通过设备派生 KEK 加密后存储在数据库旁的 `.key` 文件中，无 Keychain 依赖。
+### 重新编译 SQLite 兼容静态库
 
-- **密钥生成**：首次启动时 `SecRandomCopyBytes` 生成 256-bit 随机密钥，使用设备派生 KEK 加密后写入 `.key` 文件
-- **旧密钥迁移**：如果 `.key` 不存在但 Keychain 里有旧版密钥，会读取一次并迁移到 `.key`，然后删除 Keychain 条目
-- **加密激活**：`sqlite3_key()` 在打开数据库后立即调用
-- **透明性**：FTS5 全文搜索正常工作，查询逻辑无变化
-- **测试跳过**：`init(dbPath:)` 构造函数通过 `openDatabase(useEncryption: false)` 跳过加密
-
-### 迁移流程
-
-升级安装时，如果检测到旧明文数据库（`sqlite3_key` 后 SELECT 失败），自动执行：
-
-1. 以只读方式打开明文数据库
-2. 导出 schema + 全部数据为 SQL dump
-3. 创建新加密数据库
-4. 执行 schema + 数据导入
-5. 删除明文数据库，重新打开加密数据库
-
-迁移日志输出 `明文数据库迁移完成 → 加密`。
-
-### 重新编译 libsqlcipher.a
-
-当需要更新 SQLCipher 版本或启用新扩展时，重新编译静态库：
+当前仍使用 SQLCipher 源码构建兼容静态库，以保留 FTS5 和旧加密库迁移能力。需要更新版本或扩展时重新编译：
 
 ```bash
 # 下载 SQLCipher 源码

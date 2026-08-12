@@ -169,6 +169,8 @@ final class NetworkAccessPolicyTests: XCTestCase {
 
     func testRejectsExpandedIPv6Loopback() {
         XCTAssertFalse(NetworkAccessPolicy.isAllowedRemoteResourceURL(URL(string: "https://[0:0:0:0:0:0:0:1]/a")!))
+        XCTAssertFalse(NetworkAccessPolicy.isAllowedRemoteResourceURL(URL(string: "https://[::ffff:7f00:1]/a")!))
+        XCTAssertFalse(NetworkAccessPolicy.isAllowedRemoteResourceURL(URL(string: "https://[ff02::1]/a")!))
     }
 
     func testAllowsPublicIPv4Literal() {

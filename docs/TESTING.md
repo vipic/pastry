@@ -50,7 +50,6 @@ swift test --filter AppIconProviderTests
 | `OverlayInteractionModelTests` | 修饰键合并、空白 clear 约定、**竖滚不映射横向**、卡带像素侧滚、⌘ 角标 |
 | `DragPayloadBuilderTests` | 多选文本/链接/文件载荷、http→https、混选链接规则 |
 | `UpdateInstallScriptBuilderTests` | 更新脚本 shell 引用与非法版本号 |
-| `DatabaseKeyManagerTests` | DEK 生成/持久化/0600 权限/路径隔离 |
 | `AccessibilityIdentifiersTests` | a11y id 稳定与唯一 |
 | `ClipboardItemTests` | SourceFormat 迁移、segments、身份 |
 | `AppIconProviderTests` | 含 `cachedIcon` 首帧缓存命中 |

@@ -28,15 +28,19 @@ enum NetworkAccessPolicy {
         if normalized.hasSuffix(".local") { return false }
         if isBlockedHostLiteral(normalized) { return false }
 
-        // 解析后再次校验：拦截 DNS 重绑定到内网 IP 的情况。
+        // 解析后再次校验全部 A / AAAA 记录：任一地址可达内网就拒绝。
         // 注意：198.18.0.0/15 常被 Clash/Surge fake-ip 用作假地址，不能当 DNS 结果拦截，
         // 否则链接预览 HTML/缩略图会对所有公网域名直接失败。
-        if let resolvedIP = Self.firstResolvedIPv4(for: normalized),
-           isDNSRebindingTargetIPv4(resolvedIP) {
+        guard let addresses = Self.resolvedAddresses(for: normalized) else { return false }
+        if let blockedAddress = addresses.first(where: { address in
+            address.contains(":")
+                ? isBlockedIPv6Literal(address.lowercased())
+                : isDNSRebindingTargetIPv4(address)
+        }) {
             log.warning(
                 "拒绝疑似 DNS 重绑定的远程资源",
                 event: "network_policy.dns_rebinding.blocked",
-                metadata: ["resolved_ip": resolvedIP]
+                metadata: ["resolved_ip": blockedAddress]
             )
             return false
         }
@@ -179,40 +183,36 @@ enum NetworkAccessPolicy {
     }
 
     private static func isBlockedIPv6Literal(_ host: String) -> Bool {
-        // 显式回环与未指定
-        if host == "::1" || host == "::" { return true }
-        // 链路本地
-        if host.hasPrefix("fe80:") || host.hasPrefix("fe90:") || host.hasPrefix("fea0:") || host.hasPrefix("feb0:") {
-            return true
-        }
-        // 唯一本地地址 fc00::/7
-        if host.hasPrefix("fc") || host.hasPrefix("fd") { return true }
+        let addressText = host.split(separator: "%", maxSplits: 1).first.map(String.init) ?? host
+        var address = in6_addr()
+        guard inet_pton(AF_INET6, addressText, &address) == 1 else { return true }
+        let bytes = withUnsafeBytes(of: &address) { Array($0) }
 
-        // IPv4-mapped IPv6：::ffff:a.b.c.d 或 ::a.b.c.d
-        if host.hasPrefix("::ffff:") {
-            let v4 = String(host.dropFirst("::ffff:".count))
-            if isBlockedIPv4Address(v4) { return true }
-        }
-        if host.hasPrefix("::") && host.contains(".") {
-            // ::a.b.c.d 形式（兼容 IPv4-compatible）
-            let v4 = String(host.dropFirst(2))
-            if isBlockedIPv4Address(v4) { return true }
-        }
+        if bytes.allSatisfy({ $0 == 0 }) { return true } // unspecified
+        if bytes.dropLast().allSatisfy({ $0 == 0 }), bytes.last == 1 { return true } // loopback
+        if bytes[0] & 0xFE == 0xFC { return true } // unique local fc00::/7
+        if bytes[0] == 0xFE, bytes[1] & 0xC0 == 0x80 { return true } // link-local fe80::/10
+        if bytes[0] == 0xFF { return true } // multicast
 
-        // 标准零压缩以外的 ::1 形式
-        if host == "0:0:0:0:0:0:0:1" { return true }
-
+        let isMapped = bytes[0..<10].allSatisfy({ $0 == 0 }) && bytes[10] == 0xFF && bytes[11] == 0xFF
+        let isCompatible = bytes[0..<12].allSatisfy({ $0 == 0 })
+        if isMapped || isCompatible {
+            return isBlockedIPv4Octets(
+                UInt32(bytes[12]),
+                UInt32(bytes[13]),
+                UInt32(bytes[14]),
+                UInt32(bytes[15])
+            )
+        }
         return false
     }
 
     // MARK: - DNS 解析
 
-    /// 同步解析 hostname 的第一个 A 记录。失败返回 nil。
-    /// 仅在 URL 校验热路径上调用（远程预览/缩略图），频率低，可接受同步阻塞。
-    private static func firstResolvedIPv4(for hostname: String) -> String? {
+    private static func resolvedAddresses(for hostname: String) -> [String]? {
         var hints = addrinfo(
             ai_flags: 0,
-            ai_family: AF_INET,
+            ai_family: AF_UNSPEC,
             ai_socktype: SOCK_STREAM,
             ai_protocol: IPPROTO_TCP,
             ai_addrlen: 0,
@@ -226,20 +226,27 @@ enum NetworkAccessPolicy {
         }
         defer { freeaddrinfo(head) }
 
+        var addresses: [String] = []
         var ptr: UnsafeMutablePointer<addrinfo>? = head
         while let cur = ptr {
             if cur.pointee.ai_family == AF_INET, let sa = cur.pointee.ai_addr {
-                // sa 是 sockaddr*；AI family 为 AF_INET 时实际指向 sockaddr_in
                 let sin = UnsafeRawPointer(sa).assumingMemoryBound(to: sockaddr_in.self)
                 var addr = sin.pointee.sin_addr
                 var buf = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
                 if let s = inet_ntop(AF_INET, &addr, &buf, socklen_t(INET_ADDRSTRLEN)) {
-                    return String(cString: s)
+                    addresses.append(String(cString: s))
+                }
+            } else if cur.pointee.ai_family == AF_INET6, let sa = cur.pointee.ai_addr {
+                let sin6 = UnsafeRawPointer(sa).assumingMemoryBound(to: sockaddr_in6.self)
+                var addr = sin6.pointee.sin6_addr
+                var buf = [CChar](repeating: 0, count: Int(INET6_ADDRSTRLEN))
+                if let s = inet_ntop(AF_INET6, &addr, &buf, socklen_t(INET6_ADDRSTRLEN)) {
+                    addresses.append(String(cString: s))
                 }
             }
             ptr = cur.pointee.ai_next
         }
-        return nil
+        return addresses.isEmpty ? nil : Array(Set(addresses))
     }
 
     // MARK: - Testing

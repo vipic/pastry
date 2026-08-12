@@ -8,7 +8,7 @@
 - Swift 6.0+（`Package.swift` tools-version 6.0；语言模式暂钉 Swift 5，见包清单注释）
 - Xcode Command Line Tools
 
-项目不依赖第三方包管理下载；SQLCipher 静态库已 vendored 到仓库内。
+项目不依赖第三方包管理下载；带 FTS5 的 SQLite 兼容静态库已 vendored 到仓库内。
 
 ## 快速部署开发版
 
@@ -112,7 +112,7 @@ mise run release-auto
 ```text
 Sources/Pastry/
 ├── Core/           # ClipboardItem 模型、剪贴板监听
-├── Persistence/    # SQLite / SQLCipher 数据库、StoreManager
+├── Persistence/    # SQLite 数据库、StoreManager
 ├── UI/             # 面板、卡片、菜单、预览
 └── Utils/          # 热键、图标、常量、更新检查
 ```

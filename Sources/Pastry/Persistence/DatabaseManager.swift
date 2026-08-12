@@ -3,7 +3,7 @@ import Foundation
 import OSLog
 
 // MARK: - SQLite 数据库管理
-// 使用原生 sqlite3 API，SQLCipher 全库加密
+// 使用原生 sqlite3 API；vendored SQLCipher 仅作为带 FTS5 的 SQLite 引擎，数据库以明文保存。
 //
 // ⚠️ 线程安全由 NSRecursiveLock 保证（非 Sendable / nonisolated(unsafe) 压制 Swift 6 检查）。
 // 新增任何公开方法必须手动 lock.lock() / defer { lock.unlock() }，否则 data race。
@@ -33,6 +33,7 @@ final class DatabaseManager {
         AppDirectories.ensureDirectory(dir, logCategory: "database")
 
         dbPath = dir.appendingPathComponent("clips.db").path
+        LegacyEncryptedDatabaseMigrator(dbPath: dbPath, log: log).migrateIfNeeded()
         openDatabase()
         createTables()
         runMigrations()
@@ -41,15 +42,15 @@ final class DatabaseManager {
         diagnosticsLog.info(
             "数据库初始化完成",
             event: "database.initialization.completed",
-            metadata: ["encrypted": "true"],
+                metadata: ["storage": "plaintext"],
             durationMilliseconds: Int((CFAbsoluteTimeGetCurrent() - startedAt) * 1_000)
         )
     }
 
-    /// 测试专用：使用临时数据库，不污染生产数据（跳过加密，无需 Keychain）
+    /// 测试专用：使用临时数据库，不污染生产数据。
     init(dbPath: String) {
         self.dbPath = dbPath
-        openDatabase(useEncryption: false)
+        openDatabase()
         createTables()
         runMigrations()
     }
@@ -68,38 +69,7 @@ final class DatabaseManager {
 
     // MARK: - 数据库操作
 
-    private static var prefersFileKeyStorage: Bool {
-        DatabaseKeyManager.prefersFileKeyStorage
-    }
-
-    static var prefersFileKeyStorageForTesting: Bool {
-        prefersFileKeyStorage
-    }
-
-    /// 用数据库密钥激活 SQLCipher 加密
-    private func applyEncryptionKey() {
-        let key = DatabaseKeyManager(dbPath: dbPath, log: log).getOrCreateKey()
-        let rc = key.withUnsafeBytes { ptr in
-            sqlite3_key(db, ptr.baseAddress, Int32(key.count))
-        }
-        if rc != SQLITE_OK {
-            log.error("sqlite3_key 失败: \(self.lastError)")
-        }
-
-        // 验证密钥是否正确：执行简单查询检测文件是否可读
-        var testStmt: OpaquePointer?
-        defer { sqlite3_finalize(testStmt) }
-        if sqlite3_prepare_v2(db, "SELECT count(*) FROM sqlite_master;", -1, &testStmt, nil) == SQLITE_OK {
-            // 密钥正确，验证通过
-        } else {
-            // 密钥不对或文件损坏 → 尝试迁移现有明文数据库
-            sqlite3_close(db)
-            db = nil
-            db = DatabaseMigrator(dbPath: dbPath, key: key, log: log).migratePlaintextOrCreateFresh()
-        }
-    }
-
-    private func openDatabase(useEncryption: Bool = true) {
+    private func openDatabase() {
         if sqlite3_open(dbPath, &db) != SQLITE_OK {
             diagnosticsLog.error(
                 "无法打开数据库",
@@ -109,17 +79,6 @@ final class DatabaseManager {
             log.error("无法打开数据库: \(self.dbPath)")
             db = nil
         } else {
-            if useEncryption {
-                applyEncryptionKey()
-                guard db != nil else {
-                    diagnosticsLog.critical(
-                        "数据库加密初始化失败",
-                        event: "database.encryption.failed"
-                    )
-                    log.error("数据库加密初始化失败，跳过后续初始化以保留原文件")
-                    return
-                }
-            }
             // 开启 WAL 模式，提升并发性能
             execute("PRAGMA journal_mode=WAL")
             execute("PRAGMA synchronous=NORMAL")
@@ -127,7 +86,7 @@ final class DatabaseManager {
             diagnosticsLog.info(
                 "数据库已打开",
                 event: "database.open.succeeded",
-                metadata: ["encrypted": String(useEncryption)]
+                metadata: ["storage": "plaintext"]
             )
             log.info("数据库已打开: \(self.dbPath)")
         }

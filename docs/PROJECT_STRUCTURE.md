@@ -18,14 +18,14 @@ Pastry/
 │
 ├── Sources/
 │   ├── CSQLCipher/
-│   │   ├── libsqlcipher.a            # vendored SQLCipher 静态库
+│   │   ├── libsqlcipher.a            # vendored SQLite 兼容静态库（含 FTS5 / 旧库迁移）
 │   │   └── include/
 │   │       ├── module.modulemap      # SwiftPM C 模块定义
 │   │       ├── shim.c                # C 模块最小编译单元
-│   │       ├── shim.h                # SQLCipher 编译宏和头文件入口
-│   │       ├── sqlite3.h             # SQLCipher 对应的 SQLite 主头文件
+│   │       ├── shim.h                # SQLite C API 模块入口
+│   │       ├── sqlite3.h             # SQLite 主头文件
 │   │       ├── sqlite3ext.h          # SQLite 扩展接口
-│   │       └── sqlite_cfg.h          # SQLCipher 构建配置头文件
+│   │       └── sqlite_cfg.h          # 静态库构建配置头文件
 │   │
 │   ├── Pastry/
 │       ├── PastryApp.swift           # @main、AppDelegate、窗口和应用生命周期
@@ -40,9 +40,8 @@ Pastry/
 │       │   └── Version.generated.swift       # release.sh 写入的构建版本占位文件
 │       │
 │       ├── Persistence/
-│       │   ├── DatabaseManager.swift         # SQLCipher CRUD、FTS5、统计和保留清理
-│       │   ├── DatabaseKeyManager.swift      # 数据库密钥生成、保存和旧 Keychain 迁移
-│       │   ├── DatabaseMigrator.swift        # 旧明文数据库迁移为加密数据库
+│       │   ├── DatabaseManager.swift         # SQLite CRUD、FTS5、统计和保留清理
+│       │   ├── LegacyEncryptedDatabaseMigrator.swift # 旧加密库一次性转为明文 SQLite
 │       │   └── StoreManager.swift            # SwiftUI 主状态、搜索、筛选和删除桥接
 │       │
 │       ├── Resources/
@@ -132,8 +131,7 @@ Pastry/
 │       ├── ClipboardSearchTests.swift                 # 内容、备注和应用名搜索
 │       ├── ClipboardCardSnapshotTests.swift           # 卡片 PNG 快照测试
 │       ├── ConstantsTests.swift                       # 默认值和配置 key
-│       ├── DatabaseKeyManagerTests.swift              # 密钥保存、权限和迁移
-│       ├── DatabaseManagerTests.swift                 # SQLCipher、CRUD、FTS 和迁移
+│       ├── DatabaseManagerTests.swift                 # SQLite、CRUD、FTS 和旧库迁移
 │       ├── DeveloperDiagnosticsTests.swift            # 日志、脱敏和轮转
 │       ├── DisplayModeTests.swift                     # 卡片展示模式
 │       ├── DragPayloadBuilderTests.swift              # 文本、URL 和文件载荷
@@ -235,7 +233,7 @@ mise.toml ──→ deploy.sh
 
 PastryApp
    ├── Core           剪贴板采集与数据模型
-   ├── Persistence    SQLCipher 存储、搜索和状态层
+   ├── Persistence    SQLite 存储、搜索和状态层
    ├── UI             面板、卡片、预览和交互
    ├── Settings       设置窗口
    └── Utils          热键、网络、更新和日志等基础能力

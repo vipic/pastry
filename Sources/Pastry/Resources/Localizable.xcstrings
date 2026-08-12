@@ -4257,13 +4257,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本地加密"
+            "value": "仅存本机"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Encrypted locally"
+            "value": "Stored locally"
           }
         }
       }

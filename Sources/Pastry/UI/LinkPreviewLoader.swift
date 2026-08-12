@@ -26,13 +26,6 @@ final class LinkPreviewLoader {
         return c
     }()
 
-    private let session: URLSession = {
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 6
-        config.timeoutIntervalForResource = 8
-        return URLSession(configuration: config, delegate: RemoteResourceRedirectDelegate.shared, delegateQueue: nil)
-    }()
-
     private static let htmlTagRegexes: [String: NSRegularExpression] = {
         ["meta", "link", "img"].reduce(into: [:]) { dict, name in
             dict[name] = try? NSRegularExpression(
@@ -66,7 +59,10 @@ final class LinkPreviewLoader {
         var request = URLRequest(url: url)
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15", forHTTPHeaderField: "User-Agent")
 
-        session.dataTask(with: request) { [weak self] data, response, _ in
+        BoundedRemoteResourceLoader.shared.load(
+            request: request,
+            maxBytes: NetworkAccessPolicy.maxHTMLBytes
+        ) { [weak self] data, response, _ in
             guard let self,
                   NetworkAccessPolicy.responseWithinLimit(response, maxBytes: NetworkAccessPolicy.maxHTMLBytes),
                   let data = data,
@@ -89,7 +85,7 @@ final class LinkPreviewLoader {
             )
             self.cache.setObject(PreviewWrapper(preview), forKey: key as NSString)
             DispatchQueue.main.async { completion(preview) }
-        }.resume()
+        }
     }
 
     // MARK: - HTML 元数据提取
