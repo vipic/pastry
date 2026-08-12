@@ -117,6 +117,25 @@ final class ImageCacheManagerTests: XCTestCase {
         XCTAssertEqual(manager.counterpartURL(for: orig), thumb)
     }
 
+    func testRepeatedSavesReuseEstimatedCacheSizeWithoutRescanningDirectory() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pastry-cache-size-test-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let manager = ImageCacheManager(cacheDir: dir, maxCacheSize: 1_000_000_000)
+        let data = generateTestPNGData(width: 40, height: 30)
+        let image = try XCTUnwrap(NSImage(data: data))
+
+        XCTAssertNotNil(manager.save(image: image, data: data))
+        let first = manager.maintenanceSnapshotForTesting()
+        XCTAssertEqual(first.directoryScans, 1)
+        XCTAssertNotNil(first.estimatedBytes)
+
+        XCTAssertNotNil(manager.save(image: image, data: data))
+        let second = manager.maintenanceSnapshotForTesting()
+        XCTAssertEqual(second.directoryScans, 1, "阈值以内的后续保存不应再次枚举缓存目录")
+        XCTAssertGreaterThan(second.estimatedBytes ?? 0, first.estimatedBytes ?? 0)
+    }
+
     // MARK: - suggestedFilename
 
     /// 非缓存路径：沿用原始文件名

@@ -2,26 +2,36 @@ import Cocoa
 import OSLog
 
 // MARK: - 图片缓存管理器
-final class ImageCacheManager {
-    nonisolated(unsafe) static let shared = ImageCacheManager()
+final class ImageCacheManager: @unchecked Sendable {
+    static let shared = ImageCacheManager()
 
     private let log = Logger(subsystem: "com.nekutai.pastry", category: "image-cache")
     private let diagnosticsLog = PastryLogger(category: "image-cache")
     private let evictionQueue = DispatchQueue(label: "com.nekutai.pastry.image-cache.eviction", qos: .utility)
 
     /// 缓存磁盘用量上限（超过触发淘汰）
-    private static let maxCacheSize: Int64 = 200 * 1024 * 1024  // 200 MB
+    private let maxCacheSize: Int64
     /// 淘汰后目标磁盘用量
-    private static let targetCacheSize: Int64 = 150 * 1024 * 1024  // 150 MB
+    private let targetCacheSize: Int64
 
     private let cacheDir: URL
+    /// 串行队列维护的近似总量；首次保存或外部清理后才重新扫描目录。
+    private var estimatedCacheSize: Int64?
+    private var evictionScheduled = false
+    private var directoryScanCount = 0
 
     private convenience init() {
         self.init(cacheDir: AppDirectories.applicationSupportDirectory().appendingPathComponent("ImageCache"))
     }
 
-    init(cacheDir: URL) {
+    init(
+        cacheDir: URL,
+        maxCacheSize: Int64 = 200 * 1024 * 1024,
+        targetCacheSize: Int64 = 150 * 1024 * 1024
+    ) {
         self.cacheDir = cacheDir
+        self.maxCacheSize = maxCacheSize
+        self.targetCacheSize = min(targetCacheSize, maxCacheSize)
         AppDirectories.ensureDirectory(cacheDir, logCategory: "image-cache")
     }
 
@@ -75,19 +85,34 @@ final class ImageCacheManager {
             return nil
         }
 
-        scheduleEviction()
+        scheduleEviction(addedBytes: Int64(data.count + pngData.count))
         return thumbURL.path
     }
 
-    private func scheduleEviction() {
-        // 在主线程上预先捕获收藏路径快照（StoreManager 限定 @MainActor），
-        // 再交由 evictionQueue 异步执行磁盘清理。
-        Task { @MainActor in
-            let pinned = Set(StoreManager.shared.items.filter(\.isPinned)
-                .filter { $0.sourceFormat == .image || $0.sourceFormat == .fileURL }
-                .map(\.content))
-            evictionQueue.async { [weak self] in
-                self?.evictIfNeeded(pinnedPaths: pinned)
+    private func scheduleEviction(addedBytes: Int64) {
+        evictionQueue.async { [weak self] in
+            guard let self else { return }
+            if let estimatedCacheSize {
+                self.estimatedCacheSize = estimatedCacheSize + addedBytes
+            } else {
+                self.estimatedCacheSize = self.cacheFileInfos().totalSize
+            }
+
+            guard let estimatedCacheSize = self.estimatedCacheSize,
+                  estimatedCacheSize > self.maxCacheSize,
+                  !self.evictionScheduled
+            else { return }
+            self.evictionScheduled = true
+
+            // StoreManager 限定 @MainActor；只在真正越过阈值时采集收藏路径。
+            Task { @MainActor in
+                let pinned = Set(StoreManager.shared.items.filter(\.isPinned)
+                    .filter { $0.sourceFormat == .image || $0.sourceFormat == .fileURL }
+                    .map(\.content))
+                self.evictionQueue.async {
+                    self.estimatedCacheSize = self.evictIfNeeded(pinnedPaths: pinned)
+                    self.evictionScheduled = false
+                }
             }
         }
     }
@@ -123,34 +148,17 @@ final class ImageCacheManager {
 
     /// LRU 磁盘淘汰：超过 maxCacheSize 时按修改时间删除最旧文件，直到低于 targetCacheSize。
     /// 跳过被收藏（pinned）条目引用的文件，其余按 LRU 清理。
-    private func evictIfNeeded(pinnedPaths: Set<String>) {
+    private func evictIfNeeded(pinnedPaths: Set<String>) -> Int64 {
         let fm = FileManager.default
-        guard let files = try? fm.contentsOfDirectory(
-            at: cacheDir,
-            includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey],
-            options: [.skipsHiddenFiles]
-        ) else { return }
+        var (totalSize, fileInfos) = cacheFileInfos()
 
-        var totalSize: Int64 = 0
-        var fileInfos: [(url: URL, size: Int64, modDate: Date)] = []
-
-        for file in files {
-            guard let attrs = try? file.resourceValues(
-                forKeys: [.fileSizeKey, .contentModificationDateKey]
-            ),
-                  let size = attrs.fileSize.map(Int64.init)
-            else { continue }
-            totalSize += size
-            fileInfos.append((file, size, attrs.contentModificationDate ?? Date.distantPast))
-        }
-
-        guard totalSize > Self.maxCacheSize else { return }
+        guard totalSize > maxCacheSize else { return totalSize }
 
         // 按修改时间升序（最旧 → 最新）
         fileInfos.sort { $0.modDate < $1.modDate }
 
         for info in fileInfos {
-            guard totalSize > Self.targetCacheSize else { break }
+            guard totalSize > targetCacheSize else { break }
             // 跳过被收藏条目引用的文件（防止卡片显示破损图标）
             let thumbPath = thumbnailPath(forCachedFile: info.url)
             if let tp = thumbPath, pinnedPaths.contains(tp) { continue }
@@ -167,6 +175,30 @@ final class ImageCacheManager {
                 // 无法删除的文件跳过，继续处理下一个
             }
         }
+        return totalSize
+    }
+
+    private func cacheFileInfos() -> (
+        totalSize: Int64,
+        files: [(url: URL, size: Int64, modDate: Date)]
+    ) {
+        directoryScanCount += 1
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: cacheDir,
+            includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return (0, []) }
+
+        var totalSize: Int64 = 0
+        var fileInfos: [(url: URL, size: Int64, modDate: Date)] = []
+        for file in files {
+            guard let attrs = try? file.resourceValues(
+                forKeys: [.fileSizeKey, .contentModificationDateKey]
+            ), let size = attrs.fileSize.map(Int64.init) else { continue }
+            totalSize += size
+            fileInfos.append((file, size, attrs.contentModificationDate ?? .distantPast))
+        }
+        return (totalSize, fileInfos)
     }
 
     /// 清理孤儿缓存文件：删除数据库中已不存在图片条目的缩略图和原始文件对。
@@ -192,6 +224,13 @@ final class ImageCacheManager {
                 metadata: ["removed_count": String(removed)]
             )
         }
+        evictionQueue.async { [weak self] in
+            self?.estimatedCacheSize = nil
+        }
+    }
+
+    func maintenanceSnapshotForTesting() -> (estimatedBytes: Int64?, directoryScans: Int) {
+        evictionQueue.sync { (estimatedCacheSize, directoryScanCount) }
     }
 
     private func thumbnail(from image: NSImage, maxSize: NSSize) -> NSImage {
