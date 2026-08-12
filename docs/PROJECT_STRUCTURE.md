@@ -14,8 +14,7 @@ Pastry/
 │   ├── Copy.aiff                     # 复制提示音
 │   ├── Paste.aiff                    # 粘贴提示音
 │   ├── dmg-background.png            # DMG 普通分辨率背景
-│   ├── dmg-background@2x.png         # DMG Retina 背景
-│   └── dmg-dsstore                   # DMG Finder 窗口布局模板
+│   └── dmg-background@2x.png         # DMG Retina 背景
 │
 ├── Sources/
 │   ├── CSQLCipher/
@@ -194,6 +193,7 @@ Pastry/
 │   ├── next_version.sh                # Conventional Commits → SemVer
 │   ├── verify_release.sh              # 正式 App 结构、版本和签名检查
 │   ├── release_smoke.sh               # 挂载、复制并首次启动正式 DMG
+│   ├── layout_dmg.applescript          # 在最终可写卷上生成 Finder 布局
 │   ├── lib/
 │   │   └── command_log.sh             # deploy/release 命令耗时日志
 │   └── tasks/

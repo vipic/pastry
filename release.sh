@@ -254,10 +254,16 @@ DMG_SRC="$STAGING/dmg_root"
 mkdir -p "$DMG_SRC"
 cp -R "$STAGING/$APP_NAME.app" "$DMG_SRC/"
 ln -s /Applications "$DMG_SRC/Applications" 2>/dev/null || true
+mkdir -p "$DMG_SRC/.background"
+cp "$PROJECT_DIR/Resources/dmg-background.png" "$DMG_SRC/.background/background.png"
+cp "$PROJECT_DIR/Resources/dmg-background@2x.png" "$DMG_SRC/.background/background@2x.png"
+if command -v SetFile >/dev/null 2>&1; then
+    SetFile -a V "$DMG_SRC/.background"
+fi
 
 # 计算 DMG 大小
-APP_SIZE_KB=$(du -sk "$DMG_SRC/$APP_NAME.app" | cut -f1)
-DMG_SIZE_MB=$(( (APP_SIZE_KB / 1024) + 4 ))
+DMG_SIZE_KB=$(du -sk "$DMG_SRC" | cut -f1)
+DMG_SIZE_MB=$(( (DMG_SIZE_KB + 1023) / 1024 + 8 ))
 
 command_log_run_tail hdiutil_create 1 hdiutil create -volname "$APP_NAME" \
     -srcfolder "$DMG_SRC" \
@@ -265,44 +271,24 @@ command_log_run_tail hdiutil_create 1 hdiutil create -volname "$APP_NAME" \
     -size ${DMG_SIZE_MB}m \
     "$STAGING/tmp.dmg"
 
-# DMG 美化（静默：挂载→拷背景+DS_Store→卸载，无 Finder 闪现）
+# DMG 美化（挂载最终可写镜像，由 Finder 现场生成与当前卷匹配的布局）
 echo "🎨 美化 DMG..."
 
-# 挂载（-noautoopen 不打开 Finder 窗口）
-DMG_ATTACH_LOG="$STAGING/dmg-attach.log"
-if ! command_log_run_tail hdiutil_attach_writable 3 /bin/bash -c \
-    'hdiutil attach -readwrite -noverify -noautoopen "$1" > "$2" 2>&1' \
-    _ "$STAGING/tmp.dmg" "$DMG_ATTACH_LOG"; then
-    echo "❌ DMG 美化挂载失败"
-    cat "$DMG_ATTACH_LOG"
-    exit 1
-fi
-DMG_DEVICE=$(awk '/\/Volumes\// {print $1; exit}' "$DMG_ATTACH_LOG")
-DMG_VOLUME=$(awk '/\/Volumes\// {for (i=3; i<=NF; i++) printf "%s%s", (i==3 ? "" : " "), $i; print ""; exit}' "$DMG_ATTACH_LOG")
-VOLUME="${DMG_VOLUME:-/Volumes/$APP_NAME}"
-if [ ! -d "$VOLUME" ]; then
-    echo "❌ DMG 美化挂载后未找到卷目录: $VOLUME"
-    cat "$DMG_ATTACH_LOG"
-    exit 1
-fi
-
-# 复制背景图（含 Retina @2x）
-mkdir -p "$VOLUME/.background"
-cp "$PROJECT_DIR/Resources/dmg-background.png" "$VOLUME/.background/background.png" || { echo "❌ 复制 DMG 背景图失败"; exit 1; }
-cp "$PROJECT_DIR/Resources/dmg-background@2x.png" "$VOLUME/.background/background@2x.png" || { echo "❌ 复制 DMG Retina 背景图失败"; exit 1; }
-if command -v SetFile >/dev/null 2>&1; then
-    SetFile -a V "$VOLUME/.background"
-fi
-
-# 复制预制的 .DS_Store 模板（窗口大小、图标位置、背景图引用）
-cp "$PROJECT_DIR/Resources/dmg-dsstore" "$VOLUME/.DS_Store" || { echo "❌ 复制 DMG .DS_Store 模板失败"; exit 1; }
+DMG_VOLUME="$STAGING/dmg-mount"
+mkdir -p "$DMG_VOLUME"
+command_log_run_tail hdiutil_attach_writable 3 hdiutil attach "$STAGING/tmp.dmg" \
+    -readwrite -noverify -noautoopen -mountpoint "$DMG_VOLUME"
+command_log_run layout_dmg osascript "$PROJECT_DIR/scripts/layout_dmg.applescript" \
+    "$DMG_VOLUME" "$APP_NAME"
+[ -f "$DMG_VOLUME/.DS_Store" ] || { echo "❌ Finder 未生成 DMG 布局记录"; exit 1; }
+[ -f "$DMG_VOLUME/.background/background.png" ] || { echo "❌ DMG 背景文件缺失"; exit 1; }
+sync
 
 # 卸载
-if ! command_log_run_tail hdiutil_detach_writable 3 hdiutil detach "${DMG_DEVICE:-$VOLUME}" -quiet; then
-    echo "❌ DMG 美化后卸载失败: ${DMG_DEVICE:-$VOLUME}"
+if ! command_log_run_tail hdiutil_detach_writable 3 hdiutil detach "$DMG_VOLUME" -quiet; then
+    echo "❌ DMG 美化后卸载失败: $DMG_VOLUME"
     exit 1
 fi
-DMG_DEVICE=""
 DMG_VOLUME=""
 echo "✅ DMG 背景和窗口布局已写入"
 
