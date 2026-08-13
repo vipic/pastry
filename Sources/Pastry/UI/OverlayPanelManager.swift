@@ -341,6 +341,7 @@ final class OverlayPanelManager: @unchecked Sendable {
         guard !Self.didWarmupPipeline else { return }
         Self.didWarmupPipeline = true
         guard !isVisible else { return }
+        _ = Self.pasteSound
 
         let t0 = CFAbsoluteTimeGetCurrent()
         let mouseLocation = NSEvent.mouseLocation
@@ -499,6 +500,7 @@ final class OverlayPanelManager: @unchecked Sendable {
         // 4. ⌘V（面板已隐藏，目标 App 在前台）
         let pasteShortcut = Self.simulatePaste()
         if pasteShortcut.didPost {
+            // 操作反馈必须先于 DB 计数、列表刷新等业务收尾。
             SoundFeedback.play(Self.pasteSound)
         }
         let t3 = CFAbsoluteTimeGetCurrent()
@@ -568,6 +570,7 @@ final class OverlayPanelManager: @unchecked Sendable {
         // ⌘V
         let pasteShortcut = Self.simulatePaste()
         if pasteShortcut.didPost {
+            // 与单选保持同一时序：按键事件 → 声音反馈 → 业务收尾。
             SoundFeedback.play(Self.pasteSound)
         }
         let t3 = CFAbsoluteTimeGetCurrent()

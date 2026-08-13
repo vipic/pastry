@@ -20,6 +20,8 @@ final class ClipboardMonitor: ObservableObject {
     // MARK: 私有状态
     private var lastChangeCount = NSPasteboard.general.changeCount
     private var ignoredChangeCounts: Set<Int> = []
+    /// Pastry 自身的复制入口会立即播放反馈；监听器仍处理该变更，但不重复播音。
+    private var copyFeedbackPlayedChangeCounts: Set<Int> = []
     private var timer: Timer?
     private let pollInterval: TimeInterval = 0.05   // 50ms，人耳无法感知延迟
     private let log = PastryLogger(category: "monitor")
@@ -33,7 +35,11 @@ final class ClipboardMonitor: ObservableObject {
             )
             return nil
         }
-        return NSSound(contentsOfFile: path, byReference: true)
+        let sound = NSSound(contentsOfFile: path, byReference: true)
+        // 启动时预暖音频管线，避免首次复制的 play() 冷启动延迟。
+        sound?.play()
+        sound?.stop()
+        return sound
     }()
 
     /// 暂停/恢复监听（仅主线程调用）
@@ -66,6 +72,15 @@ final class ClipboardMonitor: ObservableObject {
         lastChangeCount = changeCount
     }
 
+    /// Pastry 自身的 ⌘C / 工具栏 / 右键复制入口在写入成功后调用。
+    /// 先播放反馈，之后监听器仍会解析与入库，但不会再播一次。
+    func playCopyFeedbackForCurrentChange() {
+        assert(Thread.isMainThread, "复制反馈必须在主线程播放")
+        // 50ms 内连续复制时中间 changeCount 可能不会被 poll 观测，只保留最新值避免集合累积。
+        copyFeedbackPlayedChangeCounts = [NSPasteboard.general.changeCount]
+        SoundFeedback.play(Self.copySound)
+    }
+
     private init() {}
 
     // MARK: - 生命周期
@@ -73,6 +88,7 @@ final class ClipboardMonitor: ObservableObject {
     func start() {
         guard !isRunning else { return }
         isRunning = true
+        _ = Self.copySound
 
         lastChangeCount = NSPasteboard.general.changeCount
 
@@ -115,6 +131,7 @@ final class ClipboardMonitor: ObservableObject {
         if ignoredChangeCounts.remove(currentChange) != nil {
             return
         }
+        let shouldPlayCopyFeedback = copyFeedbackPlayedChangeCounts.remove(currentChange) == nil
 
         var (capturedApp, capturedBundleID) = resolveSourceApp()
 
@@ -127,13 +144,21 @@ final class ClipboardMonitor: ObservableObject {
 
         DispatchQueue.main.async {
             [weak self] in
-            self?.processChange(capturedApp: capturedApp, capturedBundleID: capturedBundleID)
+            self?.processChange(
+                capturedApp: capturedApp,
+                capturedBundleID: capturedBundleID,
+                shouldPlayCopyFeedback: shouldPlayCopyFeedback
+            )
         }
     }
 
     // MARK: - 处理剪贴板变化
 
-    private func processChange(capturedApp: String?, capturedBundleID: String?) {
+    private func processChange(
+        capturedApp: String?,
+        capturedBundleID: String?,
+        shouldPlayCopyFeedback: Bool
+    ) {
         // 排除名单：密码管理器等敏感应用不保存剪贴板历史
         if let bundleID = capturedBundleID {
             let excluded = UserDefaults.standard.stringArray(forKey: UserDefaultsKeys.excludedBundleIDs) ?? []
@@ -160,7 +185,9 @@ final class ClipboardMonitor: ObservableObject {
         }
 
         // 类型非空，确认有效复制 → 播提示音
-        SoundFeedback.play(Self.copySound)
+        if shouldPlayCopyFeedback {
+            SoundFeedback.play(Self.copySound)
+        }
 
         // 检测 Handoff/通用剪贴板来源
         let isRemoteClipboard = types.contains(where: { $0.rawValue == "com.apple.is-remote-clipboard" })

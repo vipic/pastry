@@ -374,7 +374,16 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         for id in ids {
             guard let item = items.first(where: { $0.id == id }) else { continue }
             if item.isPinned { deletedFavorite = true }
-            DatabaseManager.shared.delete(id: id.uuidString)
+            let deletedFromDatabase = !usesDatabaseSearch
+                || DatabaseManager.shared.delete(id: id.uuidString)
+            guard deletedFromDatabase else {
+                diagnosticsLog.error(
+                    "删除剪贴板记录失败，保留界面中的卡片",
+                    event: "store.delete.persistence_failed",
+                    metadata: ["item_id": id.uuidString]
+                )
+                continue
+            }
             items.removeAll { $0.id == id }
             deletedIds.insert(id)
         }

@@ -147,6 +147,43 @@ final class DatabaseManagerTests: XCTestCase {
         sqlite3_close(plaintext)
     }
 
+    func testStartupRepairsLegacyFTSSchemaWhoseVersionAlreadyAdvanced() throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pastry-legacy-fts-\(UUID().uuidString).db").path
+        defer {
+            for suffix in ["", "-wal", "-shm"] {
+                try? FileManager.default.removeItem(atPath: path + suffix)
+            }
+        }
+
+        var manager: DatabaseManager? = DatabaseManager(dbPath: path)
+        let existing = makeItem(content: "existing searchable text", favoriteNote: "legacy note")
+        XCTAssertEqual(manager?.insert(existing), .inserted)
+        manager = nil
+
+        var rawDatabase: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(path, &rawDatabase), SQLITE_OK)
+        executeRaw("DROP TRIGGER IF EXISTS trg_clips_fts_delete;", on: rawDatabase)
+        executeRaw("DROP TRIGGER IF EXISTS trg_clips_fts_insert;", on: rawDatabase)
+        executeRaw("DROP TRIGGER IF EXISTS trg_clips_fts_update;", on: rawDatabase)
+        executeRaw("DROP TABLE clips_fts;", on: rawDatabase)
+        executeRaw(
+            "CREATE VIRTUAL TABLE clips_fts USING fts5(content, link_title, "
+                + "content='clips', content_rowid='rowid');",
+            on: rawDatabase
+        )
+        executeRaw("PRAGMA user_version = 11;", on: rawDatabase)
+        sqlite3_close(rawDatabase)
+        rawDatabase = nil
+
+        manager = DatabaseManager(dbPath: path)
+        let inserted = makeItem(content: "new searchable text", favoriteNote: "repaired note")
+        XCTAssertEqual(manager?.insert(inserted), .inserted)
+        XCTAssertEqual(manager?.search(query: "repaired").map(\.id), [inserted.id])
+        XCTAssertEqual(manager?.delete(id: existing.id.uuidString), true)
+        XCTAssertFalse(manager?.recent().contains(where: { $0.id == existing.id }) ?? true)
+    }
+
     /// 插入一条 → recent() 应包含它
     func testInsertAndRetrieve() {
         let item = makeItem(content: "Hello World")

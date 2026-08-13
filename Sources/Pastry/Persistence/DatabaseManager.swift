@@ -276,6 +276,8 @@ final class DatabaseManager {
             userVersion = 11
         }
 
+        repairFTSSchemaIfNeeded()
+
         // 迁移完成后统一重建 FTS 触发器。
         // createTables 和早期迁移创建触发器时，clips 可能还没有全部 FTS 列
         // （如 favorite_note 在 v11 才加入），触发器会因列不存在而静默创建失败。
@@ -288,11 +290,64 @@ final class DatabaseManager {
         _ = execute(Self.ftsUpdateTriggerSQL)
     }
 
+    /// 修复 user_version 已前进、但 FTS 虚拟表仍停留在旧结构的数据库。
+    ///
+    /// SQLite 创建触发器时不会验证触发器正文引用的 FTS 列；这种不一致会一直潜伏到
+    /// 下一次 INSERT / DELETE 才报错，导致主表写入被整个语句回滚。
+    private func repairFTSSchemaIfNeeded() {
+        guard ftsColumnNames() != ["content", "link_title", "favorite_note"] else { return }
+
+        let repaired = runMigrationInTransaction("fts-schema-repair") {
+            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_delete;") else { return false }
+            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_insert;") else { return false }
+            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_update;") else { return false }
+            guard migrateExec("DROP TABLE IF EXISTS clips_fts;") else { return false }
+            guard migrateExec(Self.latestFTSTableSQL) else { return false }
+            return migrateExec(
+                "INSERT INTO clips_fts(rowid, content, link_title, favorite_note) "
+                    + "SELECT rowid, content, link_title, favorite_note FROM clips;"
+            )
+        }
+
+        if repaired {
+            diagnosticsLog.notice(
+                "全文搜索索引结构已自动修复",
+                event: "database.fts_schema.repaired"
+            )
+        }
+    }
+
+    private func ftsColumnNames() -> [String] {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "PRAGMA table_info(clips_fts);", -1, &statement, nil) == SQLITE_OK else {
+            return []
+        }
+        defer { sqlite3_finalize(statement) }
+
+        var names: [String] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let name = sqlite3_column_text(statement, 1) else { continue }
+            names.append(String(cString: name))
+        }
+        return names
+    }
+
     // MARK: - FTS 触发器 SQL（createTables 与迁移复用）
     //
     // 外部 content FTS5 表（content='clips'）的同步必须用 FTS5 的特殊 'delete' 命令，
     // 而非普通 `DELETE FROM clips_fts`。后者会触发 "database disk image is malformed"。
     // 参见 SQLite FTS5 文档 external content tables 章节。
+
+    private static let latestFTSTableSQL = """
+    CREATE VIRTUAL TABLE clips_fts USING fts5(
+        content,
+        link_title,
+        favorite_note,
+        content='clips',
+        content_rowid='rowid',
+        tokenize='porter unicode61'
+    );
+    """
 
     private static let ftsDeleteTriggerSQL = """
     CREATE TRIGGER IF NOT EXISTS trg_clips_fts_delete
@@ -455,7 +510,14 @@ final class DatabaseManager {
         let rc = sqlite3_step(stmt)
         sqlite3_finalize(stmt)
 
-        guard rc == SQLITE_DONE else { return .skipped }
+        guard rc == SQLITE_DONE else {
+            diagnosticsLog.error(
+                "剪贴板记录写入失败",
+                event: "database.clip_insert.step_failed",
+                metadata: ["result_code": String(rc), "error": lastError]
+            )
+            return .skipped
+        }
 
         // FTS 由 AFTER INSERT 触发器自动同步；保留策略与 INSERT 放在同一事务内，
         // 避免主表插入成功但清理失败时出现部分提交。
@@ -794,6 +856,13 @@ final class DatabaseManager {
         let rc = sqlite3_step(stmt)
         let changed = sqlite3_changes(db)
         sqlite3_finalize(stmt)
+        if rc != SQLITE_DONE {
+            diagnosticsLog.error(
+                "剪贴板记录删除失败",
+                event: "database.clip_delete.step_failed",
+                metadata: ["result_code": String(rc), "error": lastError]
+            )
+        }
         if changed > 0 { lastKey = nil }
         return rc == SQLITE_DONE && changed > 0
     }

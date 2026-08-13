@@ -88,7 +88,10 @@ extension ClipboardCardView {
         guard !targets.isEmpty else { return }
         if targets.count == 1 {
             Task {
-                _ = await PasteboardWriter.write(targets[0], options: .storeSingle)
+                let result = await PasteboardWriter.write(targets[0], options: .storeSingle)
+                guard result == .written else { return }
+                ClipboardMonitor.shared.playCopyFeedbackForCurrentChange()
+                DeveloperDiagnostics.record(DiagnosticsEvent.copy)
             }
         } else {
             let lines = targets.map { target in
@@ -98,8 +101,9 @@ extension ClipboardCardView {
                 return DatabaseManager.shared.loadFullContent(id: target.id) ?? target.content
             }
             PasteboardWriter.writePlainText(lines.joined(separator: "\n"))
+            ClipboardMonitor.shared.playCopyFeedbackForCurrentChange()
+            DeveloperDiagnostics.record(DiagnosticsEvent.copy)
         }
-        DeveloperDiagnostics.record(DiagnosticsEvent.copy)
     }
 
     /// 构建系统的"打开方式"子菜单
