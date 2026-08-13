@@ -92,7 +92,7 @@ Constraints: no words, no letters, no labels, no app icons, no folder icons, no 
 
 脚本会使用 annotated tag `v1.2.3`，原子推送 `main` 与 tag，再创建 GitHub Release。已有同名 tag 或 Release 时会直接停止，不覆盖资产；Release 创建失败时回滚本轮 tag。DMG 和同名 `.sha256` 会一起上传。
 
-GitHub Release notes 由脚本从 Conventional Commits 自动生成。面向用户的白话说明写在仓库根目录 [CHANGELOG.md](../CHANGELOG.md)：发布前把 `Unreleased` 条目挪到对应版本节。
+GitHub Release notes 由仓库脚本直接读取上一个正式标签之后的 Conventional Commits，生成应用内可直接阅读的逐条列表，不依赖 GitHub 的 PR 自动归类。面向用户的白话说明写在仓库根目录 [CHANGELOG.md](../CHANGELOG.md)：发布前把 `Unreleased` 条目挪到对应版本节。
 
 ## 发布耗时与本地日志
 

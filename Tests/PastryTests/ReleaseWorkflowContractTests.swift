@@ -18,6 +18,9 @@ final class ReleaseWorkflowContractTests: XCTestCase {
         XCTAssertTrue(release.contains("command_log_run_tail mise_check 12 mise run check"))
         XCTAssertTrue(release.contains("git push --atomic"))
         XCTAssertTrue(release.contains("gh release create"))
+        XCTAssertTrue(release.contains("scripts/generate_release_notes.sh"))
+        XCTAssertTrue(release.contains("--notes-file"))
+        XCTAssertFalse(release.contains("--generate-notes"))
         XCTAssertFalse(release.contains("--clobber"))
     }
 

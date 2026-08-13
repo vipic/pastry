@@ -14,6 +14,7 @@ scripts=(
     scripts/check_coverage.sh
     scripts/check_design_tokens.sh
     scripts/diagnostics.sh
+    scripts/generate_release_notes.sh
     scripts/lib/command_log.sh
     scripts/next_version.sh
     scripts/verify_release.sh
