@@ -31,9 +31,7 @@ final class RemoteImageLoader {
             return
         }
 
-        guard let url = URL(string: urlString),
-              NetworkAccessPolicy.isAllowedRemoteResourceURL(url)
-        else {
+        guard let url = URL(string: urlString) else {
             completion(nil)
             return
         }

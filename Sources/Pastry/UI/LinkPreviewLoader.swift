@@ -43,9 +43,7 @@ final class LinkPreviewLoader {
     }
 
     func load(url: URL, completion: @escaping (Preview?) -> Void) {
-        guard NetworkAccessPolicy.isLinkPreviewEnabled,
-              NetworkAccessPolicy.isAllowedRemoteResourceURL(url)
-        else {
+        guard NetworkAccessPolicy.isLinkPreviewEnabled else {
             DispatchQueue.main.async { completion(nil) }
             return
         }

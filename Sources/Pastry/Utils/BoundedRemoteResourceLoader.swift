@@ -28,8 +28,25 @@ final class BoundedRemoteResourceLoader: NSObject, URLSessionDataDelegate, URLSe
         }
     }
 
+    private final class ValidationWork: @unchecked Sendable {
+        let request: URLRequest
+        let maxBytes: Int
+        let completion: Completion
+
+        init(request: URLRequest, maxBytes: Int, completion: @escaping Completion) {
+            self.request = request
+            self.maxBytes = maxBytes
+            self.completion = completion
+        }
+    }
+
     private let lock = NSLock()
     private var states: [Int: State] = [:]
+    private let validationQueue = DispatchQueue(
+        label: "com.nekutai.pastry.remote-resource-validation",
+        qos: .utility,
+        attributes: .concurrent
+    )
     private lazy var session: URLSession = {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 6
@@ -47,9 +64,23 @@ final class BoundedRemoteResourceLoader: NSObject, URLSessionDataDelegate, URLSe
         maxBytes: Int,
         completion: @escaping Completion
     ) {
-        let task = session.dataTask(with: request)
+        let work = ValidationWork(request: request, maxBytes: maxBytes, completion: completion)
+        validationQueue.async { [weak self] in
+            self?.startValidated(work)
+        }
+    }
+
+    private func startValidated(_ work: ValidationWork) {
+        guard let url = work.request.url,
+              NetworkAccessPolicy.isAllowedRemoteResourceURL(url)
+        else {
+            work.completion(nil, nil, URLError(.unsupportedURL))
+            return
+        }
+
+        let task = session.dataTask(with: work.request)
         lock.withLock {
-            states[task.taskIdentifier] = State(maxBytes: maxBytes, completion: completion)
+            states[task.taskIdentifier] = State(maxBytes: work.maxBytes, completion: work.completion)
         }
         task.resume()
     }
