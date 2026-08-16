@@ -22,6 +22,8 @@ enum AccessibilityIdentifiers {
         static let root = "settings.root"
         static let sidebar = "settings.sidebar"
         static let languagePicker = "settings.language-picker"
+        static let maxItemsPicker = "settings.max-items-picker"
+        static let maxAgePicker = "settings.max-age-picker"
         static let launchAtLoginToggle = "settings.launch-at-login-toggle"
         static let soundToggle = "settings.sound-toggle"
         static let cardClickModeToggle = "settings.card-click-mode-toggle"
@@ -32,6 +34,7 @@ enum AccessibilityIdentifiers {
         static let accessibilityRow = "settings.accessibility-row"
         static let accessibilityGrantButton = "settings.accessibility-grant-button"
         static let excludedAddButton = "settings.excluded-add-button"
+        static func sidebarTab(_ rawValue: String) -> String { "settings.tab.\(rawValue)" }
     }
 
     enum Onboarding {

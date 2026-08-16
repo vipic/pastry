@@ -52,6 +52,11 @@ extension SettingsSceneView {
                                 openExternalURL("https://github.com/vipic/pastry")
                             }
                             .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
+                            .accessibilityRepresentation {
+                                Button("\(L10n["settings.about.open"]) \(L10n["settings.about.source_code"])") {
+                                    openExternalURL("https://github.com/vipic/pastry")
+                                }
+                            }
                         }
 
                         settingsDivider

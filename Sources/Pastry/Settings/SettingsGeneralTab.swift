@@ -48,6 +48,7 @@ extension SettingsSceneView {
                             }
                             .settingsMenuPickerChrome()
                             .frame(width: Local.Settings.controlColumnWidth)
+                            .accessibilityLabel(L10n["lang.label"])
                             .accessibilityIdentifier(AccessibilityIdentifiers.Settings.languagePicker)
                         }
 
@@ -57,7 +58,7 @@ extension SettingsSceneView {
                             title: L10n["settings.launch_at_login"],
                             help: L10n["settings.general.launch_help"]
                         ) {
-                            Toggle("", isOn: $launchAtLogin)
+                            Toggle(L10n["settings.launch_at_login"], isOn: $launchAtLogin)
                                 .labelsHidden()
                                 .toggleStyle(SettingsSwitchStyle())
                                 .onChange(of: launchAtLogin) { _, enabled in
@@ -68,6 +69,9 @@ extension SettingsSceneView {
                                             .error("开机启动切换失败: \(error.localizedDescription)")
                                     }
                                 }
+                                .accessibilityRepresentation {
+                                    Toggle(L10n["settings.launch_at_login"], isOn: $launchAtLogin)
+                                }
                                 .accessibilityIdentifier(AccessibilityIdentifiers.Settings.launchAtLoginToggle)
                         }
 
@@ -77,9 +81,12 @@ extension SettingsSceneView {
                             title: L10n["settings.sound_enabled"],
                             help: L10n["settings.general.sound_help"]
                         ) {
-                            Toggle("", isOn: $soundEnabled)
+                            Toggle(L10n["settings.sound_enabled"], isOn: $soundEnabled)
                                 .labelsHidden()
                                 .toggleStyle(SettingsSwitchStyle())
+                                .accessibilityRepresentation {
+                                    Toggle(L10n["settings.sound_enabled"], isOn: $soundEnabled)
+                                }
                                 .accessibilityIdentifier(AccessibilityIdentifiers.Settings.soundToggle)
                         }
 
@@ -89,9 +96,12 @@ extension SettingsSceneView {
                             title: L10n["settings.card_click_mode"],
                             help: L10n["settings.card_click_mode.help"]
                         ) {
-                            Toggle("", isOn: speedClickEnabledBinding)
+                            Toggle(L10n["settings.card_click_mode"], isOn: speedClickEnabledBinding)
                                 .labelsHidden()
                                 .toggleStyle(SettingsSwitchStyle())
+                                .accessibilityRepresentation {
+                                    Toggle(L10n["settings.card_click_mode"], isOn: speedClickEnabledBinding)
+                                }
                                 .accessibilityIdentifier(AccessibilityIdentifiers.Settings.cardClickModeToggle)
                         }
 
@@ -101,9 +111,12 @@ extension SettingsSceneView {
                             title: L10n["settings.delete_requires_confirmation"],
                             help: L10n["settings.delete_requires_confirmation.help"]
                         ) {
-                            Toggle("", isOn: $deleteRequiresConfirmation)
+                            Toggle(L10n["settings.delete_requires_confirmation"], isOn: $deleteRequiresConfirmation)
                                 .labelsHidden()
                                 .toggleStyle(SettingsSwitchStyle())
+                                .accessibilityRepresentation {
+                                    Toggle(L10n["settings.delete_requires_confirmation"], isOn: $deleteRequiresConfirmation)
+                                }
                                 .accessibilityIdentifier(AccessibilityIdentifiers.Settings.deleteRequiresConfirmationToggle)
                         }
                     }
@@ -121,6 +134,8 @@ extension SettingsSceneView {
                             }
                             .settingsMenuPickerChrome()
                             .frame(width: Local.Settings.controlColumnWidth)
+                            .accessibilityLabel(L10n["settings.general.maximum_history"])
+                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.maxItemsPicker)
                         }
 
                         settingsDivider
@@ -136,6 +151,8 @@ extension SettingsSceneView {
                             }
                             .settingsMenuPickerChrome()
                             .frame(width: Local.Settings.controlColumnWidth)
+                            .accessibilityLabel(L10n["settings.general.keep_records_for"])
+                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.maxAgePicker)
                         }
 
                         settingsDivider
@@ -146,7 +163,10 @@ extension SettingsSceneView {
                         ) {
                             Button(L10n["settings.clear_btn"]) { showingClearConfirm = true }
                                 .buttonStyle(SettingsPillButtonStyle(kind: .danger))
-                                .accessibilityIdentifier(AccessibilityIdentifiers.Settings.clearAllButton)
+                                .accessibilityRepresentation {
+                                    Button(L10n["settings.clear_all"]) { showingClearConfirm = true }
+                                        .accessibilityIdentifier(AccessibilityIdentifiers.Settings.clearAllButton)
+                                }
                         }
                     }
                     .frame(maxWidth: .infinity, minHeight: generalSectionHeight, alignment: .top)

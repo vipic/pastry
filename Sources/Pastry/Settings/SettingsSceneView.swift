@@ -198,7 +198,6 @@ struct SettingsSceneView: View {
                     sidebarTabButton(tab)
                 }
             }
-            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.sidebar)
 
             Spacer()
 
@@ -232,11 +231,12 @@ struct SettingsSceneView: View {
 
     func sidebarTabButton(_ tab: SettingsTab) -> some View {
         let isSelected = selectedTab == tab
-        return Button {
+        let selectTab = {
             withAnimation(.easeInOut(duration: UIConstants.Motion.fast)) {
                 selectedTab = tab
             }
-        } label: {
+        }
+        return Button(action: selectTab) {
             HStack(spacing: 8) {
                 sidebarTabGlyph(tab, isSelected: isSelected)
                 Text(tab.label)
@@ -258,6 +258,11 @@ struct SettingsSceneView: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
+        .accessibilityRepresentation {
+            Button(tab.label, action: selectTab)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .accessibilityIdentifier(AccessibilityIdentifiers.Settings.sidebarTab(tab.rawValue))
+        }
     }
 
     @ViewBuilder

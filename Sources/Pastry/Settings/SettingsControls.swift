@@ -104,7 +104,6 @@ struct SettingsSwitchStyle: ToggleStyle {
             EmptyView()
         }
         .buttonStyle(SettingsSwitchButtonStyle(isOn: configuration.isOn, animation: switchAnimation))
-        .accessibilityValue(configuration.isOn ? Text("On") : Text("Off"))
     }
 }
 

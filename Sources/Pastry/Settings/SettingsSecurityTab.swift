@@ -22,9 +22,12 @@ extension SettingsSceneView {
                             title: L10n["settings.link_preview_network"],
                             help: L10n["settings.link_preview_network_hint"]
                         ) {
-                            Toggle("", isOn: $linkPreviewNetworkEnabled)
+                            Toggle(L10n["settings.link_preview_network"], isOn: $linkPreviewNetworkEnabled)
                                 .labelsHidden()
                                 .toggleStyle(SettingsSwitchStyle())
+                                .accessibilityRepresentation {
+                                    Toggle(L10n["settings.link_preview_network"], isOn: $linkPreviewNetworkEnabled)
+                                }
                                 .accessibilityIdentifier(AccessibilityIdentifiers.Settings.linkPreviewNetworkToggle)
                         }
 
@@ -34,9 +37,12 @@ extension SettingsSceneView {
                             title: L10n["settings.developer_diagnostics"],
                             help: L10n["settings.developer_diagnostics_hint"]
                         ) {
-                            Toggle("", isOn: $performanceLoggingEnabled)
+                            Toggle(L10n["settings.developer_diagnostics"], isOn: $performanceLoggingEnabled)
                                 .labelsHidden()
                                 .toggleStyle(SettingsSwitchStyle())
+                                .accessibilityRepresentation {
+                                    Toggle(L10n["settings.developer_diagnostics"], isOn: $performanceLoggingEnabled)
+                                }
                                 .accessibilityIdentifier(AccessibilityIdentifiers.Settings.performanceLoggingToggle)
                         }
 
@@ -58,7 +64,10 @@ extension SettingsSceneView {
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
-                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.excludedAddButton)
+                            .accessibilityRepresentation {
+                                Button(L10n["settings.excluded_add"], action: addExcludedApp)
+                                    .accessibilityIdentifier(AccessibilityIdentifiers.Settings.excludedAddButton)
+                            }
                         }
                         .padding(UIConstants.Settings.rowHorizontalPadding)
                     }
@@ -107,7 +116,10 @@ extension SettingsSceneView {
                 openAccessibilitySettings()
             }
             .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
-            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.accessibilityGrantButton)
+            .accessibilityRepresentation {
+                Button(L10n["settings.accessibility_grant_btn"], action: openAccessibilitySettings)
+                    .accessibilityIdentifier(AccessibilityIdentifiers.Settings.accessibilityGrantButton)
+            }
         }
         .padding(UIConstants.Settings.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -147,6 +159,11 @@ extension SettingsSceneView {
                 removeExcludedApp(bundleID)
             }
             .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
+            .accessibilityRepresentation {
+                Button("\(L10n["settings.excluded_remove"]) \(displayName(for: bundleID))") {
+                    removeExcludedApp(bundleID)
+                }
+            }
         }
         .padding(.leading, 7)
         .padding(.trailing, 10)

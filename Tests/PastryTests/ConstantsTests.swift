@@ -81,6 +81,8 @@ final class ConstantsTests: XCTestCase {
 
     func testSettingsAccessibilityIdentifiers() {
         XCTAssertEqual(AccessibilityIdentifiers.Settings.performanceLoggingToggle, "settings.performance-logging-toggle")
+        XCTAssertEqual(AccessibilityIdentifiers.Settings.maxItemsPicker, "settings.max-items-picker")
+        XCTAssertEqual(AccessibilityIdentifiers.Settings.maxAgePicker, "settings.max-age-picker")
     }
 
     func testHistoryRetentionPolicySanitizesValues() {
