@@ -111,6 +111,7 @@ final class L10nTests: XCTestCase {
             "settings.version.check_again",
             "settings.version.recent_changes",
             "settings.version.no_release_notes",
+            "update.check_failed_hint",
             "settings.version.available_badge",
             "settings.tab.about",
             "settings.about.subtitle",

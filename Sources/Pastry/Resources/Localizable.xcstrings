@@ -3945,6 +3945,23 @@
         }
       }
     },
+    "update.check_failed_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接更新服务，请检查网络后重试。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t reach the update service. Check your connection and try again."
+          }
+        }
+      }
+    },
     "update.whats_new": {
       "extractionState": "manual",
       "localizations": {

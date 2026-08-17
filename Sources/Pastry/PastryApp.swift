@@ -360,7 +360,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 异步检查更新
         Task { @MainActor in
-            if let result = await UpdateChecker.shared.checkForUpdate(force: true, allowDevBuild: true) {
+            switch await UpdateChecker.shared.checkOutcome(force: true, allowDevBuild: true) {
+            case .updateAvailable(let result):
                 let notes = result.releaseNotes
                 hostingView.rootView = UpdateView(
                     state: .updateAvailable(result: result),
@@ -377,7 +378,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         window?.close()
                     }
                 )
-            } else {
+            case .upToDate, .skipped:
                 let lastCheck = UserDefaults.standard.object(forKey: "PastryLastUpdateCheck") as? Date
                 let cachedNotes = UpdateChecker.shared.cachedReleaseNotes()
                 hostingView.rootView = UpdateView(
@@ -388,6 +389,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         lastReleaseNotes: cachedNotes
                     ),
                     releaseNotes: cachedNotes,
+                    currentVersion: nil,
+                    latestVersion: nil,
+                    onCancel: { [weak window] in
+                        window?.close()
+                    }
+                )
+            case .failed:
+                hostingView.rootView = UpdateView(
+                    state: .error(L10n["update.check_failed_hint"]),
+                    releaseNotes: nil,
                     currentVersion: nil,
                     latestVersion: nil,
                     onCancel: { [weak window] in

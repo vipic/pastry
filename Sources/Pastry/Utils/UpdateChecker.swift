@@ -54,6 +54,13 @@ final class UpdateChecker {
         let htmlURL: String
     }
 
+    enum CheckOutcome {
+        case skipped
+        case upToDate
+        case updateAvailable(UpdateResult)
+        case failed
+    }
+
     private init() {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 15
@@ -66,6 +73,17 @@ final class UpdateChecker {
     /// 检查更新（dev 版本默认跳过；手动检查可通过 allowDevBuild 请求远端）
     /// 距上次检查不足 24 小时且 force=false 时跳过网络请求
     func checkForUpdate(force: Bool = false, allowDevBuild: Bool = false) async -> UpdateResult? {
+        if case .updateAvailable(let result) = await checkOutcome(
+            force: force,
+            allowDevBuild: allowDevBuild
+        ) {
+            return result
+        }
+        return nil
+    }
+
+    /// 与 `checkForUpdate` 相同，但区分“无需联网检查”“已是最新”和“检查失败”。
+    func checkOutcome(force: Bool = false, allowDevBuild: Bool = false) async -> CheckOutcome {
         let startedAt = CFAbsoluteTimeGetCurrent()
         var outcome = "unknown"
         defer {
@@ -84,7 +102,7 @@ final class UpdateChecker {
         guard !isDevBuild || allowDevBuild else {
             outcome = "skipped_dev_build"
             log.info("开发版本，跳过更新检查", event: "update.check.skipped_dev_build")
-            return nil
+            return .skipped
         }
 
         let now = Date()
@@ -93,14 +111,14 @@ final class UpdateChecker {
             if now.timeIntervalSince(lastCheck) < checkInterval {
                 outcome = "skipped_interval"
                 log.info("距上次检查不足 24 小时，跳过", event: "update.check.skipped_interval")
-                return nil
+                return .skipped
             }
         }
 
         guard let releases = await fetchRecentReleases(limit: 3),
               let release = releases.first else {
             outcome = "fetch_failed"
-            return nil
+            return .failed
         }
 
         UserDefaults.standard.set(now, forKey: lastCheckKey)
@@ -114,18 +132,18 @@ final class UpdateChecker {
                 event: "update.check.up_to_date",
                 metadata: ["current_version": currentVersion]
             )
-            return nil
+            return .upToDate
         }
 
         // 找 DMG asset（文件名以 .dmg 结尾）
         guard let dmg = release.assets.first(where: { $0.name.hasSuffix(".dmg") }) else {
             outcome = "missing_dmg"
             log.error("Release 中没有找到 DMG 文件", event: "update.check.missing_dmg")
-            return nil
+            return .failed
         }
 
         outcome = "update_available"
-        return UpdateResult(
+        return .updateAvailable(UpdateResult(
             currentVersion: currentVersion,
             latestVersion: Self.displayVersion(release.tag_name),
             releaseNotes: release.body ?? "",
@@ -133,7 +151,7 @@ final class UpdateChecker {
             downloadURL: dmg.browser_download_url,
             downloadSize: dmg.size,
             htmlURL: release.html_url
-        )
+        ))
     }
 
     // MARK: - 缓存上次检查结果

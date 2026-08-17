@@ -325,7 +325,12 @@ extension SettingsSceneView {
         withAnimation(.easeOut(duration: UIConstants.Motion.fast)) {
             versionUpdateState = .checking
         }
-        if let result = await UpdateChecker.shared.checkForUpdate(force: force, allowDevBuild: allowDevBuild) {
+        let outcome = await UpdateChecker.shared.checkOutcome(
+            force: force,
+            allowDevBuild: allowDevBuild
+        )
+        switch outcome {
+        case .updateAvailable(let result):
             await waitForMinimumCheckingDuration(startedAt: startedAt, minimumDuration: minimumCheckingDuration)
             versionReleaseNotes = result.releaseNotes
             versionReleaseHistory = result.releaseHistory
@@ -334,7 +339,7 @@ extension SettingsSceneView {
             withAnimation(.easeOut(duration: UIConstants.Motion.fast)) {
                 versionUpdateState = .updateAvailable(result: result)
             }
-        } else {
+        case .upToDate, .skipped:
             await waitForMinimumCheckingDuration(startedAt: startedAt, minimumDuration: minimumCheckingDuration)
             let cachedHistory = UpdateChecker.shared.cachedReleaseHistory()
             let cachedNotes = cachedHistory.first?.body ?? UpdateChecker.shared.cachedReleaseNotes()
@@ -349,6 +354,13 @@ extension SettingsSceneView {
                 lastCheckDate: lastCheck,
                 lastReleaseNotes: cachedNotes
             )
+        case .failed:
+            await waitForMinimumCheckingDuration(startedAt: startedAt, minimumDuration: minimumCheckingDuration)
+            versionCurrentVersion = nil
+            versionLatestVersion = nil
+            withAnimation(.easeOut(duration: UIConstants.Motion.fast)) {
+                versionUpdateState = .error(L10n["update.check_failed_hint"])
+            }
         }
         isVersionCheckInFlight = false
     }

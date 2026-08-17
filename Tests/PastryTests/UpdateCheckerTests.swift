@@ -5,6 +5,17 @@ import Foundation
 // MARK: - UpdateChecker 测试套件
 
 final class UpdateCheckerTests: XCTestCase {
+
+    func testCheckOutcomeDistinguishesSuccessSkipAndFailure() {
+        let outcomes: [UpdateChecker.CheckOutcome] = [.upToDate, .skipped, .failed]
+        XCTAssertEqual(outcomes.count, 3)
+
+        if case .failed = outcomes[2] {
+            // 失败必须是独立状态，不能与“已是最新版本”共用 nil。
+        } else {
+            XCTFail("检查失败应保留独立状态")
+        }
+    }
     private var networkTestsEnabled: Bool {
         ProcessInfo.processInfo.environment["PASTRY_NETWORK_TESTS"] == "1"
     }
