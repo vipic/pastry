@@ -9,6 +9,8 @@ final class AccessibilityIdentifiersTests: XCTestCase {
         XCTAssertEqual(AccessibilityIdentifiers.Overlay.cardContainer, "overlay.card-container")
         XCTAssertEqual(AccessibilityIdentifiers.Overlay.searchField, "overlay.search-field")
         XCTAssertEqual(AccessibilityIdentifiers.Overlay.filterButton, "overlay.filter-button")
+        XCTAssertEqual(AccessibilityIdentifiers.Overlay.deleteCancelButton, "overlay.delete-cancel-button")
+        XCTAssertEqual(AccessibilityIdentifiers.Overlay.deleteConfirmButton, "overlay.delete-confirm-button")
         XCTAssertEqual(AccessibilityIdentifiers.Overlay.emptyState, "overlay.empty-state")
     }
 
@@ -42,6 +44,8 @@ final class AccessibilityIdentifiersTests: XCTestCase {
             AccessibilityIdentifiers.Overlay.allTab,
             AccessibilityIdentifiers.Overlay.pinnedTab,
             AccessibilityIdentifiers.Overlay.settingsButton,
+            AccessibilityIdentifiers.Overlay.deleteCancelButton,
+            AccessibilityIdentifiers.Overlay.deleteConfirmButton,
             AccessibilityIdentifiers.Overlay.emptyState,
             AccessibilityIdentifiers.Settings.root,
             AccessibilityIdentifiers.Settings.sidebar,

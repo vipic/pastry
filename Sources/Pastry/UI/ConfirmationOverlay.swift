@@ -15,7 +15,7 @@ private enum Local {
 }
 
 struct ConfirmationOverlay: View {
-    enum ButtonKind {
+    enum ButtonKind: Hashable {
         case secondary
         case destructive
     }
@@ -26,6 +26,7 @@ struct ConfirmationOverlay: View {
     let confirmTitle: String
     let onCancel: () -> Void
     let onConfirm: () -> Void
+    @FocusState private var focusedButton: ButtonKind?
 
     var body: some View {
         ZStack {
@@ -49,9 +50,23 @@ struct ConfirmationOverlay: View {
 
                     Button(cancelTitle, action: onCancel)
                         .buttonStyle(ConfirmationButtonStyle(kind: .secondary))
+                        .focusable()
+                        .focused($focusedButton, equals: .secondary)
+                        .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.deleteCancelButton)
+                        .onKeyPress(.return) {
+                            onCancel()
+                            return .handled
+                        }
 
                     Button(confirmTitle, action: onConfirm)
                         .buttonStyle(ConfirmationButtonStyle(kind: .destructive))
+                        .focusable()
+                        .focused($focusedButton, equals: .destructive)
+                        .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.deleteConfirmButton)
+                        .onKeyPress(.return) {
+                            onConfirm()
+                            return .handled
+                        }
                 }
             }
             .padding(Local.Confirmation.contentPadding)
@@ -74,6 +89,9 @@ struct ConfirmationOverlay: View {
                 x: 0,
                 y: UIConstants.Shadow.Floating.secondaryY
             )
+        }
+        .onAppear {
+            focusedButton = .secondary
         }
     }
 

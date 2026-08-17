@@ -6,12 +6,28 @@ import XCTest
 
 final class OverlayPanelManagerTests: XCTestCase {
 
-    // MARK: - Tab 键搜索栏↔卡片焦点切换
+    // MARK: - 标准焦点导航
 
-    /// Tab 键码为 48（macOS 标准）
-    func testTabKeyCodeIs48() {
-        // keyCode 48 是 macOS 定义的 kVK_Tab
-        XCTAssertEqual(48, 48)
+    func testTabAndShiftTabStayWithSystemFocusChain() {
+        for owner in [OverlayKeyboardOwner.overlayNavigation, .searchField] {
+            XCTAssertEqual(
+                ClipboardOverlayPanel.keyRoute(
+                    keyCode: 48,
+                    isSearchActive: owner == .searchField,
+                    keyboardOwner: owner
+                ),
+                .system
+            )
+            XCTAssertEqual(
+                ClipboardOverlayPanel.keyRoute(
+                    keyCode: 48,
+                    isSearchActive: owner == .searchField,
+                    modifierFlags: .shift,
+                    keyboardOwner: owner
+                ),
+                .system
+            )
+        }
     }
 
     /// overlayCloseSearch 通知名称存在
@@ -54,24 +70,11 @@ final class OverlayPanelManagerTests: XCTestCase {
         )
     }
 
-    /// overlayAlertConfirm 通知名称存在（Enter 触发确认）
-    func testOverlayAlertConfirmNotificationExists() {
-        XCTAssertEqual(
-            Notification.Name.overlayAlertConfirm.rawValue,
-            "overlayAlertConfirm"
-        )
-    }
-
     func testOverlayAlertCancelNotificationExists() {
         XCTAssertEqual(
             Notification.Name.overlayAlertCancel.rawValue,
             "overlayAlertCancel"
         )
-    }
-
-    func testAlertConfirmKeyIsEnter() {
-        XCTAssertTrue(OverlayKeyboardRouter.isAlertConfirmKey(keyCode: 36))
-        XCTAssertFalse(OverlayKeyboardRouter.isAlertConfirmKey(keyCode: 51))
     }
 
     func testAlertConsumesDeleteKeysWithoutSystemBeep() {
@@ -186,14 +189,14 @@ final class OverlayPanelManagerTests: XCTestCase {
         }
     }
 
-    func testOverlayPanelConsumesEnterAndDeleteWhenAlertActive() {
+    func testOverlayPanelLeavesAlertEnterToFocusedControlAndConsumesDelete() {
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(
                 keyCode: 36,
                 isSearchActive: false,
                 isAlertActive: true
             ),
-            .confirmAlert
+            .system
         )
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(
@@ -205,14 +208,14 @@ final class OverlayPanelManagerTests: XCTestCase {
         )
     }
 
-    func testOverlayPanelRoutesEnterToAlertConfirmWhenAlertActive() {
+    func testOverlayPanelDoesNotGloballyConfirmAlertOnEnter() {
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(
                 keyCode: 36,
                 isSearchActive: false,
                 isAlertActive: true
             ),
-            .confirmAlert
+            .system
         )
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(
@@ -304,7 +307,7 @@ final class OverlayPanelManagerTests: XCTestCase {
                 isSearchActive: true,
                 keyboardOwner: .searchField
             ),
-            .consume
+            .system
         )
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(
@@ -465,7 +468,7 @@ final class OverlayPanelManagerTests: XCTestCase {
                 isAlertActive: true,
                 keyboardOwner: .favoriteNoteEditor
             ),
-            .confirmAlert
+            .system
         )
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(

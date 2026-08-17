@@ -88,12 +88,8 @@ final class OverlayKeyboardRouter {
             return nil
         }
 
-        // 弹窗活跃：Enter 确认删除 / Delete 静默消费 / 其他按键放行（Esc 已在上方处理）
+        // 弹窗活跃：仅消费 Delete，Enter 与 Tab 交给当前焦点控件（Esc 已在上方处理）。
         if isAlertActive() {
-            if Self.isAlertConfirmKey(keyCode: event.keyCode) {
-                NotificationCenter.default.post(name: .overlayAlertConfirm, object: nil)
-                return nil
-            }
             if Self.shouldConsumeAlertKeyDown(keyCode: event.keyCode) {
                 return nil
             }
@@ -105,30 +101,12 @@ final class OverlayKeyboardRouter {
         }
 
         if owner == .searchField {
-            // 搜索框拥有键盘时，文本编辑快捷键（⌘A/Delete/方向键/Enter 等）
-            // 都交给 TextField；只有面板级的 Tab / ⌘F 仍由 overlay 管理。
-            if event.keyCode == 48,
-               event.modifierFlags.intersection([.shift, .command, .option, .control]).isEmpty {
-                NotificationCenter.default.post(name: .overlayCloseSearch, object: nil,
-                                                userInfo: ["clearFilter": false])
-                return nil
-            }
+            // 搜索框拥有键盘时，文本编辑快捷键（⌘A/Delete/方向键/Enter/Tab 等）
+            // 都交给系统；只有面板级的 ⌘F 仍由 overlay 管理。
             if event.keyCode == 3, event.modifierFlags.contains(.command) {
                 return nil
             }
             return event
-        }
-
-        // Tab — 搜索栏↔卡片焦点互相切换（无 Shift/⌘/⌥/⌃ 修饰）
-        if event.keyCode == 48,
-           event.modifierFlags.intersection([.shift, .command, .option, .control]).isEmpty {
-            if isSearchActive() {
-                NotificationCenter.default.post(name: .overlayCloseSearch, object: nil,
-                                                userInfo: ["clearFilter": false])
-            } else {
-                NotificationCenter.default.post(name: .overlayOpenSearchImmediate, object: nil)
-            }
-            return nil
         }
 
         // ⌘F 搜索
@@ -265,10 +243,6 @@ final class OverlayKeyboardRouter {
 
     static func cmdNumberIndex(keyCode: UInt16) -> Int? {
         cmdNumberMap[keyCode]
-    }
-
-    static func isAlertConfirmKey(keyCode: UInt16) -> Bool {
-        keyCode == 36
     }
 
     static func shouldConsumeAlertKeyDown(keyCode: UInt16) -> Bool {

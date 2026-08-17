@@ -58,8 +58,6 @@ final class ClipboardOverlayPanel: NSPanel {
             routeCancelKey()
         case .cancelFavoriteNoteEditing:
             routeFavoriteNoteCancelKey()
-        case .confirmAlert:
-            routeAlertConfirmKey()
         case .selectAll:
             routeSelectAllKey()
         case .openSearch:
@@ -86,9 +84,6 @@ final class ClipboardOverlayPanel: NSPanel {
             return true
         case .cancelFavoriteNoteEditing:
             routeFavoriteNoteCancelKey()
-            return true
-        case .confirmAlert:
-            routeAlertConfirmKey()
             return true
         case .selectAll:
             routeSelectAllKey()
@@ -123,7 +118,6 @@ final class ClipboardOverlayPanel: NSPanel {
     enum KeyRoute: Equatable {
         case cancel
         case cancelFavoriteNoteEditing
-        case confirmAlert
         case selectAll
         case openSearch
         case consume
@@ -143,9 +137,6 @@ final class ClipboardOverlayPanel: NSPanel {
         }
 
         if isAlertActive {
-            if OverlayKeyboardRouter.isAlertConfirmKey(keyCode: keyCode) {
-                return .confirmAlert
-            }
             return OverlayKeyboardRouter.shouldConsumeAlertKeyDown(keyCode: keyCode) ? .consume : .system
         }
 
@@ -164,10 +155,13 @@ final class ClipboardOverlayPanel: NSPanel {
             return .openSearch
         }
 
+        // Tab / Shift-Tab 始终交给 AppKit 的焦点链。
+        if keyCode == 48,
+           modifierFlags.intersection([.command, .control, .option]).isEmpty {
+            return .system
+        }
+
         if keyboardOwner == .searchField {
-            if keyCode == 48, modifierFlags.intersection([.shift, .command, .option, .control]).isEmpty {
-                return .consume
-            }
             return .system
         }
 
@@ -223,10 +217,6 @@ final class ClipboardOverlayPanel: NSPanel {
             modifierFlags: event.modifierFlags,
             keyboardOwner: keyboardOwner
         )
-    }
-
-    private func routeAlertConfirmKey() {
-        NotificationCenter.default.post(name: .overlayAlertConfirm, object: nil)
     }
 
     private func routeFavoriteNoteCancelKey() {

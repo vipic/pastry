@@ -59,7 +59,6 @@ extension Notification.Name {
     static let overlayMovePageDown   = Notification.Name("overlayMovePageDown")
     static let overlayMoveCursor     = Notification.Name("overlayMoveCursor")
     static let overlayConfirmPaste   = Notification.Name("overlayConfirmPaste")
-    static let overlayAlertConfirm   = Notification.Name("overlayAlertConfirm")
     static let overlayAlertCancel    = Notification.Name("overlayAlertCancel")
     static let overlayCmdPaste       = Notification.Name("overlayCmdPaste")
     static let overlayCmdStateChanged = Notification.Name("overlayCmdStateChanged")
@@ -238,9 +237,6 @@ struct OverlayView: View {
                     object: nil,
                     userInfo: ["active": showDeleteConfirm]
                 )
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .overlayAlertConfirm)) { _ in
-                confirmDeleteSelected()
             }
             .onReceive(NotificationCenter.default.publisher(for: .overlayAlertCancel)) { _ in
                 cancelDeleteConfirm()

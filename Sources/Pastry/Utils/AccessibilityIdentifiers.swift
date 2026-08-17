@@ -12,6 +12,8 @@ enum AccessibilityIdentifiers {
         static let multiPasteButton = "overlay.multi-paste-button"
         static let multiCopyButton = "overlay.multi-copy-button"
         static let multiDeleteButton = "overlay.multi-delete-button"
+        static let deleteCancelButton = "overlay.delete-cancel-button"
+        static let deleteConfirmButton = "overlay.delete-confirm-button"
         static let emptyState = "overlay.empty-state"
         static let emptyCopyHint = "overlay.empty-copy-hint"
         static let accessibilityBanner = "overlay.accessibility-banner"
