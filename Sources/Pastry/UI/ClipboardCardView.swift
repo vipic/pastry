@@ -105,6 +105,23 @@ struct ClipboardCardView: View {
             .onTapGesture {
                 handlePrimaryClick()
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(accessibilitySummary)
+            .accessibilityValue(isSelected ? L10n["card.selected"] : "")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityAction {
+                handlePrimaryClick()
+            }
+            .accessibilityAction(named: Text(item.isPinned ? L10n["context.unpin"] : L10n["context.pin"])) {
+                onPin(item, selectedIds)
+            }
+            .accessibilityAction(named: Text(L10n["context.copy"])) {
+                copyItem()
+            }
+            .accessibilityAction(named: Text(L10n["context.delete"])) {
+                onDelete(item)
+            }
             .overlay(
                 RightClickDetector(
                     onViewReady: { CardPreviewAnchorRegistry.register(item.id, view: $0) },
@@ -136,6 +153,44 @@ struct ClipboardCardView: View {
 
     private var showHoverActions: Bool {
         isHovered && !isEditingFavoriteNote
+    }
+
+    private var accessibilitySummary: String {
+        var parts = [cardTypeLabel]
+        if let preview = accessibilityContentPreview {
+            parts.append(preview)
+        }
+        if item.isHandoff {
+            parts.append(L10n["card.handoff_label"])
+        } else if let appName = item.appName, !appName.isEmpty {
+            parts.append(appName)
+        }
+        parts.append(formattedTime)
+        return parts.joined(separator: ", ")
+    }
+
+    private var accessibilityContentPreview: String? {
+        let raw: String?
+        switch item.sourceFormat {
+        case .image:
+            raw = item.textAnnotation
+        case .fileURL:
+            let names = item.content
+                .components(separatedBy: .newlines)
+                .compactMap { URL(string: $0)?.lastPathComponent.removingPercentEncoding }
+                .filter { !$0.isEmpty }
+            raw = names.isEmpty ? nil : names.prefix(3).joined(separator: ", ")
+        case .text, .rtf, .html:
+            raw = item.linkTitle ?? item.content
+        }
+
+        guard let raw else { return nil }
+        let normalized = raw
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        guard !normalized.isEmpty else { return nil }
+        return String(normalized.prefix(160))
     }
 
     /// 卡片基础渲染（样式 + 内容，不含手势和生命周期）

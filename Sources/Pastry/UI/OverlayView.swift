@@ -156,6 +156,7 @@ struct OverlayView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.root)
     }
 
@@ -595,6 +596,22 @@ struct OverlayView: View {
     }
 
     private var searchControl: some View {
+        Group {
+            if showSearch {
+                searchControlContent
+            } else {
+                Button(action: openSearch) {
+                    searchControlContent
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n["search.accessibility_label"])
+                .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.searchButton)
+            }
+        }
+        .padding(.trailing, 6)
+    }
+
+    private var searchControlContent: some View {
         HStack(spacing: showSearch ? 6 : 0) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: showSearch ? UIConstants.TypeSize.callout : UIConstants.TypeSize.body, weight: .semibold))
@@ -617,6 +634,7 @@ struct OverlayView: View {
                         .font(.system(size: UIConstants.TypeSize.body))
                         .foregroundColor(.white.opacity(UIConstants.OnDark.textPrimary))
                         .focused($isSearchFocused)
+                        .accessibilityLabel(L10n["search.accessibility_label"])
                         .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.searchField)
                         .background(SearchFieldAutofillSuppressor())
                         .onExitCommand {
@@ -639,6 +657,7 @@ struct OverlayView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.white.opacity(hoverClearSearch ? UIConstants.OnDark.textSecondary : UIConstants.OnDark.textFaint))
+                .accessibilityLabel(L10n["search.clear"])
                 .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.clearSearchButton)
                 .opacity(store.searchQuery.isEmpty ? 0 : 1)
                 .allowsHitTesting(!store.searchQuery.isEmpty)
@@ -659,18 +678,16 @@ struct OverlayView: View {
         .clipShape(RoundedRectangle(cornerRadius: UIConstants.Radius.card, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: UIConstants.Radius.card, style: .continuous))
         .scaleEffect(toolbarHoverScale(isHovered: !showSearch && hoverSearch))
-        .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.searchButton)
-        .onTapGesture {
-            guard !showSearch else { return }
-            withAnimation(searchExpansionAnimation) { showSearch = true }
-            DeveloperDiagnostics.record(DiagnosticsEvent.searchOpen)
-        }
         .onHover { hovering in
             hoverSearch = hovering
         }
         .animation(searchExpansionAnimation, value: showSearch)
         .animation(.easeOut(duration: UIConstants.Motion.instant), value: hoverSearch)
-        .padding(.trailing, 6)
+    }
+
+    private func openSearch() {
+        withAnimation(searchExpansionAnimation) { showSearch = true }
+        DeveloperDiagnostics.record(DiagnosticsEvent.searchOpen)
     }
 
     @ViewBuilder
@@ -685,50 +702,52 @@ struct OverlayView: View {
     // MARK: - 筛选按钮
 
     private var filterButton: some View {
-        ZStack(alignment: .topTrailing) {
-            Image(systemName: "line.3.horizontal.decrease")
-                .font(.system(size: UIConstants.TypeSize.body, weight: .semibold))
-                .foregroundColor(toolbarForeground(isActive: showFilterPopover || hasActiveTimeOrTypeFilter, isHovered: hoverFilter))
-                .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
+        Button {
+            // 打开前预热图标，减轻 popover 首帧卡顿（保持系统气泡形态）
+            prefetchAvailableAppIcons()
+            showFilterPopover.toggle()
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: UIConstants.TypeSize.body, weight: .semibold))
+                    .foregroundColor(toolbarForeground(isActive: showFilterPopover || hasActiveTimeOrTypeFilter, isHovered: hoverFilter))
+                    .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
 
-            if hasActiveTimeOrTypeFilter {
-                Circle()
-                    .fill(PastryPalette.warmAccent)
-                    .frame(
-                        width: Local.Badge.indicatorDotSize,
-                        height: Local.Badge.indicatorDotSize
-                    )
-                    .offset(
-                        x: Local.Badge.indicatorDotOffset,
-                        y: -Local.Badge.indicatorDotOffset
-                    )
-                    .transition(.scale(scale: 0.72).combined(with: .opacity))
-                    .accessibilityHidden(true)
+                if hasActiveTimeOrTypeFilter {
+                    Circle()
+                        .fill(PastryPalette.warmAccent)
+                        .frame(
+                            width: Local.Badge.indicatorDotSize,
+                            height: Local.Badge.indicatorDotSize
+                        )
+                        .offset(
+                            x: Local.Badge.indicatorDotOffset,
+                            y: -Local.Badge.indicatorDotOffset
+                        )
+                        .transition(.scale(scale: 0.72).combined(with: .opacity))
+                        .accessibilityHidden(true)
+                }
             }
         }
-            .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
-            .background(toolbarButtonBackground(isActive: showFilterPopover || hasActiveTimeOrTypeFilter, isHovered: hoverFilter))
-            .contentShape(Rectangle())
-            .onTapGesture {
-                // 打开前预热图标，减轻 popover 首帧卡顿（保持系统气泡形态）
-                prefetchAvailableAppIcons()
-                showFilterPopover.toggle()
-            }
-            .onHover { hovering in
-                hoverFilter = hovering
-                if hovering { NSCursor.arrow.push() } else { NSCursor.arrow.pop() }
-            }
-            .popover(isPresented: $showFilterPopover, arrowEdge: .bottom) {
-                FilterPopoverContent(store: store, onFilterChange: { selectFirstVisibleCard() })
-                    .presentationBackground(FilterPopoverStyle.surface)
-                    .presentationCornerRadius(UIConstants.Radius.panel)
-            }
-            .scaleEffect(toolbarHoverScale(isHovered: hoverFilter))
-            .animation(.easeOut(duration: UIConstants.Motion.instant), value: hoverFilter)
-            .animation(.easeOut(duration: UIConstants.Motion.fast), value: hasActiveTimeOrTypeFilter)
-            .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.filterButton)
-            .accessibilityLabel(L10n["filter.title"])
-            .accessibilityValue(hasActiveTimeOrTypeFilter ? L10n["filter.active_hint"] : "")
+        .buttonStyle(.plain)
+        .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
+        .background(toolbarButtonBackground(isActive: showFilterPopover || hasActiveTimeOrTypeFilter, isHovered: hoverFilter))
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            hoverFilter = hovering
+            if hovering { NSCursor.arrow.push() } else { NSCursor.arrow.pop() }
+        }
+        .popover(isPresented: $showFilterPopover, arrowEdge: .bottom) {
+            FilterPopoverContent(store: store, onFilterChange: { selectFirstVisibleCard() })
+                .presentationBackground(FilterPopoverStyle.surface)
+                .presentationCornerRadius(UIConstants.Radius.panel)
+        }
+        .scaleEffect(toolbarHoverScale(isHovered: hoverFilter))
+        .animation(.easeOut(duration: UIConstants.Motion.instant), value: hoverFilter)
+        .animation(.easeOut(duration: UIConstants.Motion.fast), value: hasActiveTimeOrTypeFilter)
+        .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.filterButton)
+        .accessibilityLabel(L10n["filter.title"])
+        .accessibilityValue(hasActiveTimeOrTypeFilter ? L10n["filter.active_hint"] : "")
     }
 
     private var searchCountBadge: some View {
@@ -822,6 +841,7 @@ struct OverlayView: View {
                 selection.reset()
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.cardContainer)
     }
 

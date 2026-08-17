@@ -133,6 +133,8 @@ final class L10nTests: XCTestCase {
             "settings.developer_diagnostics",
             "settings.developer_diagnostics_hint",
             "settings.excluded_remove",
+            "search.accessibility_label",
+            "search.clear",
             "card.selected",
             "card.link_preview_enable_hint",
             "delete.confirm_title",
