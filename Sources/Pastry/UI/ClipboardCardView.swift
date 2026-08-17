@@ -15,7 +15,7 @@ private enum Local {
         static let appIconSize: CGFloat = 72
         static let contentHorizontalPadding: CGFloat = 10
         static let cornerRadius: CGFloat = UIConstants.Radius.card
-        static let favoriteNoteActionSize: CGFloat = 16
+        static let favoriteNoteActionSize: CGFloat = 24
         static let favoriteNoteBottomPadding: CGFloat = 12
         static let favoriteNoteHeight: CGFloat = 24
         static let headerHeight: CGFloat = 48
@@ -26,9 +26,9 @@ private enum Local {
         static let iconShadowRadius: CGFloat = 8
         static let iconShadowY: CGFloat = 3
         static let hoverActionIconSize: CGFloat = UIConstants.TypeSize.caption2
-        static let hoverActionReserveWidth: CGFloat = 62
-        static let hoverActionSize: CGFloat = 18
-        static let hoverActionSpacing: CGFloat = 2
+        static let hoverActionReserveWidth: CGFloat = 92
+        static let hoverActionSize: CGFloat = 28
+        static let hoverActionSpacing: CGFloat = 4
         static let hoverBorderOpacity: CGFloat = 0.30
         static let idleBorderOpacity: CGFloat = 0.22
         static let noteAccentStrokeOpacity: Double = 0.18
@@ -51,8 +51,11 @@ struct ClipboardCardView: View {
 
     @AppStorage(UserDefaultsKeys.language) private var language = ""
     @AppStorage(UserDefaultsKeys.cardClickMode) private var cardClickModeRaw = CardClickMode.default.rawValue
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appIcon: NSImage?
     @State private var themeColor: Color = .accentColor
+    @State private var usesDarkHeaderForeground = AppIconProvider.prefersDarkForeground(on: .controlAccentColor)
     @State private var didPaste = false
     @State private var isHovered = false
     @State private var hoverAction: CardHoverAction? = nil
@@ -100,7 +103,7 @@ struct ClipboardCardView: View {
                         .transition(.opacity)
                 }
             }
-            .animation(.easeOut(duration: UIConstants.Motion.instant), value: showHoverActions)
+            .animation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.instant), value: showHoverActions)
             .onHover { isHovered = $0 }
             .onTapGesture {
                 handlePrimaryClick()
@@ -226,9 +229,9 @@ struct ClipboardCardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: Local.Card.cornerRadius, style: .continuous)
                 .strokeBorder(cardChromeBorderColor, lineWidth: cardChromeBorderWidth)
-                .animation(.easeInOut(duration: Local.Card.animationDuration), value: isSelected)
-                .animation(.easeInOut(duration: Local.Card.animationDuration), value: isHovered)
-                .animation(.easeOut(duration: UIConstants.Motion.paste), value: didPaste)
+                .animation(reduceMotion ? nil : .easeInOut(duration: Local.Card.animationDuration), value: isSelected)
+                .animation(reduceMotion ? nil : .easeInOut(duration: Local.Card.animationDuration), value: isHovered)
+                .animation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.paste), value: didPaste)
         )
         .overlay(alignment: .bottomTrailing) {
             if let idx = cmdBadgeIndex {
@@ -236,12 +239,12 @@ struct ClipboardCardView: View {
                     .transition(.scale(scale: 0.74, anchor: .bottomTrailing).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: Local.Card.animationDuration), value: isSelected)
-        .animation(.easeInOut(duration: Local.Card.animationDuration), value: isHovered)
-        .scaleEffect(didPaste ? Local.Card.pasteScale : 1.0)
-        .animation(.spring(response: UIConstants.Motion.fast, dampingFraction: UIConstants.Motion.pasteDamping), value: didPaste)
-        .animation(.easeInOut(duration: UIConstants.Motion.fast), value: item.isPinned)
-        .animation(.easeInOut(duration: UIConstants.Motion.fast), value: isEditingFavoriteNote)
+        .animation(reduceMotion ? nil : .easeInOut(duration: Local.Card.animationDuration), value: isSelected)
+        .animation(reduceMotion ? nil : .easeInOut(duration: Local.Card.animationDuration), value: isHovered)
+        .scaleEffect(reduceMotion ? 1 : (didPaste ? Local.Card.pasteScale : 1.0))
+        .animation(reduceMotion ? nil : .spring(response: UIConstants.Motion.fast, dampingFraction: UIConstants.Motion.pasteDamping), value: didPaste)
+        .animation(reduceMotion ? nil : .easeInOut(duration: UIConstants.Motion.fast), value: item.isPinned)
+        .animation(reduceMotion ? nil : .easeInOut(duration: UIConstants.Motion.fast), value: isEditingFavoriteNote)
         .contentShape(RoundedRectangle(cornerRadius: Local.Card.cornerRadius))
     }
 
@@ -302,7 +305,7 @@ struct ClipboardCardView: View {
     private func cmdBadge(_ idx: Int) -> some View {
         Text("\(idx)")
             .font(.system(size: UIConstants.TypeSize.callout, weight: .heavy, design: .rounded))
-            .foregroundColor(.white)
+            .foregroundColor(PastryPalette.warmInk)
             .frame(width: Local.Badge.countSize, height: Local.Badge.countSize)
             .background(
                 RoundedRectangle(cornerRadius: Local.Badge.countCornerRadius, style: .continuous)
@@ -317,14 +320,22 @@ struct ClipboardCardView: View {
         HStack(spacing: 0) {
             Image(systemName: item.sourceFormat.iconName)
                 .font(.system(size: UIConstants.TypeSize.caption, weight: .medium))
-                .foregroundColor(.white.opacity(UIConstants.OnDark.textPrimary))
+                .foregroundColor(headerPrimaryForeground)
                 .padding(.leading, Local.Card.contentHorizontalPadding)
 
             Text(cardTypeLabel)
                 .font(.system(size: UIConstants.TypeSize.caption, weight: .semibold))
-                .foregroundColor(.white.opacity(UIConstants.OnDark.textSecondary))
+                .foregroundColor(headerSecondaryForeground)
                 .lineLimit(1)
                 .padding(.leading, 5)
+
+            if isSelected && differentiateWithoutColor {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: UIConstants.TypeSize.caption, weight: .semibold))
+                    .foregroundColor(headerPrimaryForeground)
+                    .padding(.leading, 6)
+                    .accessibilityHidden(true)
+            }
 
             Spacer()
         }
@@ -349,6 +360,18 @@ struct ClipboardCardView: View {
         return item.sourceFormat.label
     }
 
+    private var headerPrimaryForeground: Color {
+        usesDarkHeaderForeground
+            ? PastryPalette.ink.opacity(UIConstants.OnDark.textPrimary)
+            : Color.white.opacity(UIConstants.OnDark.textPrimary)
+    }
+
+    private var headerSecondaryForeground: Color {
+        usesDarkHeaderForeground
+            ? PastryPalette.ink.opacity(UIConstants.OnDark.textSecondary)
+            : Color.white.opacity(UIConstants.OnDark.textSecondary)
+    }
+
     /// 应用图标 — 60×60，标题栏内垂直居中，右移 50% 让一半溢出卡片被裁切
     @ViewBuilder
     private var appIconOverlay: some View {
@@ -363,14 +386,14 @@ struct ClipboardCardView: View {
                 // Handoff 来源：SF Symbol 图标
                 Image(systemName: "laptopcomputer.and.iphone")
                     .font(.system(size: Local.Card.appIconSize * 0.55, weight: .light))
-                    .foregroundColor(.white.opacity(UIConstants.OnDark.textSecondary))
+                    .foregroundColor(headerSecondaryForeground)
             } else {
                 Color.clear
             }
         }
         .frame(width: Local.Card.appIconSize, height: Local.Card.appIconSize)
         .offset(x: 12, y: (Local.Card.headerHeight - Local.Card.appIconSize) / 2 - 2)
-        .animation(.easeInOut(duration: UIConstants.Motion.medium), value: appIcon != nil)
+        .animation(reduceMotion ? nil : .easeInOut(duration: UIConstants.Motion.medium), value: appIcon != nil)
     }
 
     // MARK: - 内容区
@@ -1031,6 +1054,7 @@ struct ClipboardCardView: View {
         // 命中缓存则同步贴上，首帧就与正式版一样完整；未命中再后台补，避免扫盘卡入场。
         if let cached = provider.cachedThemeColor(for: name) {
             themeColor = Color(nsColor: cached)
+            usesDarkHeaderForeground = AppIconProvider.prefersDarkForeground(on: cached)
         }
         if isHandoff {
             appIcon = nil
@@ -1053,6 +1077,7 @@ struct ClipboardCardView: View {
             t.disablesAnimations = true
             withTransaction(t) {
                 themeColor = Color(nsColor: color)
+                usesDarkHeaderForeground = AppIconProvider.prefersDarkForeground(on: color)
                 if let icon {
                     appIcon = icon
                 }

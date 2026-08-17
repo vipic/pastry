@@ -87,6 +87,22 @@ final class AppIconProvider {
         return color
     }
 
+    /// 为任意应用主题色选择对比度更高的标题前景色。
+    static func prefersDarkForeground(on color: NSColor) -> Bool {
+        guard let rgb = color.usingColorSpace(.sRGB) else { return false }
+        func linearized(_ component: CGFloat) -> CGFloat {
+            component <= 0.04045
+                ? component / 12.92
+                : pow((component + 0.055) / 1.055, 2.4)
+        }
+        let luminance = 0.2126 * linearized(rgb.redComponent)
+            + 0.7152 * linearized(rgb.greenComponent)
+            + 0.0722 * linearized(rgb.blueComponent)
+        let whiteContrast = 1.05 / (luminance + 0.05)
+        let darkContrast = (luminance + 0.05) / 0.05
+        return darkContrast >= whiteContrast
+    }
+
     // MARK: - 内部方法
 
     private var defaultIcon: NSImage {

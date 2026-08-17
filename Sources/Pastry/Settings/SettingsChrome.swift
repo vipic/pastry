@@ -7,7 +7,7 @@ import AppKit
 enum PastryPalette {
     // Settings surface
     static let ink = Color(red: 0.122, green: 0.145, blue: 0.161)
-    static let muted = Color(red: 0.396, green: 0.443, blue: 0.478)
+    static let muted = Color(red: 0.31, green: 0.35, blue: 0.38)
     static let cream = Color(red: 0.949, green: 0.933, blue: 0.886)
     /// 深色 chrome：设置侧栏 / Overlay·Filter 着色底（原 overlaySurface 并入）
     static let sidebar = Color(red: 0.20, green: 0.23, blue: 0.24)

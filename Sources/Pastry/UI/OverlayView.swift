@@ -85,6 +85,7 @@ struct OverlayView: View {
     var isPipelineWarmup: Bool = false
 
     @EnvironmentObject private var store: StoreManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var cardVisible = false
     @State private var selection = SelectionState()
@@ -147,7 +148,7 @@ struct OverlayView: View {
                     .offset(y: cardVisible ? 0 : 200)
                     .opacity(cardVisible ? 1 : 0)
             }
-            .animation(.easeInOut(duration: UIConstants.Motion.medium), value: showSearch)
+            .animation(reduceMotion ? nil : .easeInOut(duration: UIConstants.Motion.medium), value: showSearch)
 
             if showDeleteConfirm {
                 deleteConfirmOverlay
@@ -431,7 +432,7 @@ struct OverlayView: View {
         OverlayPanelManager.shared.isHorizontalCardLayout = isHorizontalLayout
         keyHandler.installMouseMonitor()
         prefetchAvailableAppIcons()
-        withAnimation(.spring(response: Local.Overlay.animationDuration, dampingFraction: UIConstants.Motion.damping)) {
+        withAnimation(reduceMotion ? nil : .spring(response: Local.Overlay.animationDuration, dampingFraction: UIConstants.Motion.damping)) {
             cardVisible = true
         }
     }
@@ -467,10 +468,10 @@ struct OverlayView: View {
         OverlayPanelManager.shared.isSearchActive = false
         OverlayPanelManager.shared.isFilterPopoverActive = false
         OverlayPanelManager.shared.keyboardOwner = .overlayNavigation
-        withAnimation(.spring(response: Local.Overlay.animationDuration, dampingFraction: UIConstants.Motion.damping)) {
+        withAnimation(reduceMotion ? nil : .spring(response: Local.Overlay.animationDuration, dampingFraction: UIConstants.Motion.damping)) {
             cardVisible = false
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + Local.Overlay.animationDuration) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + (reduceMotion ? 0 : Local.Overlay.animationDuration)) {
             OverlayPanelManager.shared.hide()
         }
     }
@@ -579,8 +580,8 @@ struct OverlayView: View {
 
     // MARK: - 搜索框（内联在 header 中）
 
-    private var searchExpansionAnimation: Animation {
-        .spring(response: UIConstants.Motion.medium, dampingFraction: UIConstants.Motion.damping)
+    private var searchExpansionAnimation: Animation? {
+        reduceMotion ? nil : .spring(response: UIConstants.Motion.medium, dampingFraction: UIConstants.Motion.damping)
     }
 
     private var searchControlHeight: CGFloat {
@@ -1024,7 +1025,8 @@ struct OverlayView: View {
     }
 
     private func toolbarHoverScale(isHovered: Bool) -> CGFloat {
-        showFilterPopover ? 1 : (isHovered ? 1.015 : 1)
+        guard !reduceMotion else { return 1 }
+        return showFilterPopover ? 1 : (isHovered ? 1.015 : 1)
     }
 
     /// Flat chip chrome: one fill, optional single hairline. No dual strokes / bevel shadows.
@@ -1077,7 +1079,7 @@ struct OverlayView: View {
 
     private func showStripEdgeGlow(towardHigherIndex: Bool) {
         let side: StripEdgeSide = towardHigherIndex ? .trailing : .leading
-        withAnimation(.spring(response: UIConstants.Motion.slow, dampingFraction: UIConstants.Motion.damping)) {
+        withAnimation(reduceMotion ? nil : .spring(response: UIConstants.Motion.slow, dampingFraction: UIConstants.Motion.damping)) {
             stripEdgeGlow = side
         }
 
@@ -1091,7 +1093,7 @@ struct OverlayView: View {
         stripEdgeGlowClearTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 340_000_000)
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: UIConstants.Motion.medium)) {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.medium)) {
                 if stripEdgeGlow == side {
                     stripEdgeGlow = nil
                 }
@@ -1544,6 +1546,7 @@ private struct CardInsertAppearance: ViewModifier {
 
     let role: Role
     let axis: Axis
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var settled = false
 
     func body(content: Content) -> some View {
@@ -1555,6 +1558,7 @@ private struct CardInsertAppearance: ViewModifier {
     }
 
     private var opacity: Double {
+        if reduceMotion { return 1 }
         guard !settled else { return 1 }
         switch role {
         case .fadingIn:
@@ -1565,6 +1569,7 @@ private struct CardInsertAppearance: ViewModifier {
     }
 
     private var offset: CGFloat {
+        if reduceMotion { return 0 }
         guard !settled else { return 0 }
         let step = Local.Overlay.cardInsertPushDistance
         switch role {
@@ -1583,7 +1588,7 @@ private struct CardInsertAppearance: ViewModifier {
             return
         }
         settled = false
-        withAnimation(.easeOut(duration: UIConstants.Motion.fast)) {
+        withAnimation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.fast)) {
             settled = true
         }
     }

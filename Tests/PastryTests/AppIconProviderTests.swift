@@ -66,6 +66,16 @@ final class AppIconProviderTests: XCTestCase {
         XCTAssertEqual(color1, color2, "相同应用名应返回相同颜色")
     }
 
+    func testHeaderForegroundUsesDarkInkOnLightColors() {
+        XCTAssertTrue(AppIconProvider.prefersDarkForeground(on: .white))
+        XCTAssertTrue(AppIconProvider.prefersDarkForeground(on: NSColor(srgbRed: 0.72, green: 0.90, blue: 0.98, alpha: 1)))
+    }
+
+    func testHeaderForegroundUsesWhiteOnDarkColors() {
+        XCTAssertFalse(AppIconProvider.prefersDarkForeground(on: .black))
+        XCTAssertFalse(AppIconProvider.prefersDarkForeground(on: NSColor(srgbRed: 0.08, green: 0.16, blue: 0.30, alpha: 1)))
+    }
+
     // MARK: - icon: nil / 空
 
     func testIconNilReturnsDefault() {

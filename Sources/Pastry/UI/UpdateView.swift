@@ -332,6 +332,7 @@ struct PastryPrimaryButtonStyle: ButtonStyle {
     var horizontalPadding: CGFloat = 18
     var verticalPadding: CGFloat = 8
     var cornerRadius: CGFloat = UIConstants.Radius.button
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -339,10 +340,10 @@ struct PastryPrimaryButtonStyle: ButtonStyle {
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
             .background(PastryPalette.warmAccent)
-            .foregroundColor(.white)
+            .foregroundColor(PastryPalette.warmInk)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.easeOut(duration: UIConstants.Motion.instant), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.97 : 1))
+            .animation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.instant), value: configuration.isPressed)
     }
 }
 

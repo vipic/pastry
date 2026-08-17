@@ -26,6 +26,7 @@ enum SettingsButtonKind {
 
 struct SettingsPillButtonStyle: ButtonStyle {
     var kind: SettingsButtonKind = .secondary
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -34,13 +35,15 @@ struct SettingsPillButtonStyle: ButtonStyle {
             .padding(.horizontal, 10)
             .frame(minHeight: UIConstants.Control.iconButtonSize)
             .background(buttonBackground(isPressed: configuration.isPressed))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: UIConstants.Motion.instant), value: configuration.isPressed)
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.98 : 1))
+            .animation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.instant), value: configuration.isPressed)
     }
 
     private var foreground: Color {
         switch kind {
-        case .primary, .danger:
+        case .primary:
+            return PastryPalette.warmInk
+        case .danger:
             return .white
         case .secondary:
             return PastryPalette.ink
@@ -93,7 +96,11 @@ extension View {
 }
 
 struct SettingsSwitchStyle: ToggleStyle {
-    private let switchAnimation = Animation.spring(response: UIConstants.Motion.slow, dampingFraction: 0.74, blendDuration: 0.08)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var switchAnimation: Animation? {
+        reduceMotion ? nil : .spring(response: UIConstants.Motion.slow, dampingFraction: 0.74, blendDuration: 0.08)
+    }
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
@@ -109,7 +116,7 @@ struct SettingsSwitchStyle: ToggleStyle {
 
 struct SettingsSwitchButtonStyle: ButtonStyle {
     let isOn: Bool
-    let animation: Animation
+    let animation: Animation?
 
     func makeBody(configuration: Configuration) -> some View {
         SettingsSwitchBody(
@@ -123,7 +130,8 @@ struct SettingsSwitchButtonStyle: ButtonStyle {
 struct SettingsSwitchBody: View {
     let isOn: Bool
     let isPressed: Bool
-    let animation: Animation
+    let animation: Animation?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack(alignment: isOn ? .trailing : .leading) {
@@ -143,13 +151,13 @@ struct SettingsSwitchBody: View {
                     y: Local.Settings.switchShadowY
                 )
                 .frame(width: Local.Settings.switchThumbSize, height: Local.Settings.switchThumbSize)
-                .scaleEffect(isPressed ? 0.92 : 1)
+                .scaleEffect(reduceMotion ? 1 : (isPressed ? 0.92 : 1))
                 .padding(Local.Settings.switchThumbInset)
         }
         .frame(width: Local.Settings.switchWidth, height: Local.Settings.switchHeight)
         .contentShape(Capsule(style: .continuous))
         .animation(animation, value: isOn)
-        .animation(.easeOut(duration: UIConstants.Motion.fast), value: isPressed)
+        .animation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.fast), value: isPressed)
     }
 
     private var trackFill: Color {
