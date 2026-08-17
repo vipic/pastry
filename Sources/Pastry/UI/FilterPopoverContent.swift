@@ -5,9 +5,11 @@ private enum Local {
     enum Filter {
         static let appInitialOpacity: Double = 0.78
         static let chipIconSize: CGFloat = 14
+        static let chipRowHeight: CGFloat = 24
         static let clearButtonHeight: CGFloat = 24
         static let popoverWidth: CGFloat = 370
         static let sectionFillOpacity: Double = 0.04
+        static let sourceGridMaxRows = 4
     }
 }
 
@@ -37,6 +39,19 @@ struct FilterPopoverContent: View {
     /// 是否有来自其他设备(Handoff)的卡片
     private var hasHandoffItems: Bool {
         store.items.contains { $0.isHandoff }
+    }
+
+    private var sourceChipCount: Int {
+        1 + store.availableApps.count + (hasHandoffItems ? 1 : 0)
+    }
+
+    private var sourceGridHeight: CGFloat {
+        let rowCount = min(
+            Int(ceil(Double(sourceChipCount) / Double(gridColumns.count))),
+            Local.Filter.sourceGridMaxRows
+        )
+        return CGFloat(rowCount) * Local.Filter.chipRowHeight
+            + CGFloat(max(0, rowCount - 1)) * UIConstants.Card.contentVerticalPadding
     }
 
     /// 三列网格配置
@@ -77,27 +92,30 @@ struct FilterPopoverContent: View {
 
             if !store.availableApps.isEmpty || hasHandoffItems {
                 filterSection(title: L10n["filter.source_app"]) {
-                    LazyVGrid(columns: gridColumns, spacing: UIConstants.Card.contentVerticalPadding) {
-                        filterChip(L10n["filter.all"], isSelected: store.appFilter == nil && !store.handoffFilter) {
-                            store.appFilter = nil
-                            store.handoffFilter = false
-                            onFilterChange?()
-                        }
-                        ForEach(store.availableApps, id: \.self) { app in
-                            AppFilterChip(app: app, isSelected: store.appFilter == app) {
-                                store.appFilter = (store.appFilter == app) ? nil : app
+                    ScrollView(.vertical) {
+                        LazyVGrid(columns: gridColumns, spacing: UIConstants.Card.contentVerticalPadding) {
+                            filterChip(L10n["filter.all"], isSelected: store.appFilter == nil && !store.handoffFilter) {
+                                store.appFilter = nil
                                 store.handoffFilter = false
                                 onFilterChange?()
                             }
-                        }
-                        if hasHandoffItems {
-                            filterChip(L10n["filter.handoff"], iconName: "laptopcomputer.and.iphone", isSelected: store.handoffFilter) {
-                                store.appFilter = nil
-                                store.handoffFilter.toggle()
-                                onFilterChange?()
+                            ForEach(store.availableApps, id: \.self) { app in
+                                AppFilterChip(app: app, isSelected: store.appFilter == app) {
+                                    store.appFilter = (store.appFilter == app) ? nil : app
+                                    store.handoffFilter = false
+                                    onFilterChange?()
+                                }
+                            }
+                            if hasHandoffItems {
+                                filterChip(L10n["filter.handoff"], iconName: "laptopcomputer.and.iphone", isSelected: store.handoffFilter) {
+                                    store.appFilter = nil
+                                    store.handoffFilter.toggle()
+                                    onFilterChange?()
+                                }
                             }
                         }
                     }
+                    .frame(height: sourceGridHeight)
                 }
             }
 
@@ -106,8 +124,20 @@ struct FilterPopoverContent: View {
                     ForEach(SourceFormat.allCases, id: \.rawValue) { format in
                         filterChip(format.label, iconName: format.iconName, isSelected: store.typeFilter == format) {
                             store.typeFilter = (store.typeFilter == format) ? nil : format
+                            store.urlFilter = false
                             onFilterChange?()
                         }
+                    }
+                    filterChip(
+                        L10n["filter.type.url"],
+                        iconName: "link",
+                        isSelected: store.urlFilter
+                    ) {
+                        store.urlFilter.toggle()
+                        if store.urlFilter {
+                            store.typeFilter = nil
+                        }
+                        onFilterChange?()
                     }
                 }
             }
@@ -178,6 +208,7 @@ struct FilterPopoverContent: View {
             .background(FilterChipChrome.background(isSelected: isSelected))
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var filterSectionBackground: some View {
@@ -223,6 +254,7 @@ struct FilterPopoverContent: View {
                 .background(FilterChipChrome.background(isSelected: isSelected))
             }
             .buttonStyle(.plain)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
             .task(id: app) {
                 guard icon == nil else { return }
                 await loadIcon()
