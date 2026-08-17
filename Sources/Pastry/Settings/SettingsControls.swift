@@ -302,6 +302,8 @@ final class ShortcutCaptureField: NSControl {
 }
 
 struct SettingsWindowChromeConfigurator: NSViewRepresentable {
+    let minSize: NSSize
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView(frame: .zero)
         view.isHidden = true
@@ -335,6 +337,9 @@ struct SettingsWindowChromeConfigurator: NSViewRepresentable {
             if window.toolbar != nil {
                 window.toolbar?.isVisible = false
                 window.toolbar = nil
+            }
+            if window.minSize != minSize {
+                window.minSize = minSize
             }
         }
     }

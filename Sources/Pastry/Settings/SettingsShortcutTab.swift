@@ -21,76 +21,83 @@ extension SettingsSceneView {
     // MARK: - 快捷键 Tab
 
     var shortcutTab: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            settingsPaneHeader(
-                title: L10n["settings.tab.shortcut"],
-                subtitle: L10n["settings.shortcut.subtitle"]
-            )
-
-            shortcutHero
-
-            settingsSection(title: L10n["shortcut.section_title"]) {
-                settingsRow(
-                    title: L10n["shortcut.overlay_shortcut"],
-                    help: L10n["shortcut.applies_immediately"]
-                ) {
-                    Button {
-                        shortcutPreviewKeyCode = nil
-                        shortcutPreviewModifiers = 0
-                        isRecordingShortcut = true
-                    } label: {
-                        Text(isRecordingShortcut ? L10n["hotkey.recording"] : L10n["shortcut.record_button"])
-                            .frame(minWidth: 54)
-                    }
-                    .buttonStyle(SettingsPillButtonStyle(kind: .primary))
-                    .disabled(isRecordingShortcut)
-                    .opacity(isRecordingShortcut ? UIConstants.Settings.secondaryFillOpacity : 1)
-                }
-
-                ShortcutCaptureView(
-                    isRecording: $isRecordingShortcut,
-                    keyCode: $hotkeyKeyCode,
-                    modifiers: $hotkeyModifiers,
-                    onPreview: { keyCode, modifiers in
-                        shortcutPreviewKeyCode = keyCode
-                        shortcutPreviewModifiers = modifiers
-                    },
-                    onChange: {
-                        GlobalHotkeyManager.shared.reregister()
-                    },
-                    onStartRecording: {
-                        GlobalHotkeyManager.shared.unregister()
-                    },
-                    onCancelRecording: {
-                        shortcutPreviewKeyCode = nil
-                        shortcutPreviewModifiers = 0
-                        // 录制开始时会临时注销；取消后即使配置没变也要恢复。
-                        GlobalHotkeyManager.shared.reregister(force: true)
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                settingsPaneHeader(
+                    title: L10n["settings.tab.shortcut"],
+                    subtitle: L10n["settings.shortcut.subtitle"]
                 )
-                .frame(width: 0, height: 0)
-                .opacity(0.01)
-                .accessibilityHidden(true)
 
-                settingsDivider
+                shortcutHero
 
-                settingsRow(
-                    title: L10n["shortcut.clear_shortcut"],
-                    help: L10n["shortcut.clear_hint"]
-                ) {
-                    Button(L10n["shortcut.clear_button"]) {
-                        clearShortcut()
-                    }
-                    .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
+                settingsSection(title: L10n["shortcut.section_title"]) {
+                    shortcutSettingsRows
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
 
-            Spacer()
+                Spacer()
+            }
+            .padding(.vertical, 24)
+            .padding(.horizontal, 28)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .padding(.vertical, 24)
-        .padding(.horizontal, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private var shortcutSettingsRows: some View {
+        settingsRow(
+            title: L10n["shortcut.overlay_shortcut"],
+            help: L10n["shortcut.applies_immediately"]
+        ) {
+            Button {
+                shortcutPreviewKeyCode = nil
+                shortcutPreviewModifiers = 0
+                isRecordingShortcut = true
+            } label: {
+                Text(isRecordingShortcut ? L10n["hotkey.recording"] : L10n["shortcut.record_button"])
+                    .frame(minWidth: 54)
+            }
+            .buttonStyle(SettingsPillButtonStyle(kind: .primary))
+            .disabled(isRecordingShortcut)
+            .opacity(isRecordingShortcut ? UIConstants.Settings.secondaryFillOpacity : 1)
+        }
+
+        ShortcutCaptureView(
+            isRecording: $isRecordingShortcut,
+            keyCode: $hotkeyKeyCode,
+            modifiers: $hotkeyModifiers,
+            onPreview: { keyCode, modifiers in
+                shortcutPreviewKeyCode = keyCode
+                shortcutPreviewModifiers = modifiers
+            },
+            onChange: {
+                GlobalHotkeyManager.shared.reregister()
+            },
+            onStartRecording: {
+                GlobalHotkeyManager.shared.unregister()
+            },
+            onCancelRecording: {
+                shortcutPreviewKeyCode = nil
+                shortcutPreviewModifiers = 0
+                // 录制开始时会临时注销；取消后即使配置没变也要恢复。
+                GlobalHotkeyManager.shared.reregister(force: true)
+            }
+        )
+        .frame(width: 0, height: 0)
+        .opacity(0.01)
+        .accessibilityHidden(true)
+
+        settingsDivider
+
+        settingsRow(
+            title: L10n["shortcut.clear_shortcut"],
+            help: L10n["shortcut.clear_hint"]
+        ) {
+            Button(L10n["shortcut.clear_button"]) {
+                clearShortcut()
+            }
+            .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
+        }
     }
 
     var shortcutHero: some View {

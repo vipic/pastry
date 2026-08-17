@@ -16,20 +16,23 @@ extension SettingsSceneView {
     // MARK: - 更新 Tab
 
     var versionTab: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            settingsPaneHeader(
-                title: L10n["settings.tab.version"],
-                subtitle: L10n["settings.version.subtitle"]
-            )
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                settingsPaneHeader(
+                    title: L10n["settings.tab.version"],
+                    subtitle: L10n["settings.version.subtitle"]
+                )
 
-            versionStatusCard
+                versionStatusCard
 
-            versionReleaseNotesCard
+                versionReleaseNotesCard
 
-            Spacer()
+                Spacer()
+            }
+            .padding(.vertical, 24)
+            .padding(.horizontal, 28)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .padding(.vertical, 24)
-        .padding(.horizontal, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear { autoCheckVersionIfNeeded() }
     }

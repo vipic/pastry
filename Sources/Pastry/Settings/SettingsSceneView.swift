@@ -20,6 +20,8 @@ private enum Local {
         static let sidebarTopPadding: CGFloat = 52
         static let sidebarWidth: CGFloat = 206
         static let sidebarOpacity: Double = 0.92
+        static let windowMinHeight: CGFloat = 520
+        static let windowMinWidth: CGFloat = 760
     }
 }
 
@@ -145,7 +147,14 @@ struct SettingsSceneView: View {
             .toolbarVisibility(.hidden, for: .windowToolbar)
             .background(SettingsPalette.cream)
             .ignoresSafeArea(.container, edges: .top)
-            .background(SettingsWindowChromeConfigurator())
+            .background(
+                SettingsWindowChromeConfigurator(
+                    minSize: NSSize(
+                        width: Local.Settings.windowMinWidth,
+                        height: Local.Settings.windowMinHeight
+                    )
+                )
+            )
             .accessibilityIdentifier(AccessibilityIdentifiers.Settings.root)
             .onAppear { refreshAccessibilityStatus() }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -174,6 +183,10 @@ struct SettingsSceneView: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }
+        .frame(
+            minWidth: Local.Settings.windowMinWidth,
+            minHeight: Local.Settings.windowMinHeight
+        )
     }
 
     var settingsSidebar: some View {

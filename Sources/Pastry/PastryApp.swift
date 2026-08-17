@@ -7,6 +7,10 @@ private enum Local {
     enum Onboarding {
         static let windowHeight: CGFloat = 480
     }
+    enum Settings {
+        static let windowHeight: CGFloat = 660
+        static let windowWidth: CGFloat = 880
+    }
 }
 
 @MainActor
@@ -116,7 +120,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 880, height: 660),
+            contentRect: NSRect(
+                x: 0,
+                y: 0,
+                width: Local.Settings.windowWidth,
+                height: Local.Settings.windowHeight
+            ),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
