@@ -11,7 +11,7 @@ private enum Local {
         static let keycapHighlightOpacity: Double = 0.70
         static let keycapShadowOpacity: Double = 0.12
         static let keycapShadowY: CGFloat = 2
-        static let shortcutCaptureMinHeight: CGFloat = 142
+        static let shortcutCaptureMinHeight: CGFloat = 108
     }
 }
 

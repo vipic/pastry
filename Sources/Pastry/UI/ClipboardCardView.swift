@@ -87,7 +87,6 @@ struct ClipboardCardView: View {
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "zh_CN")
         return f
     }()
 
@@ -891,9 +890,17 @@ struct ClipboardCardView: View {
         let now = Date()
         let diff = now.timeIntervalSince(item.timestamp)
         if diff < 60 { return L10n["time.just_now"] }
-        else if diff < 3600 { return String(format: L10n["time.minutes_ago"], Int(diff / 60)) }
-        else if diff < 86400 { return String(format: L10n["time.hours_ago"], Int(diff / 3600)) }
-        else if diff < 604800 { return String(format: L10n["time.days_ago"], Int(diff / 86400)) }
+        else if diff < 3600 {
+            let count = Int(diff / 60)
+            return String(format: L10n[count == 1 ? "time.minute_ago" : "time.minutes_ago"], count)
+        } else if diff < 86400 {
+            let count = Int(diff / 3600)
+            return String(format: L10n[count == 1 ? "time.hour_ago" : "time.hours_ago"], count)
+        } else if diff < 604800 {
+            let count = Int(diff / 86400)
+            return String(format: L10n[count == 1 ? "time.day_ago" : "time.days_ago"], count)
+        }
+        Self.timeFormatter.locale = Locale(identifier: L10n.currentLanguageIdentifier)
         if Self.timeFormatter.dateFormat != L10n["time.date_format"] {
             Self.timeFormatter.dateFormat = L10n["time.date_format"]
         }

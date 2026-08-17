@@ -24,16 +24,16 @@ extension SettingsSceneView {
 
                 HStack(spacing: 10) {
                     metricCard(
-                        value: formattedHistoryMaxItems,
-                        label: L10n["settings.general.metric_max_items"]
+                        value: store.items.count.formatted(.number.grouping(.automatic)),
+                        label: L10n["settings.general.metric_current_items"]
                     )
                     metricCard(
-                        value: HistoryRetentionPolicy.maxAgeMetricLabel(HistoryRetentionPolicy.sanitizedMaxAgeDays(historyMaxAgeDays)),
-                        label: L10n["settings.general.metric_retention_window"]
+                        value: store.items.filter(\.isPinned).count.formatted(.number.grouping(.automatic)),
+                        label: L10n["settings.general.metric_favorites"]
                     )
                     metricCard(
-                        value: "v\(AppVersion.displayCurrent)",
-                        label: L10n["settings.general.metric_current_version"]
+                        value: Set(store.items.compactMap(\.appName)).count.formatted(.number.grouping(.automatic)),
+                        label: L10n["settings.general.metric_sources"]
                     )
                 }
 
@@ -56,17 +56,25 @@ extension SettingsSceneView {
 
                         settingsRow(
                             title: L10n["settings.launch_at_login"],
-                            help: L10n["settings.general.launch_help"]
+                            help: launchAtLoginErrorMessage ?? L10n["settings.general.launch_help"]
                         ) {
                             Toggle(L10n["settings.launch_at_login"], isOn: $launchAtLogin)
                                 .labelsHidden()
                                 .toggleStyle(SettingsSwitchStyle())
                                 .onChange(of: launchAtLogin) { _, enabled in
+                                    guard !isRevertingLaunchAtLogin else { return }
                                     do {
                                         try LaunchAtLoginManager.shared.setEnabled(enabled)
+                                        launchAtLoginErrorMessage = nil
                                     } catch {
                                         Logger(subsystem: "com.nekutai.pastry", category: "settings")
                                             .error("开机启动切换失败: \(error.localizedDescription)")
+                                        launchAtLoginErrorMessage = L10n["settings.general.launch_failed"]
+                                        isRevertingLaunchAtLogin = true
+                                        launchAtLogin = LaunchAtLoginManager.shared.isEnabled
+                                        DispatchQueue.main.async {
+                                            isRevertingLaunchAtLogin = false
+                                        }
                                     }
                                 }
                                 .accessibilityRepresentation {
@@ -96,12 +104,14 @@ extension SettingsSceneView {
                             title: L10n["settings.card_click_mode"],
                             help: L10n["settings.card_click_mode.help"]
                         ) {
-                            Toggle(L10n["settings.card_click_mode"], isOn: speedClickEnabledBinding)
+                            Picker(L10n["settings.card_click_mode"], selection: cardClickModeBinding) {
+                                Text(L10n["settings.card_click_mode.speed"]).tag(CardClickMode.speed)
+                                Text(L10n["settings.card_click_mode.select_first"]).tag(CardClickMode.enhanced)
+                            }
                                 .labelsHidden()
-                                .toggleStyle(SettingsSwitchStyle())
-                                .accessibilityRepresentation {
-                                    Toggle(L10n["settings.card_click_mode"], isOn: speedClickEnabledBinding)
-                                }
+                                .pickerStyle(.segmented)
+                                .frame(width: 150)
+                                .accessibilityLabel(L10n["settings.card_click_mode"])
                                 .accessibilityIdentifier(AccessibilityIdentifiers.Settings.cardClickModeToggle)
                         }
 
@@ -179,11 +189,6 @@ extension SettingsSceneView {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    var formattedHistoryMaxItems: String {
-        let value = HistoryRetentionPolicy.sanitizedMaxItems(historyMaxItems)
-        return value.formatted(.number.grouping(.automatic))
-    }
-
     var languageBinding: Binding<Language> {
         Binding<Language>(
             get: { selectedLanguage },
@@ -218,15 +223,10 @@ extension SettingsSceneView {
         )
     }
 
-    /// 开关打开 = 极速（单击粘贴）；关闭 = 当前增强（单击选中 / 再点已选粘贴）
-    var speedClickEnabled: Bool {
-        CardClickMode.resolved(stored: cardClickModeRaw) == .speed
-    }
-
-    var speedClickEnabledBinding: Binding<Bool> {
+    var cardClickModeBinding: Binding<CardClickMode> {
         Binding(
-            get: { CardClickMode.resolved(stored: cardClickModeRaw) == .speed },
-            set: { cardClickModeRaw = ($0 ? CardClickMode.speed : CardClickMode.enhanced).rawValue }
+            get: { CardClickMode.resolved(stored: cardClickModeRaw) },
+            set: { cardClickModeRaw = $0.rawValue }
         )
     }
 

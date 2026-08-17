@@ -137,53 +137,53 @@
         }
       }
     },
-    "settings.general.metric_max_items": {
+    "settings.general.metric_current_items": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最大条目"
+            "value": "当前记录"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Maximum items"
+            "value": "Current records"
           }
         }
       }
     },
-    "settings.general.metric_retention_window": {
+    "settings.general.metric_favorites": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保留周期"
+            "value": "收藏"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retention window"
+            "value": "Favorites"
           }
         }
       }
     },
-    "settings.general.metric_current_version": {
+    "settings.general.metric_sources": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "当前版本"
+            "value": "来源应用"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Current version"
+            "value": "Source apps"
           }
         }
       }
@@ -239,6 +239,23 @@
         }
       }
     },
+    "settings.general.launch_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改失败，已恢复为系统中的实际状态。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The change failed and was restored to the actual system state."
+          }
+        }
+      }
+    },
     "settings.general.sound_help": {
       "extractionState": "manual",
       "localizations": {
@@ -279,13 +296,47 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "开启后单击粘贴；关闭后单击选中，再点已选卡片粘贴。"
+            "value": "快速粘贴会立即粘贴；先选中适合预览、多选和批量操作。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "When on, click pastes; when off, click selects and click again pastes."
+            "value": "Quick Paste pastes immediately; Select First is better for previewing and multi-select actions."
+          }
+        }
+      }
+    },
+    "settings.card_click_mode.speed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速粘贴"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick Paste"
+          }
+        }
+      }
+    },
+    "settings.card_click_mode.select_first": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先选中"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select First"
           }
         }
       }
@@ -762,6 +813,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Privacy"
+          }
+        }
+      }
+    },
+    "settings.advanced": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高级"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Advanced"
           }
         }
       }
@@ -1425,6 +1493,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Open Panel"
+          }
+        }
+      }
+    },
+    "menu.status_tooltip": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左键打开 Pastry，右键显示菜单"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left-click to open Pastry; right-click for the menu"
           }
         }
       }
@@ -2517,6 +2602,23 @@
         }
       }
     },
+    "time.minute_ago": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 分钟前"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld min ago"
+          }
+        }
+      }
+    },
     "time.minutes_ago": {
       "extractionState": "manual",
       "localizations": {
@@ -2534,6 +2636,23 @@
         }
       }
     },
+    "time.hour_ago": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 小时前"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld hr ago"
+          }
+        }
+      }
+    },
     "time.hours_ago": {
       "extractionState": "manual",
       "localizations": {
@@ -2547,6 +2666,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld hr ago"
+          }
+        }
+      }
+    },
+    "time.day_ago": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 天前"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld day ago"
           }
         }
       }
@@ -3832,13 +3968,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "安全"
+            "value": "隐私与权限"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Security"
+            "value": "Privacy & Permissions"
           }
         }
       }
@@ -4172,13 +4308,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "稍后"
+            "value": "跳过设置"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Later"
+            "value": "Skip Setup"
           }
         }
       }
@@ -4223,13 +4359,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "开始使用"
+            "value": "继续"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Get Started"
+            "value": "Continue"
           }
         }
       }

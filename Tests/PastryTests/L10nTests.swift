@@ -12,7 +12,7 @@ final class L10nTests: XCTestCase {
         let keys = [
             "menu.open_clipboard",
             "menu.about", "menu.settings", "menu.quit",
-            "menu.check_updates", "menu.onboarding"
+            "menu.check_updates", "menu.onboarding", "menu.status_tooltip"
         ]
         for key in keys {
             let value = L10n[key]
@@ -89,17 +89,21 @@ final class L10nTests: XCTestCase {
             "shortcut.clear_hint",
             "shortcut.clear_button",
             "shortcut.record_button",
-            "settings.general.metric_max_items",
-            "settings.general.metric_retention_window",
-            "settings.general.metric_current_version",
+            "settings.general.metric_current_items",
+            "settings.general.metric_favorites",
+            "settings.general.metric_sources",
             "settings.general.section_application",
             "settings.general.language_help",
             "settings.general.launch_help",
+            "settings.general.launch_failed",
             "settings.general.sound_help",
             "settings.card_click_mode",
             "settings.card_click_mode.help",
+            "settings.card_click_mode.speed",
+            "settings.card_click_mode.select_first",
             "settings.delete_requires_confirmation",
             "settings.delete_requires_confirmation.help",
+            "settings.advanced",
             "settings.general.maximum_history",
             "settings.general.max_items_help",
             "settings.general.keep_records_for",
@@ -148,7 +152,10 @@ final class L10nTests: XCTestCase {
             "empty.no_history_hint",
             "empty.copy_try_hint",
             "overlay.accessibility_banner",
-            "overlay.accessibility_banner_action"
+            "overlay.accessibility_banner_action",
+            "time.minute_ago", "time.minutes_ago",
+            "time.hour_ago", "time.hours_ago",
+            "time.day_ago", "time.days_ago"
         ]
         for key in keys {
             let value = L10n[key]

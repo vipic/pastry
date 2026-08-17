@@ -34,6 +34,8 @@ extension Notification.Name {
 
 struct SettingsSceneView: View {
 
+    @ObservedObject var store = StoreManager.shared
+
     @AppStorage(UserDefaultsKeys.launchAtLogin)
     var launchAtLogin = false
 
@@ -80,6 +82,8 @@ struct SettingsSceneView: View {
     @State var isRecordingShortcut = false
     @State var shortcutPreviewKeyCode: Int?
     @State var shortcutPreviewModifiers = 0
+    @State var isRevertingLaunchAtLogin = false
+    @State var launchAtLoginErrorMessage: String?
 
     enum Language: String, CaseIterable, Identifiable {
         case system
@@ -119,7 +123,7 @@ struct SettingsSceneView: View {
             case .general:  return "gearshape"
             case .shortcut: return "command"
             case .security: return "shield"
-            case .version:  return "exclamationmark.circle"
+            case .version:  return "arrow.triangle.2.circlepath"
             case .about:    return "info.circle"
             }
         }

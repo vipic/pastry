@@ -32,6 +32,7 @@ final class MenuBarManager: NSObject {
             button.target = self
             button.action = #selector(statusItemClicked)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.toolTip = L10n["menu.status_tooltip"]
         }
 
         NotificationCenter.default.addObserver(
@@ -99,6 +100,7 @@ final class MenuBarManager: NSObject {
     @MainActor
     @objc private func languageDidChange() {
         buildMenu()
+        statusItem.button?.toolTip = L10n["menu.status_tooltip"]
     }
 
     // MARK: - 操作

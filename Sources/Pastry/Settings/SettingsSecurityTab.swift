@@ -31,21 +31,6 @@ extension SettingsSceneView {
                                 .accessibilityIdentifier(AccessibilityIdentifiers.Settings.linkPreviewNetworkToggle)
                         }
 
-                        settingsDivider
-
-                        settingsRow(
-                            title: L10n["settings.developer_diagnostics"],
-                            help: L10n["settings.developer_diagnostics_hint"]
-                        ) {
-                            Toggle(L10n["settings.developer_diagnostics"], isOn: $performanceLoggingEnabled)
-                                .labelsHidden()
-                                .toggleStyle(SettingsSwitchStyle())
-                                .accessibilityRepresentation {
-                                    Toggle(L10n["settings.developer_diagnostics"], isOn: $performanceLoggingEnabled)
-                                }
-                                .accessibilityIdentifier(AccessibilityIdentifiers.Settings.performanceLoggingToggle)
-                        }
-
                     }
                     .frame(maxWidth: .infinity, alignment: .top)
 
@@ -72,6 +57,21 @@ extension SettingsSceneView {
                         .padding(UIConstants.Settings.rowHorizontalPadding)
                     }
                     .frame(maxWidth: .infinity, alignment: .top)
+                }
+
+                settingsSection(title: L10n["settings.advanced"]) {
+                    settingsRow(
+                        title: L10n["settings.developer_diagnostics"],
+                        help: L10n["settings.developer_diagnostics_hint"]
+                    ) {
+                        Toggle(L10n["settings.developer_diagnostics"], isOn: $performanceLoggingEnabled)
+                            .labelsHidden()
+                            .toggleStyle(SettingsSwitchStyle())
+                            .accessibilityRepresentation {
+                                Toggle(L10n["settings.developer_diagnostics"], isOn: $performanceLoggingEnabled)
+                            }
+                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.performanceLoggingToggle)
+                    }
                 }
             }
             .padding(.vertical, 24)

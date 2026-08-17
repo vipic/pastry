@@ -39,6 +39,7 @@ private enum Local {
 
 struct OnboardingView: View {
     @ObservedObject private var store = StoreManager.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var step: OnboardingStep = .welcome
     @State private var activationSource: OnboardingActivationSource?
@@ -81,9 +82,12 @@ struct OnboardingView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.easeInOut(duration: UIConstants.Motion.medium), value: step)
+            .animation(reduceMotion ? nil : .easeInOut(duration: UIConstants.Motion.medium), value: step)
 
             footer
+                .opacity(hidesFooterNavigation ? 0 : 1)
+                .allowsHitTesting(!hidesFooterNavigation)
+                .accessibilityHidden(hidesFooterNavigation)
         }
         .frame(width: UIConstants.Onboarding.windowWidth)
         .ignoresSafeArea(.container, edges: .top)
@@ -94,13 +98,13 @@ struct OnboardingView: View {
             guard step == .shortcut,
                   let source = notification.object as? OnboardingActivationSource
             else { return }
-            withAnimation(.easeOut(duration: UIConstants.Motion.paste)) {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.paste)) {
                 activationSource = source
             }
         }
         .onReceive(store.$items) { items in
             guard step == .copy else { return }
-            withAnimation(.easeOut(duration: UIConstants.Motion.paste)) {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.paste)) {
                 _ = copyDetection.observe(
                     items: items.map { OnboardingCopyItem(id: $0.id, content: $0.content) },
                     sampleText: L10n["onboarding.copy.sample_text"]
@@ -152,7 +156,7 @@ struct OnboardingView: View {
                         )
                 }
             }
-            .animation(.easeOut(duration: UIConstants.Motion.fast), value: step)
+            .animation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.fast), value: step)
 
             Text("\(step.rawValue + 1) / \(OnboardingStep.allCases.count)")
                 .font(.system(size: UIConstants.TypeSize.label, weight: .medium, design: .monospaced))
@@ -181,7 +185,7 @@ struct OnboardingView: View {
 
             if let previous = step.previous {
                 Button(L10n["onboarding.back"]) {
-                    withAnimation { step = previous }
+                    withAnimation(reduceMotion ? nil : .default) { step = previous }
                 }
                 .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
                 .accessibilityIdentifier(AccessibilityIdentifiers.Onboarding.backButton)
@@ -209,10 +213,14 @@ struct OnboardingView: View {
         }
     }
 
+    private var hidesFooterNavigation: Bool {
+        step == .copy && !copyDetection.isComplete
+    }
+
     private var primaryButtonTitle: String {
         switch step {
         case .welcome:
-            return L10n["onboarding.start"]
+            return L10n["onboarding.continue"]
         case .shortcut:
             return L10n["onboarding.continue"]
         case .copy:
@@ -328,7 +336,7 @@ struct OnboardingView: View {
                                 : PastryPalette.cardFillSoft
                         )
                         .disabled(usedOtherContent)
-                        .animation(.easeOut(duration: UIConstants.Motion.instant), value: sampleCopyButtonHovered)
+                        .animation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.instant), value: sampleCopyButtonHovered)
                         .onHover { sampleCopyButtonHovered = $0 }
                         .help(L10n[actionFeedback.labelKey])
                         .accessibilityLabel(L10n[actionFeedback.labelKey])
@@ -338,7 +346,7 @@ struct OnboardingView: View {
                     .frame(width: Local.Onboarding.sampleCardWidth)
                     .settingsCardChrome(cornerRadius: UIConstants.Radius.panel, fill: PastryPalette.cardFillSoft)
                     .opacity(usedOtherContent ? Local.Onboarding.sampleCodeBlockDisabledOpacity : 1)
-                    .animation(.easeOut(duration: UIConstants.Motion.fast), value: copyDetection.outcome)
+                    .animation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.fast), value: copyDetection.outcome)
                     .modifier(
                         OnboardingShakeEffect(
                             progress: copyPromptAttempts,
@@ -497,11 +505,11 @@ struct OnboardingView: View {
 
     private func advance() {
         guard let next = step.next else { return }
-        withAnimation { step = next }
+        withAnimation(reduceMotion ? nil : .default) { step = next }
     }
 
     private func promptForSampleCopy() {
-        withAnimation(.easeInOut(duration: Local.Onboarding.copyPromptShakeDuration)) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: Local.Onboarding.copyPromptShakeDuration)) {
             copyPromptAttempts += 1
         }
     }
@@ -510,7 +518,7 @@ struct OnboardingView: View {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(L10n["onboarding.copy.sample_text"], forType: .string)
-        withAnimation(.easeOut(duration: UIConstants.Motion.paste)) {
+        withAnimation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.paste)) {
             sampleTextCopied = true
         }
     }

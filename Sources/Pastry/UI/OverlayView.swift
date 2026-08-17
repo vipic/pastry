@@ -858,38 +858,6 @@ struct OverlayView: View {
 
     private var headerRow: some View {
         HStack(spacing: 0) {
-            Spacer()
-
-            // 居中：搜索按钮/框 | tab 组
-            searchControl
-
-            filterButton
-                .padding(.trailing, 6)
-
-            tabButton(tab: .all, icon: "tray.full", label: L10n["tab.all"], isSelected: store.pinTab == .all)
-                .padding(.trailing, 6)
-            tabButton(tab: .pinned, icon: "pin.fill", label: L10n["tab.pinned"], isSelected: store.pinTab == .pinned)
-
-            Spacer()
-
-            // 齿轮
-            Button {
-                openSettingsFromOverlay()
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: UIConstants.TypeSize.title, weight: .semibold))
-                    .foregroundColor(toolbarForeground(isActive: false, isHovered: hoverGear))
-                    .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
-                    .background(toolbarButtonBackground(isActive: false, isHovered: hoverGear))
-            }
-            .buttonStyle(.plain)
-            .scaleEffect(toolbarHoverScale(isHovered: hoverGear))
-            .animation(.easeOut(duration: UIConstants.Motion.instant), value: hoverGear)
-            .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.settingsButton)
-            .onHover { hoverGear = $0 }
-        }
-        .overlay(alignment: .leading) {
-            // 居左：多选计数 + 快捷操作；无辅助功能时 banner 跟在其右侧
             HStack(spacing: UIConstants.Overlay.cardSpacing) {
                 if selection.selectedIds.count > 1 {
                     multiSelectToolbarLeading
@@ -898,7 +866,40 @@ struct OverlayView: View {
                     accessibilityPermissionBanner
                 }
             }
-            .padding(.leading, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .clipped()
+
+            HStack(spacing: 0) {
+                searchControl
+
+                filterButton
+                    .padding(.trailing, 6)
+
+                tabButton(tab: .all, icon: "tray.full", label: L10n["tab.all"], isSelected: store.pinTab == .all)
+                    .padding(.trailing, 6)
+                tabButton(tab: .pinned, icon: "pin.fill", label: L10n["tab.pinned"], isSelected: store.pinTab == .pinned)
+            }
+            .fixedSize(horizontal: true, vertical: false)
+            .layoutPriority(2)
+
+            HStack {
+                Spacer()
+                Button {
+                    openSettingsFromOverlay()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: UIConstants.TypeSize.title, weight: .semibold))
+                        .foregroundColor(toolbarForeground(isActive: false, isHovered: hoverGear))
+                        .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
+                        .background(toolbarButtonBackground(isActive: false, isHovered: hoverGear))
+                }
+                .buttonStyle(.plain)
+                .scaleEffect(toolbarHoverScale(isHovered: hoverGear))
+                .animation(.easeOut(duration: UIConstants.Motion.instant), value: hoverGear)
+                .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.settingsButton)
+                .onHover { hoverGear = $0 }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.horizontal, 8)
         .animation(searchExpansionAnimation, value: showSearch)
