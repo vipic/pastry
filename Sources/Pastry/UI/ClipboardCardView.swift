@@ -26,8 +26,8 @@ private enum Local {
         static let iconShadowRadius: CGFloat = 8
         static let iconShadowY: CGFloat = 3
         static let hoverActionIconSize: CGFloat = UIConstants.TypeSize.caption2
-        static let hoverActionReserveWidth: CGFloat = 92
-        static let hoverActionSize: CGFloat = 28
+        static let hoverActionReserveWidth: CGFloat = 68
+        static let hoverActionSize: CGFloat = 20
         static let hoverActionSpacing: CGFloat = 4
         static let hoverBorderOpacity: CGFloat = 0.30
         static let idleBorderOpacity: CGFloat = 0.22
@@ -154,7 +154,7 @@ struct ClipboardCardView: View {
     }
 
     private var showHoverActions: Bool {
-        isHovered && !isEditingFavoriteNote
+        isHovered && !isEditingFavoriteNote && !isFavoriteNoteHovered
     }
 
     private var accessibilitySummary: String {
@@ -205,7 +205,7 @@ struct ClipboardCardView: View {
                 .padding(.horizontal, Local.Card.contentHorizontalPadding)
                 .padding(.top, UIConstants.Card.contentVerticalPadding)
                 // 有备注时收紧底部，避免域名与备注之间再空出一整段 content padding
-                .padding(.bottom, showsFavoriteNoteStrip ? 2 : UIConstants.Card.contentVerticalPadding)
+                .padding(.bottom, contentBottomPadding)
                 .layoutPriority(0)
                 .clipped()
             favoriteNoteStrip
@@ -228,7 +228,6 @@ struct ClipboardCardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: Local.Card.cornerRadius, style: .continuous)
                 .strokeBorder(cardChromeBorderColor, lineWidth: cardChromeBorderWidth)
-                .animation(reduceMotion ? nil : .easeInOut(duration: Local.Card.animationDuration), value: isSelected)
                 .animation(reduceMotion ? nil : .easeInOut(duration: Local.Card.animationDuration), value: isHovered)
                 .animation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.paste), value: didPaste)
         )
@@ -238,7 +237,6 @@ struct ClipboardCardView: View {
                     .transition(.scale(scale: 0.74, anchor: .bottomTrailing).combined(with: .opacity))
             }
         }
-        .animation(reduceMotion ? nil : .easeInOut(duration: Local.Card.animationDuration), value: isSelected)
         .animation(reduceMotion ? nil : .easeInOut(duration: Local.Card.animationDuration), value: isHovered)
         .scaleEffect(reduceMotion ? 1 : (didPaste ? Local.Card.pasteScale : 1.0))
         .animation(reduceMotion ? nil : .spring(response: UIConstants.Motion.fast, dampingFraction: UIConstants.Motion.pasteDamping), value: didPaste)
@@ -425,6 +423,13 @@ struct ClipboardCardView: View {
     /// 备注条可见（编辑中或已有备注）
     private var showsFavoriteNoteStrip: Bool {
         isEditingFavoriteNote || favoriteNoteText != nil
+    }
+
+    /// 图片卡为 hover 操作预留独立底部空间；其他卡片保持既有静止布局。
+    private var contentBottomPadding: CGFloat {
+        if showsFavoriteNoteStrip { return 2 }
+        if item.sourceFormat == .image { return Local.Card.hoverActionSize }
+        return UIConstants.Card.contentVerticalPadding
     }
 
     @ViewBuilder

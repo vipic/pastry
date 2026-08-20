@@ -155,10 +155,10 @@ final class ClipboardOverlayPanel: NSPanel {
             return .openSearch
         }
 
-        // Tab / Shift-Tab 始终交给 AppKit 的焦点链。
+        // 搜索态 Tab 由本地键盘路由把焦点交给结果卡片。
         if keyCode == 48,
            modifierFlags.intersection([.command, .control, .option]).isEmpty {
-            return .system
+            return keyboardOwner == .searchField ? .consume : .system
         }
 
         if keyboardOwner == .searchField {
@@ -178,6 +178,11 @@ final class ClipboardOverlayPanel: NSPanel {
         if modifierFlags.contains(.command),
            modifierFlags.intersection([.shift, .option, .control]).isEmpty,
            keyCode == 8 || keyCode == 35 {
+            return .consume
+        }
+
+        if isSearchActive, keyboardOwner == .overlayNavigation,
+           keyCode == 49 || keyCode == 123 || keyCode == 124 {
             return .consume
         }
 

@@ -63,6 +63,7 @@ extension Notification.Name {
     static let overlayCmdPaste       = Notification.Name("overlayCmdPaste")
     static let overlayCmdStateChanged = Notification.Name("overlayCmdStateChanged")
     static let overlaySearchEnterPaste = Notification.Name("overlaySearchEnterPaste")
+    static let overlayFocusCards = Notification.Name("overlayFocusCards")
     static let overlayCancelFavoriteNoteEditing = Notification.Name("overlayCancelFavoriteNoteEditing")
     /// Space：预览光标项（userInfo["id"]: UUID）
     static let overlayPreviewCursor = Notification.Name("overlayPreviewCursor")
@@ -251,6 +252,14 @@ struct OverlayView: View {
             .onReceive(NotificationCenter.default.publisher(for: .overlaySearchEnterPaste)) { _ in
                 handleSearchEnterPaste()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .overlayFocusCards)) { _ in
+                guard showSearch else { return }
+                isSearchFocused = false
+                OverlayPanelManager.shared.keyboardOwner = .overlayNavigation
+                if selection.selectedIds.isEmpty {
+                    selectFirstVisibleCard()
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: .overlayPreviewCursor)) { _ in
                 handlePreviewCursor()
             }
@@ -404,11 +413,15 @@ struct OverlayView: View {
 
     private func handleSearchEnterPaste() {
         guard !showDeleteConfirm else { return }
-        guard let first = visibleItems.first else {
+        guard let target = OverlayInteractionModel.cursorPreviewItem(
+            visibleItems: visibleItems,
+            selectedIds: selection.selectedIds,
+            cursorIndex: selection.cursorIndex
+        ) else {
             SoundFeedback.invalidAction()
             return
         }
-        Task { await OverlayPanelManager.shared.hideAndPaste(first) }
+        Task { await OverlayPanelManager.shared.hideAndPaste(target) }
     }
 
     // MARK: - 状态重置
@@ -451,7 +464,11 @@ struct OverlayView: View {
 
     /// 当前可见列表的默认键盘落点：第一张卡片（空列表则清空选择）。
     private func selectFirstVisibleCard() {
-        selection.selectFirst(visibleItems: store.filteredItems)
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            selection.selectFirst(visibleItems: store.filteredItems)
+        }
         NotificationCenter.default.post(name: .overlayCardStripScrollToStart, object: nil)
     }
 
@@ -725,17 +742,17 @@ struct OverlayView: View {
                         .accessibilityHidden(true)
                 }
             }
+            .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
+            .background(toolbarButtonBackground(isActive: showFilterPopover || hasActiveTimeOrTypeFilter, isHovered: hoverFilter))
+            .contentShape(RoundedRectangle(cornerRadius: UIConstants.Radius.card, style: .continuous))
         }
         .buttonStyle(.plain)
-        .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
-        .background(toolbarButtonBackground(isActive: showFilterPopover || hasActiveTimeOrTypeFilter, isHovered: hoverFilter))
-        .contentShape(Rectangle())
         .onHover { hovering in
             hoverFilter = hovering
             if hovering { NSCursor.arrow.push() } else { NSCursor.arrow.pop() }
         }
         .popover(isPresented: $showFilterPopover, arrowEdge: .bottom) {
-            FilterPopoverContent(store: store, onFilterChange: { selectFirstVisibleCard() })
+            FilterPopoverContent(store: store)
                 .presentationBackground(FilterPopoverStyle.surface)
                 .presentationCornerRadius(UIConstants.Radius.panel)
         }
@@ -828,16 +845,6 @@ struct OverlayView: View {
             y: UIConstants.Shadow.Floating.secondaryY
         )
         .contentShape(Rectangle())
-        // 仅空白区清空选择。必须用 onTapGesture 而非 simultaneousGesture：
-        // simultaneous 会与卡片点击一并触发，把 ⌘/⇧ 多选立刻 reset 掉。
-        // 策略见 OverlayInteractionModel.shouldClearSelectionOnTrayBackgroundTap + 单测回归。
-        .onTapGesture {
-            if OverlayInteractionModel.shouldClearSelectionOnTrayBackgroundTap(
-                cardClickHandledThisEvent: false
-            ) {
-                selection.reset()
-            }
-        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.cardContainer)
     }
@@ -1308,7 +1315,6 @@ struct OverlayView: View {
 
     /// 处理键盘导航通知：方向键、翻页、首尾跳转统一进入这里。
     private func handleCursorMove(_ note: Notification) {
-        guard !showSearch else { return }
         let extend = note.userInfo?["extend"] as? Bool ?? false
         if let target = note.userInfo?["target"] as? String {
             switch target {

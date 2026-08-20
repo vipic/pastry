@@ -4,8 +4,8 @@ import SwiftUI
 private enum Local {
     enum Filter {
         static let appInitialOpacity: Double = 0.78
-        static let chipIconSize: CGFloat = 14
-        static let chipRowHeight: CGFloat = 24
+        static let chipIconSize: CGFloat = 18
+        static let chipRowHeight: CGFloat = 28
         static let clearButtonHeight: CGFloat = 24
         static let popoverWidth: CGFloat = 370
         static let sectionFillOpacity: Double = 0.04
@@ -90,33 +90,35 @@ struct FilterPopoverContent: View {
             }
             .frame(height: UIConstants.Control.iconButtonSize)
 
-            if !store.availableApps.isEmpty || hasHandoffItems {
-                filterSection(title: L10n["filter.source_app"]) {
-                    ScrollView(.vertical) {
-                        LazyVGrid(columns: gridColumns, spacing: UIConstants.Card.contentVerticalPadding) {
-                            filterChip(L10n["filter.all"], isSelected: store.appFilter == nil && !store.handoffFilter) {
-                                store.appFilter = nil
+            filterSection(title: L10n["filter.source_app"], iconName: "app.fill") {
+                ScrollView(.vertical) {
+                    LazyVGrid(columns: gridColumns, spacing: UIConstants.Card.contentVerticalPadding) {
+                        filterChip(
+                            L10n["filter.all"],
+                            iconName: "square.grid.2x2",
+                            isSelected: store.appFilter == nil && !store.handoffFilter
+                        ) {
+                            store.appFilter = nil
+                            store.handoffFilter = false
+                            onFilterChange?()
+                        }
+                        ForEach(store.availableApps, id: \.self) { app in
+                            AppFilterChip(app: app, isSelected: store.appFilter == app) {
+                                store.appFilter = (store.appFilter == app) ? nil : app
                                 store.handoffFilter = false
                                 onFilterChange?()
                             }
-                            ForEach(store.availableApps, id: \.self) { app in
-                                AppFilterChip(app: app, isSelected: store.appFilter == app) {
-                                    store.appFilter = (store.appFilter == app) ? nil : app
-                                    store.handoffFilter = false
-                                    onFilterChange?()
-                                }
-                            }
-                            if hasHandoffItems {
-                                filterChip(L10n["filter.handoff"], iconName: "laptopcomputer.and.iphone", isSelected: store.handoffFilter) {
-                                    store.appFilter = nil
-                                    store.handoffFilter.toggle()
-                                    onFilterChange?()
-                                }
+                        }
+                        if hasHandoffItems {
+                            filterChip(L10n["filter.handoff"], iconName: "laptopcomputer.and.iphone", isSelected: store.handoffFilter) {
+                                store.appFilter = nil
+                                store.handoffFilter.toggle()
+                                onFilterChange?()
                             }
                         }
                     }
-                    .frame(height: sourceGridHeight)
                 }
+                .frame(height: sourceGridHeight)
             }
 
             filterSection(title: L10n["filter.type"]) {
@@ -172,15 +174,24 @@ struct FilterPopoverContent: View {
         .frame(width: Local.Filter.popoverWidth)
         // 表面与三角由调用方 `.presentationBackground` 提供。
         // 不做内容层 fade/scale，以免叠在系统 popover 动画上。
-        .drawingGroup(opaque: false)
     }
 
-    private func filterSection(title: String, @ViewBuilder content: () -> some View) -> some View {
+    private func filterSection(
+        title: String,
+        iconName: String? = nil,
+        @ViewBuilder content: () -> some View
+    ) -> some View {
         VStack(alignment: .leading, spacing: UIConstants.Card.footerBottomPadding) {
-            Text(title)
-                .font(.system(size: UIConstants.TypeSize.caption, weight: .bold))
-                .foregroundColor(.white.opacity(UIConstants.OnDark.textIdle))
-                .textCase(.uppercase)
+            HStack(spacing: 5) {
+                if let iconName {
+                    Image(systemName: iconName)
+                        .font(.system(size: UIConstants.TypeSize.caption2, weight: .semibold))
+                }
+                Text(title)
+                    .font(.system(size: UIConstants.TypeSize.caption, weight: .bold))
+                    .textCase(.uppercase)
+            }
+            .foregroundColor(.white.opacity(UIConstants.OnDark.textIdle))
             content()
         }
         .padding(UIConstants.Overlay.cardSpacing)
@@ -266,6 +277,7 @@ struct FilterPopoverContent: View {
             if let icon {
                 Image(nsImage: icon)
                     .resizable()
+                    .aspectRatio(contentMode: .fit)
                     .frame(width: Local.Filter.chipIconSize, height: Local.Filter.chipIconSize)
             } else {
                 Text(appInitial)

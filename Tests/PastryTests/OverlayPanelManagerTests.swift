@@ -8,15 +8,16 @@ final class OverlayPanelManagerTests: XCTestCase {
 
     // MARK: - 标准焦点导航
 
-    func testTabAndShiftTabStayWithSystemFocusChain() {
+    func testTabAndShiftTabRouteAccordingToKeyboardOwner() {
         for owner in [OverlayKeyboardOwner.overlayNavigation, .searchField] {
+            let expected: ClipboardOverlayPanel.KeyRoute = owner == .searchField ? .consume : .system
             XCTAssertEqual(
                 ClipboardOverlayPanel.keyRoute(
                     keyCode: 48,
                     isSearchActive: owner == .searchField,
                     keyboardOwner: owner
                 ),
-                .system
+                expected
             )
             XCTAssertEqual(
                 ClipboardOverlayPanel.keyRoute(
@@ -25,7 +26,7 @@ final class OverlayPanelManagerTests: XCTestCase {
                     modifierFlags: .shift,
                     keyboardOwner: owner
                 ),
-                .system
+                expected
             )
         }
     }
@@ -307,7 +308,16 @@ final class OverlayPanelManagerTests: XCTestCase {
                 isSearchActive: true,
                 keyboardOwner: .searchField
             ),
-            .system
+            .consume
+        )
+        XCTAssertEqual(
+            ClipboardOverlayPanel.keyRoute(
+                keyCode: 48,
+                isSearchActive: true,
+                modifierFlags: .shift,
+                keyboardOwner: .searchField
+            ),
+            .consume
         )
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(
@@ -500,25 +510,28 @@ final class OverlayPanelManagerTests: XCTestCase {
         )
     }
 
-    func testOverlayPanelDoesNotConsumeArrowKeysWhenSearchActive() {
+    func testOverlayPanelLeavesArrowKeysWithSearchFieldWhileTyping() {
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(
                 keyCode: 123,
-                isSearchActive: true
+                isSearchActive: true,
+                keyboardOwner: .searchField
             ),
             .system
         )
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(
                 keyCode: 124,
-                isSearchActive: true
+                isSearchActive: true,
+                keyboardOwner: .searchField
             ),
             .system
         )
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(
                 keyCode: 36,
-                isSearchActive: true
+                isSearchActive: true,
+                keyboardOwner: .searchField
             ),
             .system
         )
@@ -526,10 +539,24 @@ final class OverlayPanelManagerTests: XCTestCase {
             ClipboardOverlayPanel.keyRoute(
                 keyCode: 18,
                 isSearchActive: true,
-                modifierFlags: .command
+                modifierFlags: .command,
+                keyboardOwner: .searchField
             ),
             .system
         )
+    }
+
+    func testOverlayPanelConsumesHorizontalArrowsWhenSearchCardsOwnFocus() {
+        for keyCode in [UInt16(123), UInt16(124)] {
+            XCTAssertEqual(
+                ClipboardOverlayPanel.keyRoute(
+                    keyCode: keyCode,
+                    isSearchActive: true,
+                    keyboardOwner: .overlayNavigation
+                ),
+                .consume
+            )
+        }
     }
 
     func testOverlayPanelHandlesEscapeWhenAlertInactive() {
@@ -614,9 +641,22 @@ final class OverlayPanelManagerTests: XCTestCase {
             ClipboardOverlayPanel.keyRoute(
                 keyCode: 49,
                 chars: " ",
-                isSearchActive: true
+                isSearchActive: true,
+                keyboardOwner: .searchField
             ),
             .system
+        )
+    }
+
+    func testOverlayPanelConsumesSpaceWhenSearchCardsOwnFocus() {
+        XCTAssertEqual(
+            ClipboardOverlayPanel.keyRoute(
+                keyCode: 49,
+                chars: " ",
+                isSearchActive: true,
+                keyboardOwner: .overlayNavigation
+            ),
+            .consume
         )
     }
 

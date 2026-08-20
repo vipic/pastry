@@ -1996,13 +1996,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "来源"
+            "value": "来源应用"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source"
+            "value": "Source App"
           }
         }
       }
@@ -2013,13 +2013,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "全部来源"
+            "value": "全部应用"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "All Sources"
+            "value": "All Apps"
           }
         }
       }

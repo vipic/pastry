@@ -101,8 +101,13 @@ final class OverlayKeyboardRouter {
         }
 
         if owner == .searchField {
-            // 搜索框拥有键盘时，文本编辑快捷键（⌘A/Delete/方向键/Enter/Tab 等）
-            // 都交给系统；只有面板级的 ⌘F 仍由 overlay 管理。
+            // 搜索时 Tab 将键盘焦点交给结果卡片；卡片间移动由左右箭头负责。
+            if event.keyCode == 48,
+               event.modifierFlags.intersection([.command, .control, .option]).isEmpty {
+                NotificationCenter.default.post(name: .overlayFocusCards, object: nil)
+                return nil
+            }
+            // 其余文本编辑快捷键都交给系统；只有面板级的 ⌘F 仍由 overlay 管理。
             if event.keyCode == 3, event.modifierFlags.contains(.command) {
                 return nil
             }
@@ -147,7 +152,6 @@ final class OverlayKeyboardRouter {
         // Space 预览光标项（不进搜索；搜索框拥有键盘时已在上方放行）
         if event.keyCode == 49,
            event.modifierFlags.intersection([.shift, .command, .option, .control]).isEmpty {
-            if isSearchActive() { return event }
             NotificationCenter.default.post(name: .overlayPreviewCursor, object: nil)
             return nil
         }
@@ -170,11 +174,9 @@ final class OverlayKeyboardRouter {
             postCursorMove(delta: 1, extend: extend)
             return nil
         case 123: // 左
-            if isSearchActive() { return event }
             postCursorMove(delta: -1, extend: extend)
             return nil
         case 124: // 右
-            if isSearchActive() { return event }
             postCursorMove(delta: 1, extend: extend)
             return nil
         case 115: // Home

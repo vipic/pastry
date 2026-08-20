@@ -5,6 +5,8 @@ import OSLog
 // MARK: - File-local layout (not shared design tokens)
 private enum Local {
     enum Settings {
+        static let clickModeControlWidth: CGFloat = 172
+        static let clickModeSpacing: CGFloat = 6
         static let controlColumnWidth: CGFloat = 112
     }
 }
@@ -104,13 +106,8 @@ extension SettingsSceneView {
                             title: L10n["settings.card_click_mode"],
                             help: L10n["settings.card_click_mode.help"]
                         ) {
-                            Picker(L10n["settings.card_click_mode"], selection: cardClickModeBinding) {
-                                Text(L10n["settings.card_click_mode.speed"]).tag(CardClickMode.speed)
-                                Text(L10n["settings.card_click_mode.select_first"]).tag(CardClickMode.enhanced)
-                            }
-                                .labelsHidden()
-                                .pickerStyle(.segmented)
-                                .frame(width: 150)
+                            CardClickModePicker(selection: cardClickModeBinding)
+                                .frame(width: Local.Settings.clickModeControlWidth)
                                 .accessibilityLabel(L10n["settings.card_click_mode"])
                                 .accessibilityIdentifier(AccessibilityIdentifiers.Settings.cardClickModeToggle)
                         }
@@ -231,4 +228,39 @@ extension SettingsSceneView {
     }
 
     var generalSectionHeight: CGFloat { 330 }
+}
+
+private struct CardClickModePicker: View {
+    @Binding var selection: CardClickMode
+
+    var body: some View {
+        HStack(spacing: Local.Settings.clickModeSpacing) {
+            modeButton(.speed, title: L10n["settings.card_click_mode.speed"])
+            modeButton(.enhanced, title: L10n["settings.card_click_mode.select_first"])
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func modeButton(_ mode: CardClickMode, title: String) -> some View {
+        let isSelected = selection == mode
+        return Button {
+            selection = mode
+        } label: {
+            Text(title)
+                .font(.system(size: UIConstants.TypeSize.label, weight: .semibold))
+                .foregroundStyle(isSelected ? PastryPalette.warmInk : PastryPalette.ink)
+                .frame(maxWidth: .infinity)
+                .frame(height: UIConstants.Control.iconButtonSize)
+                .background(
+                    RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
+                        .fill(isSelected ? PastryPalette.warmAccent : Color.white.opacity(UIConstants.Settings.secondaryFillOpacity))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
+                                .stroke(PastryPalette.ink.opacity(UIConstants.Settings.borderOpacity), lineWidth: UIConstants.Stroke.hairline)
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
 }
