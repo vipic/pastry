@@ -350,7 +350,7 @@ scripts/check_coverage.sh
 - **Liquid Glass API**：`NSGlassEffectView` 当前 beta 阶段在透明 NSPanel 中渲染异常，降级用 `NSVisualEffectView(.hudWindow)`
 - **辅助功能授权**：macOS 26 强制要求跨进程键盘事件授权，只有 `.privateState` + `postToPid` 是最小权限方案
 
-<!-- workspace-policy:start hash=2b7fa55c1aed -->
+<!-- workspace-policy:start hash=89bb3b3a5f69 -->
 ## 跨项目统一规则
 
 以下区块由私有 `workspace-meta` 生成；项目专属规则请写在区块外。
@@ -390,5 +390,15 @@ scripts/check_coverage.sh
 
 - [SWIFT-001] 使用 SwiftPM executable（swift-tools 6.0）和既有脚本组装应用，不新增 Xcode project。
 - [SWIFT-002] 保持 Nekutai 自签名链路与 `com.nekutai.*` bundle id，严禁 ad-hoc 签名。
+
+### macOS 发布
+
 - [SWIFT-003] 新增 shell 脚本纳入 `lint:scripts`；发布继续使用既有 release.sh、DMG 和 GitHub Release 流程。
+- [SWIFT-004] 正式发布必须验收最终 DMG：挂载后复制 App 到隔离临时目录，校验 bundle id、版本、关键资源与非 ad-hoc 签名，并完成真实启动冒烟；任一步失败都停止发布。
+- [SWIFT-005] 发布说明从上一个正式标签到目标提交生成，保留逐条用户可见变更；release、tag 与同版本制品不得静默覆盖。
+
+### macOS 自更新
+
+- [SWIFT-006] 安装应用内更新前必须校验目标 bundle id、预期版本和代码签名 designated requirement，不得只比较证书名称或 Team ID。
+- [SWIFT-007] 替换现有 App 前先备份旧版本；复制失败或安装后版本不符时恢复旧 App，并保留诊断日志和用户可见错误。
 <!-- workspace-policy:end -->
