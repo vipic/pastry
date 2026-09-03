@@ -1,11 +1,12 @@
 # Pastry 发布流程
 
-本文档记录本项目当前的本地发布流程。项目目前没有开发者账号签名和公证，因此产物是自签名应用，不做 notarization。
+本文档记录本项目当前的本地发布流程；模块关系及自更新已知限制见[更新与发布地图](architecture/update-release.md)。项目目前没有开发者账号签名和公证，因此产物是自签名应用，不做 notarization。
 
 ## 前置条件
 
 - macOS 26+
 - Xcode Command Line Tools
+- mise（统一构建与发布任务入口）
 - `gh` CLI：仅 `--publish` 发布 GitHub Release 时需要
 - 固定代码签名证书：默认使用作者级证书 `Nekutai`，也可通过 `CODESIGN_IDENTITY` 指定自己的自签名或开发者账号证书名
 
@@ -31,7 +32,7 @@ Pastry 需要辅助功能授权，必须使用稳定代码身份。没有匹配�
 发布命令传裸版本号：
 
 ```bash
-./release.sh 1.2.3
+mise run release -- 1.2.3
 ```
 
 脚本内部会自动生成 Git tag `v1.2.3`。如果传入 `v1.2.3`，脚本也会先剥掉前缀 `v`，避免应用内更新检查出现 `vv1.2.3`。
@@ -39,12 +40,12 @@ Pastry 需要辅助功能授权，必须使用稳定代码身份。没有匹配�
 ## 本地构建 DMG
 
 ```bash
-./release.sh 1.2.3
+mise run release -- 1.2.3
 ```
 
 脚本会执行：
 
-- `mise run check`（脚本、设计 token、覆盖率、测试和 release build）
+- `mise run check`（文档、脚本、设计 token、覆盖率、测试和 release build）
 - 注入 `AppVersion`
 - release 编译
 - 去除调试符号
@@ -63,7 +64,7 @@ dist/Pastry-1.2.3.dmg
 
 ### DMG 背景生成提示词
 
-背景使用 Codex 内置 ImageGen 生成；生成结果居中裁切后保存为 `Resources/dmg-background@2x.png`（1080×700），再缩放生成 `Resources/dmg-background.png`（540×350）。重建时使用以下提示词：
+背景 PNG 已随仓库提供，构建和发布不需要 Codex 或图像生成服务。历史素材使用 ImageGen 生成；替换时可使用任意图像工具，结果居中裁切后保存为 `Resources/dmg-background@2x.png`（1080×700），再缩放生成 `Resources/dmg-background.png`（540×350）。以下提示词仅作为可选的设计参考：
 
 ```text
 Use case: ads-marketing
@@ -80,7 +81,7 @@ Constraints: no words, no letters, no labels, no app icons, no folder icons, no 
 ## 发布到 GitHub Releases
 
 ```bash
-./release.sh 1.2.3 --publish
+mise run release -- 1.2.3 --publish
 ```
 
 发布模式要求：
@@ -160,7 +161,7 @@ CI 不导入或保存 `Nekutai` 私钥，因此不会组装、签名或上传正
 ```bash
 git status --short
 mise run check
-./release.sh 1.2.3
+mise run release -- 1.2.3
 ```
 
 脚本已经自动验证 DMG 并从中启动正式应用；人工确认安装盘视觉和面板主要流程后，再执行 `--publish`。本地修改尚未提交时只允许用 `--allow-dirty` 验收本地制品，该参数不能与 `--publish` 同用。

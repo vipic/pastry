@@ -28,7 +28,11 @@ run = "scripts/check_design_tokens.sh"
 
 [tasks.check]
 description = "Run the standard local validation suite"
-run = "mise run lint:scripts && mise run lint:design && mise run test:coverage && mise run coverage && mise run build:release"
+run = "mise run docs:check && mise run lint:scripts && mise run lint:design && mise run test:coverage && mise run coverage && mise run build:release"
+
+[tasks."docs:check"]
+description = "离线检查文档链接、仓库边界与架构/ADR 索引"
+run = "swift scripts/check_docs.swift"
 
 [tasks.deploy]
 description = "Build, sign, and launch Pastry Dev.app"

@@ -1,12 +1,12 @@
 # 项目结构
 
-本文档按当前 Git 已跟踪内容说明 Pastry 各目录与文件的职责。`.build/`、`dist/`、`.local/` 等本机生成目录不属于源码，统一列在文末。
+本文档按当前仓库内容说明 Pastry 各目录与文件的职责。`.build/`、`dist/`、`.local/` 等本机生成目录不属于源码，统一列在文末。
 
 ```text
 Pastry/
 ├── .github/
 │   └── workflows/
-│       ├── tests.yml                 # CI：shell、设计 token、测试、覆盖率和 release 编译
+│       ├── tests.yml                 # CI：文档、shell、设计 token、测试、覆盖率和 release 编译
 │       └── release-build-verification.yml # 手动验证 release 构建，不生成正式 DMG
 │
 ├── Resources/
@@ -106,7 +106,7 @@ Pastry/
 │           ├── HistoryRetentionPolicy.swift  # 历史容量与保留周期规则
 │           ├── NetworkAccessPolicy.swift     # HTTPS、内网和响应大小安全策略
 │           ├── RemoteImageLoader.swift       # 远程图片下载和内存缓存
-│           ├── RemoteResourceRedirectDelegate.swift # 重定向 SSRF 检查
+│           ├── BoundedRemoteResourceLoader.swift # 重定向与流式响应安全检查
 │           ├── PasteboardWriter.swift        # 各格式写回系统剪贴板
 │           ├── DragPayloadBuilder.swift      # 单选和多选拖拽载荷
 │           ├── SoundFeedback.swift           # 复制、粘贴和无效操作声音
@@ -149,7 +149,8 @@ Pastry/
 │       ├── OverlayInteractionModelTests.swift         # 点击、滚动和修饰键交互
 │       ├── OverlayPanelManagerTests.swift             # 面板配置和辅助逻辑
 │       ├── PasteboardWriterTests.swift                # 独立 pasteboard 写回
-│       ├── RemoteResourceRedirectDelegateTests.swift  # 重定向安全过滤
+│       ├── ReleaseWorkflowContractTests.swift          # 发布工作流契约
+│       ├── BoundedRemoteResourceLoaderTests.swift    # 重定向与流式响应限制
 │       ├── SelectionStateTests.swift                  # 多选和区间选择
 │       ├── SettingsViewTests.swift                    # 设置页签和路由
 │       ├── SigningConfigurationTests.swift            # 签名脚本和文档一致性
@@ -172,9 +173,18 @@ Pastry/
 │   ├── PRODUCT.md                     # 当前产品行为与验收场景
 │   ├── PROJECT_STRUCTURE.md           # 本文件：完整项目树和职责说明
 │   ├── design-tokens.html             # UI token 可视化参考
+│   ├── architecture/
+│   │   ├── README.md                   # 架构模块索引与渐进阅读入口
+│   │   ├── clipboard-history.md        # 剪贴板采集、存储、搜索与保留架构
+│   │   ├── overlay.md                  # 浮层、键盘、选择和拖拽架构
+│   │   ├── previews-network.md         # 预览、缓存和网络安全边界
+│   │   ├── settings-system.md          # 设置、引导和系统集成
+│   │   └── update-release.md           # 更新、安装和发布链路
 │   ├── adr/
+│   │   ├── README.md                         # 决策索引和维护约定
 │   │   ├── 001-sqlite-over-coredata.md       # SQLite/SQLCipher 架构决策
-│   │   └── 002-nspanel-over-swiftui-window.md # NSPanel 架构决策
+│   │   ├── 002-nspanel-over-swiftui-window.md # NSPanel 架构决策
+│   │   └── 003-vendored-sqlite-engine.md      # vendored SQLite 兼容引擎决策
 │   └── screenshots/
 │       ├── icon.png                   # README 应用图标
 │       └── showcase.png               # README 主界面截图
@@ -185,6 +195,7 @@ Pastry/
 │   ├── populate_clipboard.sh          # 写入各格式剪贴板测试样本
 │   ├── pbwrite.swift                  # NSPasteboard 测试写入工具源码
 │   ├── diagnostics.sh                 # 查看应用和命令日志
+│   ├── check_docs.swift                # 离线文档链接、仓库边界与索引校验
 │   ├── check_shell.sh                 # 全部 shell 语法检查
 │   ├── check_coverage.sh              # Swift 覆盖率门槛
 │   ├── check_design_tokens.sh         # UI token 防回潮检查
@@ -204,7 +215,7 @@ Pastry/
 ├── mise.toml                          # mise 唯一任务定义入口
 ├── Package.swift                      # SwiftPM Target、资源和链接配置
 ├── README.md                          # 面向普通用户的功能和安装说明
-├── AGENTS.md                          # Agent 架构、约定、坑点和验证要求
+├── AGENTS.md                          # Agent 工作约束、知识入口和验证要求
 ├── LICENSE                            # MIT 许可证
 └── .gitignore                         # 构建、日志、IDE 和临时文件忽略规则
 ```

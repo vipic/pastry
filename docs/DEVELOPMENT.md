@@ -7,22 +7,29 @@
 - macOS 26+
 - Swift 6.0+（`Package.swift` tools-version 6.0；语言模式暂钉 Swift 5，见包清单注释）
 - Xcode Command Line Tools
+- mise（统一任务入口；先用 `mise tasks` 查看命令）
 
 项目不依赖第三方包管理下载；带 FTS5 的 SQLite 兼容静态库已 vendored 到仓库内。
+
+### SQLite 兼容静态库维护边界
+
+`Sources/CSQLCipher/libsqlcipher.a` 是随仓库提供的 SQLite 兼容引擎；新数据库保持明文，同时保留旧 SQLCipher 加密库迁移能力。日常 clone、编译和测试不需要重新生成此静态库，也不需要个人代理配置。
+
+仓库目前没有经过核验的、可重现该二进制的独立构建任务。不要把历史构建命令当作已验证配方。更新前需要补齐源码版本与校验值、目标架构、SDK、编译标志和可重复运行的 mise 任务，并同步更新头文件；FTS5 和旧加密库 API 必须保留。更新后运行 `mise run check`，重点检查 FTS5 与旧库迁移测试。选择依据及这一维护代价见 [ADR-003](adr/003-vendored-sqlite-engine.md)。
 
 ## 快速部署开发版
 
 ```bash
 git clone https://github.com/vipic/pastry.git
 cd pastry
-./deploy.sh
+mise run deploy
 ```
 
 `deploy.sh` 会编译 debug 版本、组装并签名 `~/Applications/Pastry Dev.app`，然后启动应用。
 每次执行都会把完整输出、每个阶段和子命令耗时、退出码写入 `.local/logs/deploy/`。查看最近一次摘要：
 
 ```bash
-scripts/diagnostics.sh command deploy
+mise run logs:deploy
 ```
 
 ## 代码签名
@@ -51,25 +58,25 @@ Keychain Access -> 证书助理 -> 创建证书
 只确认 debug 编译：
 
 ```bash
-swift build
+mise run build
 ```
 
 只确认 release 编译：
 
 ```bash
-swift build -c release -Xswiftc -Osize
+mise run build:release
 ```
 
 这只会生成 SwiftPM 可执行文件，不会组装 `.app` 或 DMG。完整发布包请使用：
 
 ```bash
-./release.sh 1.2.3
+mise run release -- 1.2.3
 ```
 
 ## 本机冒烟
 
 ```bash
-scripts/smoke.sh
+mise run smoke
 ```
 
 脚本会部署开发版、填充剪贴板样本、唤出面板，并把截图和日志保存到 `dist/smoke/`。它不进 CI，适合发布前人工确认菜单栏、面板和卡片行为。
@@ -84,6 +91,7 @@ scripts/
 ├── populate_clipboard.sh  # 写入本机测试样本（图片样本需 Pillow）
 ├── smoke.sh               # 部署、填充样本并截图
 ├── check_shell.sh         # 仓库全部 shell 语法检查
+├── check_docs.swift       # 离线文档链接、仓库边界与索引校验
 ├── check_coverage.sh      # 覆盖率门槛
 ├── check_design_tokens.sh # UI token 防回潮检查
 ├── diagnostics.sh         # 应用和本地命令日志查看
@@ -94,10 +102,11 @@ scripts/
 
 ## mise 入口
 
-如果使用 `mise`，可以通过统一任务入口执行常用命令：
+开发和 CI 通过同一组 mise 任务执行常用命令：
 
 ```bash
 mise run check
+mise run docs:check
 mise run deploy
 mise run smoke
 mise run release-auto
@@ -117,5 +126,5 @@ Sources/Pastry/
 └── Utils/          # 热键、图标、常量、更新检查
 ```
 
-更完整的架构、历史坑点和 Agent 约定见 [AGENTS.md](../AGENTS.md)。
+当前架构、模块边界和历史决策见[架构与模块索引](architecture/README.md)；代码代理的工作约束见 [AGENTS.md](../AGENTS.md)。
 运行时和本地命令日志的字段、隐私边界及排查方法见 [DIAGNOSTICS.md](DIAGNOSTICS.md)。

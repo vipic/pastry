@@ -67,7 +67,11 @@ Vibe 的产物，但细节经过实际使用打磨。布局参考了 [Paste](htt
 - [测试说明](docs/TESTING.md)：单测、覆盖率、快照、冒烟和性能检查。
 - [发布流程](docs/RELEASE.md)：版本号、DMG、GitHub Releases、自动更新排查。
 - [产品说明](docs/PRODUCT.md)：产品定位和功能细节。
-- [Agent Onboarding](AGENTS.md)：给代码代理使用的架构、坑点和约定。
+- [架构与模块索引](docs/architecture/README.md)：当前架构、模块边界和相关决策入口。
+- [架构决策记录](docs/adr/README.md)：选择原因、代价和替代关系。
+- [Agent 约定](AGENTS.md)：给代码代理使用的工作约束和验证要求。
+
+以上资料随仓库获取，不需要个人代理配置或相邻项目。修改文档后运行 `mise run docs:check`（离线文件链接与索引校验）；完整验证仍使用 `mise run check`。
 
 ## 关联项目
 
