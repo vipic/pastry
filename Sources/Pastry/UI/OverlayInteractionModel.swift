@@ -211,50 +211,51 @@ enum OverlayInteractionModel {
 
     // MARK: - 横向卡带滚轮
 
-    /// 从候选轴位移中选出卡带可用 delta。
-    /// **只使用水平轴**；竖滚轮不得映射为横向（避免方向迷惑）。
-    static func preferredCardStripDelta(
-        horizontalCandidates: [CGFloat],
-        verticalCandidates: [CGFloat] = []
+    /// 把设备事件规范化为像素位移。
+    /// 精确设备直接使用 point delta；传统滚轮只把 line delta 换算一次，保留驱动加速。
+    static func normalizedCardStripDelta(
+        hasPreciseDeltas: Bool,
+        scrollingDeltaX: CGFloat,
+        legacyDeltaX: CGFloat,
+        pointDeltaX: CGFloat = 0,
+        fixedDeltaX: CGFloat = 0,
+        lineDeltaX: CGFloat = 0,
+        verticalCandidates: [CGFloat] = [],
+        lineScale: CGFloat = 14
     ) -> CGFloat? {
         _ = verticalCandidates // 显式忽略，防止以后误用
-        let bestX = horizontalCandidates.max(by: { abs($0) < abs($1) }) ?? 0
+        let preciseCandidates = [scrollingDeltaX, pointDeltaX]
+        let fallbackCandidates = [fixedDeltaX, lineDeltaX * lineScale]
+        let lineCandidates = [
+            scrollingDeltaX * lineScale,
+            legacyDeltaX * lineScale,
+            pointDeltaX,
+            fixedDeltaX,
+            lineDeltaX * lineScale
+        ]
+        let primary = hasPreciseDeltas ? preciseCandidates : lineCandidates
+        let bestPrimary = primary.max(by: { abs($0) < abs($1) }) ?? 0
+        let bestX = abs(bestPrimary) > 0.01
+            ? bestPrimary
+            : (fallbackCandidates.max(by: { abs($0) < abs($1) }) ?? 0)
         return abs(bestX) > 0.01 ? bestX : nil
     }
 
-    /// 累计滚轮位移并换算成卡片步进数。
-    /// AppKit 符号：负 delta 向索引更大的方向滚动，正 delta 向前滚动。
-    static func consumeStripScrollSteps(
-        accumulator: inout CGFloat,
+    /// 连续侧滚：把像素 delta 应用到当前横向偏移并钳制在内容边界内。
+    /// AppKit 符号：正 delta 使内容右移，因此视口 offset 减小。
+    static func applyStripPixelScroll(
+        offsetX: CGFloat,
         delta: CGFloat,
-        threshold: CGFloat = 4
-    ) -> Int {
-        guard threshold > 0 else { return 0 }
-        accumulator += delta
-        var steps = 0
-        while accumulator <= -threshold {
-            accumulator += threshold
-            steps += 1
-        }
-        while accumulator >= threshold {
-            accumulator -= threshold
-            steps -= 1
-        }
-        return steps
-    }
-
-    /// 根据卡片带自身的当前位置计算下一个 SwiftUI 滚动目标。
-    /// 位置与选中光标分离，避免选中卡片后侧滚被反复拉回同一位置。
-    static func advanceStripScrollIndex(
-        current: Int,
-        steps: Int,
-        itemCount: Int
-    ) -> (index: Int, hitEdge: Bool) {
-        guard itemCount > 0 else { return (0, false) }
-        let base = min(max(0, current), itemCount - 1)
-        let proposed = base + steps
-        let index = min(max(0, proposed), itemCount - 1)
-        return (index, proposed != index)
+        maxOffsetX: CGFloat
+    ) -> (offsetX: CGFloat, hitLeading: Bool, hitTrailing: Bool) {
+        let upper = max(0, maxOffsetX)
+        let proposed = offsetX - delta
+        let clamped = min(max(0, proposed), upper)
+        return (
+            offsetX: clamped,
+            hitLeading: proposed < -0.01,
+            hitTrailing: proposed > upper + 0.01
+        )
     }
 
     /// 键盘已在边界再按同向时，光晕朝向是否为「索引增大侧」（trailing）。

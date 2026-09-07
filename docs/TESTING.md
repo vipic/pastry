@@ -45,7 +45,7 @@ mise run test -- --filter AppIconProviderTests
 | 测试类 | 覆盖场景 |
 |--------|----------|
 | `SelectionStateTests` | 键盘/鼠标选择、⌘ toggle、⇧ 区间、边界 |
-| `OverlayInteractionModelTests` | 修饰键合并、空白 clear 约定、**竖滚不映射横向**、卡带滚动目标、⌘ 角标 |
+| `OverlayInteractionModelTests` | 修饰键合并、空白 clear 约定、**竖滚不映射横向**、侧轮 delta 规范化与连续像素滚动、⌘ 角标 |
 | `DragPayloadBuilderTests` | 多选文本/链接/文件载荷、http→https、混选链接规则 |
 | `UpdateInstallScriptBuilderTests` | 更新脚本 shell 引用与非法版本号 |
 | `AccessibilityIdentifiersTests` | a11y id 稳定与唯一 |

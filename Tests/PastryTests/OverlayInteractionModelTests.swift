@@ -434,88 +434,90 @@ final class OverlayInteractionModelTests: XCTestCase {
 
     // MARK: - 横向卡带滚轮策略
 
-    func testPreferredCardStripDeltaUsesHorizontalAxis() {
-        let delta = OverlayInteractionModel.preferredCardStripDelta(
-            horizontalCandidates: [0, 3.5, -0.01],
+    func testNormalizedCardStripDeltaPreservesPrecisePixels() {
+        let delta = OverlayInteractionModel.normalizedCardStripDelta(
+            hasPreciseDeltas: true,
+            scrollingDeltaX: 3.5,
+            legacyDeltaX: 3.5,
+            pointDeltaX: 2,
+            lineDeltaX: 9,
             verticalCandidates: [100]
         )
         XCTAssertEqual(delta, 3.5)
     }
 
-    func testPreferredCardStripDeltaIgnoresVerticalOnly() {
-        let delta = OverlayInteractionModel.preferredCardStripDelta(
-            horizontalCandidates: [0, 0.005],
+    func testNormalizedCardStripDeltaIgnoresVerticalOnly() {
+        let delta = OverlayInteractionModel.normalizedCardStripDelta(
+            hasPreciseDeltas: true,
+            scrollingDeltaX: 0,
+            legacyDeltaX: 0,
             verticalCandidates: [12, -8]
         )
         XCTAssertNil(delta, "仅有竖轴位移时不得映射为卡带滚动")
     }
 
-    func testPreferredCardStripDeltaPicksLargestAbsHorizontal() {
-        let delta = OverlayInteractionModel.preferredCardStripDelta(
-            horizontalCandidates: [2, -9, 4],
-            verticalCandidates: []
+    func testNormalizedCardStripDeltaScalesTraditionalWheelOnce() {
+        let delta = OverlayInteractionModel.normalizedCardStripDelta(
+            hasPreciseDeltas: false,
+            scrollingDeltaX: -2,
+            legacyDeltaX: -1,
+            lineDeltaX: -1
         )
-        XCTAssertEqual(delta, -9)
+        XCTAssertEqual(delta, -28)
     }
 
-    // MARK: - 卡带声明式滚动目标
-
-    func testConsumeStripScrollStepsAccumulatesAcrossEvents() {
-        var accumulator: CGFloat = 0
-        XCTAssertEqual(
-            OverlayInteractionModel.consumeStripScrollSteps(accumulator: &accumulator, delta: -2),
-            0
+    func testNormalizedCardStripDeltaFallsBackToCGLineDelta() {
+        let delta = OverlayInteractionModel.normalizedCardStripDelta(
+            hasPreciseDeltas: true,
+            scrollingDeltaX: 0,
+            legacyDeltaX: 0,
+            lineDeltaX: 2
         )
-        XCTAssertEqual(
-            OverlayInteractionModel.consumeStripScrollSteps(accumulator: &accumulator, delta: -3),
-            1
-        )
-        XCTAssertEqual(accumulator, -1, accuracy: 0.01)
+        XCTAssertEqual(delta, 28)
     }
 
-    func testConsumeStripScrollStepsPreservesDirection() {
-        var accumulator: CGFloat = 0
-        XCTAssertEqual(
-            OverlayInteractionModel.consumeStripScrollSteps(accumulator: &accumulator, delta: 9),
-            -2
+    // MARK: - 卡带连续像素滚动
+
+    func testApplyStripPixelScrollFollowsDelta() {
+        let result = OverlayInteractionModel.applyStripPixelScroll(
+            offsetX: 100,
+            delta: -18,
+            maxOffsetX: 500
         )
-        XCTAssertEqual(accumulator, 1, accuracy: 0.01)
+        XCTAssertEqual(result.offsetX, 118, accuracy: 0.01)
+        XCTAssertFalse(result.hitLeading)
+        XCTAssertFalse(result.hitTrailing)
     }
 
-    func testAdvanceStripScrollIndexContinuesFromViewportPosition() {
-        let first = OverlayInteractionModel.advanceStripScrollIndex(
-            current: 2, steps: 1, itemCount: 10
+    func testApplyStripPixelScrollPreservesSmallMovement() {
+        let result = OverlayInteractionModel.applyStripPixelScroll(
+            offsetX: 100,
+            delta: 1.25,
+            maxOffsetX: 500
         )
-        XCTAssertEqual(first.index, 3)
-        XCTAssertFalse(first.hitEdge)
-
-        let second = OverlayInteractionModel.advanceStripScrollIndex(
-            current: first.index, steps: 1, itemCount: 10
-        )
-        XCTAssertEqual(second.index, 4, "连续侧滚必须基于卡片带位置，不能回落到选中项")
-        XCTAssertFalse(second.hitEdge)
+        XCTAssertEqual(result.offsetX, 98.75, accuracy: 0.01)
+        XCTAssertFalse(result.hitLeading)
+        XCTAssertFalse(result.hitTrailing)
     }
 
-    func testAdvanceStripScrollIndexClampsAtBothEdges() {
-        let leading = OverlayInteractionModel.advanceStripScrollIndex(
-            current: 0, steps: -1, itemCount: 10
+    func testApplyStripPixelScrollClampsAtBothEdges() {
+        let leading = OverlayInteractionModel.applyStripPixelScroll(
+            offsetX: 2,
+            delta: 10,
+            maxOffsetX: 500
         )
-        XCTAssertEqual(leading.index, 0)
-        XCTAssertTrue(leading.hitEdge)
+        XCTAssertEqual(leading.offsetX, 0, accuracy: 0.01)
+        XCTAssertTrue(leading.hitLeading)
+        XCTAssertFalse(leading.hitTrailing)
 
-        let trailing = OverlayInteractionModel.advanceStripScrollIndex(
-            current: 9, steps: 2, itemCount: 10
+        let trailing = OverlayInteractionModel.applyStripPixelScroll(
+            offsetX: 495,
+            delta: -12,
+            maxOffsetX: 500
         )
-        XCTAssertEqual(trailing.index, 9)
-        XCTAssertTrue(trailing.hitEdge)
-    }
-
-    func testAdvanceStripScrollIndexHandlesEmptyList() {
-        let result = OverlayInteractionModel.advanceStripScrollIndex(
-            current: 3, steps: 1, itemCount: 0
-        )
-        XCTAssertEqual(result.index, 0)
-        XCTAssertFalse(result.hitEdge)
+        XCTAssertEqual(trailing.offsetX, 500, accuracy: 0.01)
+        XCTAssertFalse(trailing.hitLeading)
+        XCTAssertTrue(trailing.hitTrailing)
     }
 
     func testKeyboardEdgeGlowDirectionFromDelta() {

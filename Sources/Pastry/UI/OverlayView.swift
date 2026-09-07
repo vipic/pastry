@@ -110,16 +110,22 @@ struct OverlayView: View {
     @State private var stripEdgeGlow: StripEdgeSide? = nil
     @State private var stripEdgeGlowClearTask: Task<Void, Never>?
     @State private var lastStripEdgeHapticAt: CFAbsoluteTime = 0
-    /// 横向卡带的声明式滚动位置；不依赖 SwiftUI 私有的 NSScrollView 层级。
-    @State private var stripScrollTargetID: UUID?
-    @State private var stripScrollIndex = 0
-    @State private var stripScrollAccumulator: CGFloat = 0
+    /// 横向卡带的声明式滚动位置与几何边界；不依赖私有 NSScrollView 层级。
+    @State private var stripScrollPosition = ScrollPosition(idType: UUID.self, edge: .leading)
+    @State private var stripScrollGeometry = StripScrollGeometry.zero
     /// 辅助功能权限（托盘顶部非阻断 banner）
     @State private var accessibilityTrusted = true
 
     private enum StripEdgeSide {
         case leading
         case trailing
+    }
+
+    private struct StripScrollGeometry: Equatable {
+        var offsetX: CGFloat
+        var maxOffsetX: CGFloat
+
+        static let zero = StripScrollGeometry(offsetX: 0, maxOffsetX: 0)
     }
 
     private enum MultiSelectToolbarAction {
@@ -471,9 +477,7 @@ struct OverlayView: View {
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             selection.selectFirst(visibleItems: items)
-            stripScrollIndex = 0
-            stripScrollAccumulator = 0
-            stripScrollTargetID = items.first?.id
+            stripScrollPosition.scrollTo(edge: .leading)
         }
     }
 
@@ -1086,40 +1090,31 @@ struct OverlayView: View {
         if useHorizontal != isHorizontalLayout {
             isHorizontalLayout = useHorizontal
             OverlayPanelManager.shared.isHorizontalCardLayout = useHorizontal
-            stripScrollIndex = 0
-            stripScrollAccumulator = 0
-            stripScrollTargetID = store.filteredItems.first?.id
+            stripScrollPosition.scrollTo(edge: .leading)
         }
     }
 
-    /// 侧轮只决定卡片带的视口位置，不改变当前选择。
-    /// 使用 SwiftUI 的 scrollPosition/scrollTargetLayout，避免遍历私有 AppKit 视图树。
-    private func handleHorizontalStripScroll(_ note: Notification, items: [ClipboardItem]) {
+    /// 连续应用设备的像素 delta；快速滚动时使用驱动提供的较大增量形成自然加速。
+    private func handleHorizontalStripScroll(_ note: Notification) {
         let delta = (note.userInfo?["delta"] as? CGFloat)
             ?? (note.userInfo?["delta"] as? Double).map { CGFloat($0) }
             ?? 0
-        guard abs(delta) > 0.01, !items.isEmpty else { return }
+        guard abs(delta) > 0.01 else { return }
 
-        let steps = OverlayInteractionModel.consumeStripScrollSteps(
-            accumulator: &stripScrollAccumulator,
-            delta: delta
+        let result = OverlayInteractionModel.applyStripPixelScroll(
+            offsetX: stripScrollGeometry.offsetX,
+            delta: delta,
+            maxOffsetX: stripScrollGeometry.maxOffsetX
         )
-        guard steps != 0 else { return }
-
-        let result = OverlayInteractionModel.advanceStripScrollIndex(
-            current: stripScrollIndex,
-            steps: steps,
-            itemCount: items.count
-        )
-        if result.index != stripScrollIndex {
-            stripScrollIndex = result.index
-            withAnimation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.fast)) {
-                stripScrollTargetID = items[result.index].id
-            }
+        if abs(result.offsetX - stripScrollGeometry.offsetX) > 0.01 {
+            // 先更新本地偏移，避免高频事件在 geometry 回调前反复基于旧位置计算。
+            stripScrollGeometry.offsetX = result.offsetX
+            stripScrollPosition.scrollTo(x: result.offsetX)
         }
-        if result.hitEdge {
-            showStripEdgeGlow(towardHigherIndex: steps > 0)
-            stripScrollAccumulator = 0
+        if result.hitLeading {
+            showStripEdgeGlow(towardHigherIndex: false)
+        } else if result.hitTrailing {
+            showStripEdgeGlow(towardHigherIndex: true)
         }
     }
 
@@ -1183,23 +1178,27 @@ struct OverlayView: View {
                 // 无左右 padding：首尾卡贴视口边，尽头指示不会落在虚空留白上
                 .scrollTargetLayout()
             }
-            .scrollPosition(id: $stripScrollTargetID, anchor: .leading)
+            .scrollPosition($stripScrollPosition)
+            .onScrollGeometryChange(for: StripScrollGeometry.self) { geometry in
+                StripScrollGeometry(
+                    offsetX: max(0, geometry.contentOffset.x),
+                    maxOffsetX: max(0, geometry.contentSize.width - geometry.containerSize.width)
+                )
+            } action: { _, geometry in
+                stripScrollGeometry = geometry
+            }
             .frame(maxWidth: .infinity)
             .overlay(alignment: .leading) { stripEdgeGlowOverlay(side: .leading) }
             .overlay(alignment: .trailing) { stripEdgeGlowOverlay(side: .trailing) }
             .animation(nil, value: items.count)
             .onAppear {
                 OverlayPanelManager.shared.isHorizontalCardLayout = true
-                if stripScrollTargetID == nil {
-                    stripScrollTargetID = items.first?.id
-                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .overlayCardStripScroll)) { note in
-                handleHorizontalStripScroll(note, items: items)
+                handleHorizontalStripScroll(note)
             }
             .onChange(of: selection.cursorIndex) { oldIdx, newIdx in
                 guard let idx = newIdx, idx < items.count else { return }
-                stripScrollIndex = idx
                 let rendered = renderedIds.contains(items[idx].id)
                 let downward = (oldIdx ?? 0) < idx
                 let neighborIdx = downward ? idx + 1 : idx - 1
@@ -1209,7 +1208,10 @@ struct OverlayView: View {
                 // 滚动目标：边缘时滚动邻卡（露出下一张），否则滚动当前卡
                 let scrollId = neighborMissing ? items[neighborIdx].id : items[idx].id
                 withAnimation(.easeInOut(duration: UIConstants.Motion.fast)) {
-                    stripScrollTargetID = scrollId
+                    stripScrollPosition.scrollTo(
+                        id: scrollId,
+                        anchor: downward ? .trailing : .leading
+                    )
                 }
             }
         } else {
@@ -1650,28 +1652,19 @@ final class KeyboardEventHandler: ObservableObject {
     private var scrollMonitor: Any?
 
     /// 从 NSEvent / CGEvent 提取**纯横向**卡带 delta。
-    /// 不映射竖滚轮；策略见 `OverlayInteractionModel.preferredCardStripDelta`。
+    /// 不映射竖滚轮；精确设备保留 point delta，传统滚轮只做一次行距换算。
     static func cardStripDelta(from event: NSEvent) -> CGFloat? {
-        let lineScale: CGFloat = 14
-        var xs: [CGFloat] = [
-            event.scrollingDeltaX,
-            event.deltaX * lineScale
-        ]
-
-        if let cg = event.cgEvent {
-            // Axis2 = 横向（拇指轮）；忽略 Axis1 纵向
-            xs.append(contentsOf: [
-                CGFloat(cg.getDoubleValueField(.scrollWheelEventPointDeltaAxis2)),
-                CGFloat(cg.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2)),
-                CGFloat(cg.getDoubleValueField(.scrollWheelEventDeltaAxis2)) * lineScale
-            ])
-        }
-
-        return OverlayInteractionModel.preferredCardStripDelta(
-            horizontalCandidates: xs,
+        let cg = event.cgEvent
+        return OverlayInteractionModel.normalizedCardStripDelta(
+            hasPreciseDeltas: event.hasPreciseScrollingDeltas,
+            scrollingDeltaX: event.scrollingDeltaX,
+            legacyDeltaX: event.deltaX,
+            pointDeltaX: CGFloat(cg?.getDoubleValueField(.scrollWheelEventPointDeltaAxis2) ?? 0),
+            fixedDeltaX: CGFloat(cg?.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2) ?? 0),
+            lineDeltaX: CGFloat(cg?.getDoubleValueField(.scrollWheelEventDeltaAxis2) ?? 0),
             verticalCandidates: [
                 event.scrollingDeltaY,
-                event.deltaY * lineScale
+                event.deltaY
             ]
         )
     }
