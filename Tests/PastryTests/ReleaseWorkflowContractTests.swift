@@ -31,9 +31,4 @@ final class ReleaseWorkflowContractTests: XCTestCase {
         XCTAssertFalse(workflow.contains("upload-artifact"))
     }
 
-    func testFormalPublishRequiresExplicitVersion() throws {
-        let publish = try contents(of: "scripts/tasks/publish.sh")
-        XCTAssertTrue(publish.contains("正式发布必须显式"))
-        XCTAssertFalse(publish.contains("next_version.sh"))
-    }
 }

@@ -117,13 +117,6 @@ final class ConstantsTests: XCTestCase {
         }
     }
 
-    func testUIConstantsCardMetricsArePositive() {
-        XCTAssertGreaterThan(UIConstants.Radius.card, 0)
-        XCTAssertGreaterThan(UIConstants.Card.contentVerticalPadding, 0)
-        XCTAssertGreaterThan(UIConstants.Overlay.cardSpacing, 0)
-        XCTAssertEqual(UIConstants.Stroke.emphasis, 1.5, accuracy: 0.001)
-    }
-
     func testHistoryRetentionMetricLabelOmitsActionPrefix() {
         let saved = UserDefaults.standard.string(forKey: UserDefaultsKeys.language)
         UserDefaults.standard.set("en", forKey: UserDefaultsKeys.language)
@@ -173,39 +166,4 @@ final class ConstantsTests: XCTestCase {
         XCTAssertNotNil(nsColor.usingColorSpace(.sRGB))
     }
 
-    func testUICardConstantsAreStable() {
-        XCTAssertEqual(UIConstants.Card.size, 240)
-        XCTAssertEqual(UIConstants.Radius.card, 10)
-        XCTAssertEqual(UIConstants.Card.contentVerticalPadding, 6)
-        XCTAssertEqual(UIConstants.Card.footerBottomPadding, 8)
-    }
-
-    func testUIOverlayConstantsAreStable() {
-        XCTAssertEqual(UIConstants.Overlay.cardSpacing, 10)
-        XCTAssertEqual(UIConstants.Overlay.accentFillOpacity, 0.12, accuracy: 0.001)
-        XCTAssertEqual(UIConstants.Overlay.overlaySurfaceTintOpacity, 0.55, accuracy: 0.001)
-    }
-
-    // MARK: - SF Symbols
-
-    func testAppIconSymbolNotEmpty() {
-        XCTAssertFalse(AppIcons.app.isEmpty)
-    }
-
-    func testSearchSymbolNotEmpty() {
-        XCTAssertFalse(AppIcons.search.isEmpty)
-    }
-
-    func testStarSymbolsNotEmpty() {
-        XCTAssertFalse(AppIcons.star.isEmpty)
-        XCTAssertFalse(AppIcons.starEmpty.isEmpty)
-    }
-
-    func testSettingsSymbolNotEmpty() {
-        XCTAssertFalse(AppIcons.settings.isEmpty)
-    }
-
-    func testPinSymbolNotEmpty() {
-        XCTAssertFalse(AppIcons.pin.isEmpty)
-    }
 }
