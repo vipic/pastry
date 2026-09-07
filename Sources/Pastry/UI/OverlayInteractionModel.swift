@@ -211,8 +211,9 @@ enum OverlayInteractionModel {
 
     // MARK: - 横向卡带滚轮
 
-    /// 把设备事件规范化为像素位移。
-    /// 精确设备直接使用 point delta；传统滚轮只把 line delta 换算一次，保留驱动加速。
+    /// 把设备事件规范化为卡带像素位移。
+    /// 侧滚轮优先且限制单次幅度，作为微调输入；仅无侧向输入时才把普通滚轮映射到横向，
+    /// 并保留普通滚轮/驱动给出的加速幅度。
     static func normalizedCardStripDelta(
         hasPreciseDeltas: Bool,
         scrollingDeltaX: CGFloat,
@@ -220,25 +221,62 @@ enum OverlayInteractionModel {
         pointDeltaX: CGFloat = 0,
         fixedDeltaX: CGFloat = 0,
         lineDeltaX: CGFloat = 0,
-        verticalCandidates: [CGFloat] = [],
-        lineScale: CGFloat = 14
+        scrollingDeltaY: CGFloat = 0,
+        legacyDeltaY: CGFloat = 0,
+        pointDeltaY: CGFloat = 0,
+        fixedDeltaY: CGFloat = 0,
+        lineDeltaY: CGFloat = 0,
+        lineScale: CGFloat = 14,
+        sideWheelMaxDelta: CGFloat = 14
     ) -> CGFloat? {
-        _ = verticalCandidates // 显式忽略，防止以后误用
-        let preciseCandidates = [scrollingDeltaX, pointDeltaX]
-        let fallbackCandidates = [fixedDeltaX, lineDeltaX * lineScale]
+        if let horizontal = normalizedAxisDelta(
+            hasPreciseDeltas: hasPreciseDeltas,
+            scrollingDelta: scrollingDeltaX,
+            legacyDelta: legacyDeltaX,
+            pointDelta: pointDeltaX,
+            fixedDelta: fixedDeltaX,
+            lineDelta: lineDeltaX,
+            lineScale: lineScale
+        ) {
+            let cap = max(0, sideWheelMaxDelta)
+            return min(max(horizontal, -cap), cap)
+        }
+
+        return normalizedAxisDelta(
+            hasPreciseDeltas: hasPreciseDeltas,
+            scrollingDelta: scrollingDeltaY,
+            legacyDelta: legacyDeltaY,
+            pointDelta: pointDeltaY,
+            fixedDelta: fixedDeltaY,
+            lineDelta: lineDeltaY,
+            lineScale: lineScale
+        )
+    }
+
+    private static func normalizedAxisDelta(
+        hasPreciseDeltas: Bool,
+        scrollingDelta: CGFloat,
+        legacyDelta: CGFloat,
+        pointDelta: CGFloat,
+        fixedDelta: CGFloat,
+        lineDelta: CGFloat,
+        lineScale: CGFloat
+    ) -> CGFloat? {
+        let preciseCandidates = [scrollingDelta, pointDelta]
+        let fallbackCandidates = [fixedDelta, lineDelta * lineScale]
         let lineCandidates = [
-            scrollingDeltaX * lineScale,
-            legacyDeltaX * lineScale,
-            pointDeltaX,
-            fixedDeltaX,
-            lineDeltaX * lineScale
+            scrollingDelta * lineScale,
+            legacyDelta * lineScale,
+            pointDelta,
+            fixedDelta,
+            lineDelta * lineScale
         ]
         let primary = hasPreciseDeltas ? preciseCandidates : lineCandidates
         let bestPrimary = primary.max(by: { abs($0) < abs($1) }) ?? 0
-        let bestX = abs(bestPrimary) > 0.01
+        let best = abs(bestPrimary) > 0.01
             ? bestPrimary
             : (fallbackCandidates.max(by: { abs($0) < abs($1) }) ?? 0)
-        return abs(bestX) > 0.01 ? bestX : nil
+        return abs(best) > 0.01 ? best : nil
     }
 
     /// 连续侧滚：把像素 delta 应用到当前横向偏移并钳制在内容边界内。

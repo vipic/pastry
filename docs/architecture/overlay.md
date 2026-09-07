@@ -50,7 +50,7 @@ Esc 按当前 UI 层级逐层处理：确认层、备注编辑、筛选、Quick 
 - 透明面板中的托盘背景使用 `NSVisualEffectView(.hudWindow)`。当前实现没有采用 `NSGlassEffectView`；如需重新评估，必须先验证透明面板、浅深桌面和阴影边界。
 - 材质 view 必须启用 layer、裁剪圆角并关闭 layer 阴影，避免圆角外残留暗边。
 - 受最大高度约束的内容需要显式 `.clipped()`，否则 SwiftUI 子视图仍可能绘制到 frame 之外。
-- 横向卡片带使用 SwiftUI `ScrollPosition` 坐标连续滚动，并用 `onScrollGeometryChange` 限制内容边界；精确设备保留原始像素位移，传统滚轮只做一次行距换算，不遍历或直接修改 SwiftUI 私有的 `NSScrollView` 层级。
+- 横向卡片带使用 SwiftUI `ScrollPosition` 坐标连续滚动，并用 `onScrollGeometryChange` 限制内容边界；侧滚轮限制单次位移用于微调，普通滚轮映射到横向并保留设备加速，传统滚轮只做一次行距换算；实现不遍历或直接修改 SwiftUI 私有的 `NSScrollView` 层级。
 - 侧边栏选择不依赖 `NavigationSplitView` 中的 `List(selection:)`，当前设置导航使用显式按钮状态。
 - 面板相关状态和 AppKit 调用保持在主线程；不要从后台线程读写键盘所有者或布局状态。
 

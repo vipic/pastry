@@ -73,7 +73,7 @@ extension Notification.Name {
     static let overlayToggleFavorite = Notification.Name("overlayToggleFavorite")
     /// 粘贴因缺少辅助功能权限被中止 — 刷新托盘 banner
     static let overlayAccessibilityDenied = Notification.Name("overlayAccessibilityDenied")
-    /// userInfo["delta"]: CGFloat — 横向卡带侧滚位移（仅水平轴；竖滚不映射）
+    /// userInfo["delta"]: CGFloat — 横向卡带滚动位移（侧轮微调；普通滚轮快速浏览）
     static let overlayCardStripScroll = Notification.Name("overlayCardStripScroll")
 }
 
@@ -1651,8 +1651,8 @@ final class KeyboardEventHandler: ObservableObject {
     private var mouseMonitor: Any?
     private var scrollMonitor: Any?
 
-    /// 从 NSEvent / CGEvent 提取**纯横向**卡带 delta。
-    /// 不映射竖滚轮；精确设备保留 point delta，传统滚轮只做一次行距换算。
+    /// 从 NSEvent / CGEvent 提取卡带 delta。
+    /// 侧轮优先并限制加速幅度；没有侧向输入时映射普通滚轮并保留其加速。
     static func cardStripDelta(from event: NSEvent) -> CGFloat? {
         let cg = event.cgEvent
         return OverlayInteractionModel.normalizedCardStripDelta(
@@ -1662,10 +1662,11 @@ final class KeyboardEventHandler: ObservableObject {
             pointDeltaX: CGFloat(cg?.getDoubleValueField(.scrollWheelEventPointDeltaAxis2) ?? 0),
             fixedDeltaX: CGFloat(cg?.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2) ?? 0),
             lineDeltaX: CGFloat(cg?.getDoubleValueField(.scrollWheelEventDeltaAxis2) ?? 0),
-            verticalCandidates: [
-                event.scrollingDeltaY,
-                event.deltaY
-            ]
+            scrollingDeltaY: event.scrollingDeltaY,
+            legacyDeltaY: event.deltaY,
+            pointDeltaY: CGFloat(cg?.getDoubleValueField(.scrollWheelEventPointDeltaAxis1) ?? 0),
+            fixedDeltaY: CGFloat(cg?.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1) ?? 0),
+            lineDeltaY: CGFloat(cg?.getDoubleValueField(.scrollWheelEventDeltaAxis1) ?? 0)
         )
     }
 

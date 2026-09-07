@@ -441,19 +441,42 @@ final class OverlayInteractionModelTests: XCTestCase {
             legacyDeltaX: 3.5,
             pointDeltaX: 2,
             lineDeltaX: 9,
-            verticalCandidates: [100]
+            scrollingDeltaY: 100
         )
         XCTAssertEqual(delta, 3.5)
     }
 
-    func testNormalizedCardStripDeltaIgnoresVerticalOnly() {
+    func testNormalizedCardStripDeltaCapsAcceleratedSideWheelForFineAdjustment() {
+        let delta = OverlayInteractionModel.normalizedCardStripDelta(
+            hasPreciseDeltas: true,
+            scrollingDeltaX: -80,
+            legacyDeltaX: -80,
+            scrollingDeltaY: 120
+        )
+        XCTAssertEqual(delta, -14, "侧轮加速值应被限制，避免一次冲到边界后像是失去响应")
+    }
+
+    func testNormalizedCardStripDeltaPrefersSideWheelOverVerticalWheel() {
+        let delta = OverlayInteractionModel.normalizedCardStripDelta(
+            hasPreciseDeltas: true,
+            scrollingDeltaX: 2,
+            legacyDeltaX: 2,
+            scrollingDeltaY: -100,
+            legacyDeltaY: -100
+        )
+        XCTAssertEqual(delta, 2)
+    }
+
+    func testNormalizedCardStripDeltaMapsVerticalWheelAndPreservesAcceleration() {
         let delta = OverlayInteractionModel.normalizedCardStripDelta(
             hasPreciseDeltas: true,
             scrollingDeltaX: 0,
             legacyDeltaX: 0,
-            verticalCandidates: [12, -8]
+            scrollingDeltaY: -75,
+            legacyDeltaY: -75,
+            pointDeltaY: -60
         )
-        XCTAssertNil(delta, "仅有竖轴位移时不得映射为卡带滚动")
+        XCTAssertEqual(delta, -75, "普通滚轮应保留设备提供的快速滚动幅度")
     }
 
     func testNormalizedCardStripDeltaScalesTraditionalWheelOnce() {
@@ -463,7 +486,7 @@ final class OverlayInteractionModelTests: XCTestCase {
             legacyDeltaX: -1,
             lineDeltaX: -1
         )
-        XCTAssertEqual(delta, -28)
+        XCTAssertEqual(delta, -14, "传统侧轮也应受微调幅度限制")
     }
 
     func testNormalizedCardStripDeltaFallsBackToCGLineDelta() {
@@ -473,7 +496,19 @@ final class OverlayInteractionModelTests: XCTestCase {
             legacyDeltaX: 0,
             lineDeltaX: 2
         )
-        XCTAssertEqual(delta, 28)
+        XCTAssertEqual(delta, 14)
+    }
+
+    func testNormalizedCardStripDeltaScalesTraditionalVerticalWheelOnce() {
+        let delta = OverlayInteractionModel.normalizedCardStripDelta(
+            hasPreciseDeltas: false,
+            scrollingDeltaX: 0,
+            legacyDeltaX: 0,
+            scrollingDeltaY: -2,
+            legacyDeltaY: -1,
+            lineDeltaY: -1
+        )
+        XCTAssertEqual(delta, -28)
     }
 
     // MARK: - 卡带连续像素滚动
