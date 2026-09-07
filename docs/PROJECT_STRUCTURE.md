@@ -76,7 +76,6 @@ Pastry/
 │       │   ├── RemoteThumbnail.swift         # 远程缩略图渲染
 │       │   ├── FilterPopoverContent.swift    # 来源、类型、时间等筛选弹窗
 │       │   ├── SelectionState.swift          # 单选、散选和区间选择状态机
-│       │   ├── CardStripScrollDriver.swift   # 卡片带滚动和定位
 │       │   ├── CardPreviewAnchorRegistry.swift # 卡片预览锚点注册
 │       │   ├── ConfirmationOverlay.swift     # 删除等危险操作确认界面
 │       │   ├── GlassBackground.swift         # NSVisualEffectView 托盘背景

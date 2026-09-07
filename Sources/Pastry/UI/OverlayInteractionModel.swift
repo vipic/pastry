@@ -222,24 +222,39 @@ enum OverlayInteractionModel {
         return abs(bestX) > 0.01 ? bestX : nil
     }
 
-    /// 像素级侧滚：把滚轮 delta 应用到 clip origin（跟手，非按卡步进）。
-    ///
-    /// AppKit 符号：正 `delta` → 内容右移 → `origin.x` 减小（看见更靠前的卡）。
-    /// - Returns: 钳制后的 origin；若本帧试图越过边界则对应 hit* 为 true。
-    static func applyStripPixelScroll(
-        originX: CGFloat,
+    /// 累计滚轮位移并换算成卡片步进数。
+    /// AppKit 符号：负 delta 向索引更大的方向滚动，正 delta 向前滚动。
+    static func consumeStripScrollSteps(
+        accumulator: inout CGFloat,
         delta: CGFloat,
-        minX: CGFloat = 0,
-        maxX: CGFloat
-    ) -> (originX: CGFloat, hitLeading: Bool, hitTrailing: Bool) {
-        let upper = max(minX, maxX)
-        let proposed = originX - delta
-        let clamped = min(max(proposed, minX), upper)
-        return (
-            originX: clamped,
-            hitLeading: proposed < minX - 0.01,
-            hitTrailing: proposed > upper + 0.01
-        )
+        threshold: CGFloat = 4
+    ) -> Int {
+        guard threshold > 0 else { return 0 }
+        accumulator += delta
+        var steps = 0
+        while accumulator <= -threshold {
+            accumulator += threshold
+            steps += 1
+        }
+        while accumulator >= threshold {
+            accumulator -= threshold
+            steps -= 1
+        }
+        return steps
+    }
+
+    /// 根据卡片带自身的当前位置计算下一个 SwiftUI 滚动目标。
+    /// 位置与选中光标分离，避免选中卡片后侧滚被反复拉回同一位置。
+    static func advanceStripScrollIndex(
+        current: Int,
+        steps: Int,
+        itemCount: Int
+    ) -> (index: Int, hitEdge: Bool) {
+        guard itemCount > 0 else { return (0, false) }
+        let base = min(max(0, current), itemCount - 1)
+        let proposed = base + steps
+        let index = min(max(0, proposed), itemCount - 1)
+        return (index, proposed != index)
     }
 
     /// 键盘已在边界再按同向时，光晕朝向是否为「索引增大侧」（trailing）。
