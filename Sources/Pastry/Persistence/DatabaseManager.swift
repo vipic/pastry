@@ -868,11 +868,13 @@ final class DatabaseManager {
     }
 
     /// 清空全部
-    func clearAll() {
+    @discardableResult
+    func clearAll() -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        execute("DELETE FROM clips;")
+        guard execute("DELETE FROM clips;") else { return false }
         lastKey = nil
+        return true
     }
 
     // MARK: - 统计

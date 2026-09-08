@@ -309,7 +309,10 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     /// 切换 pin 状态
     func togglePin(_ item: ClipboardItem) {
         guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
-        DatabaseManager.shared.togglePin(id: item.id.uuidString)
+        guard !usesDatabaseSearch || DatabaseManager.shared.togglePin(id: item.id.uuidString) else {
+            diagnosticsLog.error("收藏状态保存失败", event: "store.pin.persistence_failed", metadata: ["item_id": item.id.uuidString])
+            return
+        }
         items[idx].isPinned.toggle()
         DeveloperDiagnostics.record(items[idx].isPinned ? DiagnosticsEvent.favoritePin : DiagnosticsEvent.favoriteUnpin)
         performSearchImmediate()
@@ -351,7 +354,10 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         for id in ids {
             guard let idx = items.firstIndex(where: { $0.id == id }),
                   items[idx].isPinned != pinned else { continue }
-            DatabaseManager.shared.setPin(id: id.uuidString, pinned: pinned)
+            guard !usesDatabaseSearch || DatabaseManager.shared.setPin(id: id.uuidString, pinned: pinned) else {
+                diagnosticsLog.error("批量收藏状态保存失败", event: "store.pin.persistence_failed", metadata: ["item_id": id.uuidString])
+                continue
+            }
             items[idx].isPinned = pinned
             changed = true
         }
@@ -407,15 +413,21 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     }
 
     /// 清空全部（含 pinned）
-    func clearAll() {
+    @discardableResult
+    func clearAll() -> Bool {
         ClipboardMonitor.shared.suspend()
-        DatabaseManager.shared.clearAll()
+        guard DatabaseManager.shared.clearAll() else {
+            ClipboardMonitor.shared.resume()
+            diagnosticsLog.error("清空历史失败", event: "store.clear_all.persistence_failed")
+            return false
+        }
         items.removeAll()
         filteredItems.removeAll()
         refreshStats()
         PasteboardWriter.clearSystemClipboard()
         ClipboardMonitor.shared.resume()
         DeveloperDiagnostics.record(DiagnosticsEvent.clearAll)
+        return true
     }
 
     /// 是否有活跃的筛选条件

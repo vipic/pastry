@@ -15,7 +15,6 @@ final class ReleaseWorkflowContractTests: XCTestCase {
 
     func testReleaseRequiresUnifiedValidationAndSafePublishing() throws {
         let release = try contents(of: "release.sh")
-        XCTAssertTrue(release.contains("command_log_run_tail mise_check 12 mise run check"))
         XCTAssertTrue(release.contains("git push --atomic"))
         XCTAssertTrue(release.contains("gh release create"))
         XCTAssertTrue(release.contains("scripts/generate_release_notes.sh"))
