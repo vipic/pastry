@@ -26,9 +26,13 @@ run = "scripts/check_shell.sh"
 description = "Check design token usage"
 run = "scripts/check_design_tokens.sh"
 
+[tasks."test:release-gate"]
+description = "Verify failed validation blocks publishing commands"
+run = "Tests/Scripts/release_gate_test.sh"
+
 [tasks.check]
 description = "Run the standard local validation suite"
-run = "mise run docs:check && mise run lint:scripts && mise run lint:design && mise run test:coverage && mise run coverage && mise run build:release"
+run = "mise run docs:check && mise run lint:scripts && mise run lint:design && mise run test:release-gate && mise run test:coverage && mise run coverage && mise run build:release"
 
 [tasks."docs:check"]
 description = "离线检查文档链接、仓库边界与架构/ADR 索引"

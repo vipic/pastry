@@ -401,7 +401,7 @@ final class StoreManagerTests: XCTestCase {
         ])
         let item = store.filteredItems[0]
 
-        store.togglePin(item)
+        _ = store.togglePin(item)
 
         // 注意：togglePin 会调用 DatabaseManager.shared.togglePin
         // 在测试环境这里会失败（无真实 DB），但内存状态应更新
@@ -414,9 +414,60 @@ final class StoreManagerTests: XCTestCase {
         ])
         let item = store.filteredItems[0]
 
-        store.togglePin(item)
+        _ = store.togglePin(item)
 
         XCTAssertFalse(store.filteredItems[0].isPinned)
+    }
+
+    func testTogglePinPersistenceFailureKeepsStateAndReturnsFailure() {
+        let item = ClipboardItem(content: "A", sourceFormat: .text, isPinned: false)
+        store = StoreManager(items: [item], togglePinPersistence: { _ in false })
+
+        XCTAssertFalse(store.togglePin(item))
+        XCTAssertFalse(store.filteredItems[0].isPinned)
+    }
+
+    func testBatchPinReportsPartialFailureAndKeepsCompletedChanges() {
+        let first = ClipboardItem(content: "A", sourceFormat: .text, isPinned: false)
+        let second = ClipboardItem(content: "B", sourceFormat: .text, isPinned: false)
+        store = StoreManager(
+            items: [first, second],
+            setPinPersistence: { id, _ in id == first.id }
+        )
+
+        let result = store.setPinForSelected([first.id, second.id], pinned: true)
+
+        XCTAssertEqual(result, .init(requested: 2, completed: 1, failed: 1))
+        XCTAssertTrue(store.items.first(where: { $0.id == first.id })!.isPinned)
+        XCTAssertFalse(store.items.first(where: { $0.id == second.id })!.isPinned)
+    }
+
+    func testClearFailureKeepsItemsAndDoesNotClearInjectedClipboard() {
+        let item = ClipboardItem(content: "A", sourceFormat: .text)
+        var clipboardClearCount = 0
+        store = StoreManager(
+            items: [item],
+            clearAllPersistence: { false },
+            clearClipboard: { clipboardClearCount += 1 }
+        )
+
+        XCTAssertFalse(store.clearAll())
+        XCTAssertEqual(store.items.map(\.id), [item.id])
+        XCTAssertEqual(clipboardClearCount, 0)
+    }
+
+    func testClearSuccessUsesOnlyInjectedClipboard() {
+        let item = ClipboardItem(content: "A", sourceFormat: .text)
+        var clipboardClearCount = 0
+        store = StoreManager(
+            items: [item],
+            clearAllPersistence: { true },
+            clearClipboard: { clipboardClearCount += 1 }
+        )
+
+        XCTAssertTrue(store.clearAll())
+        XCTAssertTrue(store.items.isEmpty)
+        XCTAssertEqual(clipboardClearCount, 1)
     }
 
     // MARK: - deleteSelected

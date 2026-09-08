@@ -84,6 +84,7 @@ struct SettingsSceneView: View {
     @State var shortcutPreviewModifiers = 0
     @State var isRevertingLaunchAtLogin = false
     @State var launchAtLoginErrorMessage: String?
+    @State var clearHistoryErrorMessage: String?
 
     enum Language: String, CaseIterable, Identifiable {
         case system
@@ -180,8 +181,10 @@ struct SettingsSceneView: View {
                     confirmTitle: L10n["settings.clear_btn"],
                     onCancel: { showingClearConfirm = false },
                     onConfirm: {
-                        StoreManager.shared.clearAll()
                         showingClearConfirm = false
+                        if !store.clearAll() {
+                            clearHistoryErrorMessage = "历史记录和系统剪贴板均未清空，请重试。"
+                        }
                     }
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
@@ -191,6 +194,17 @@ struct SettingsSceneView: View {
             minWidth: Local.Settings.windowMinWidth,
             minHeight: Local.Settings.windowMinHeight
         )
+        .alert("无法清空历史", isPresented: Binding(
+            get: { clearHistoryErrorMessage != nil },
+            set: { if !$0 { clearHistoryErrorMessage = nil } }
+        )) {
+            Button("重试") {
+                if store.clearAll() { clearHistoryErrorMessage = nil }
+            }
+            Button("取消", role: .cancel) { clearHistoryErrorMessage = nil }
+        } message: {
+            Text(clearHistoryErrorMessage ?? "")
+        }
     }
 
     var settingsSidebar: some View {

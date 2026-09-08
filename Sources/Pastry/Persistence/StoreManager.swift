@@ -216,9 +216,23 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     private var searchTask: Task<Void, Never>?
     private var searchGeneration = 0
     private let usesDatabaseSearch: Bool
+    private let togglePinPersistence: (UUID) -> Bool
+    private let setPinPersistence: (UUID, Bool) -> Bool
+    private let clearAllPersistence: () -> Bool
+    private let clearClipboard: () -> Void
+
+    struct PinUpdateResult: Equatable {
+        let requested: Int
+        let completed: Int
+        let failed: Int
+    }
 
     private init() {
         usesDatabaseSearch = true
+        togglePinPersistence = { DatabaseManager.shared.togglePin(id: $0.uuidString) }
+        setPinPersistence = { DatabaseManager.shared.setPin(id: $0.uuidString, pinned: $1) }
+        clearAllPersistence = { DatabaseManager.shared.clearAll() }
+        clearClipboard = { PasteboardWriter.clearSystemClipboard() }
         loadRecent()
 
         ClipboardMonitor.shared.onNewItem = { [weak self] item in
@@ -227,8 +241,18 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     }
 
     /// 测试专用：直接注入剪贴板数据，不经过数据库
-    init(items: [ClipboardItem]) {
+    init(
+        items: [ClipboardItem],
+        togglePinPersistence: @escaping (UUID) -> Bool = { _ in true },
+        setPinPersistence: @escaping (UUID, Bool) -> Bool = { _, _ in true },
+        clearAllPersistence: @escaping () -> Bool = { true },
+        clearClipboard: @escaping () -> Void = {}
+    ) {
         usesDatabaseSearch = false
+        self.togglePinPersistence = togglePinPersistence
+        self.setPinPersistence = setPinPersistence
+        self.clearAllPersistence = clearAllPersistence
+        self.clearClipboard = clearClipboard
         self.items = items
         performSearchImmediate()
         refreshAvailableApps()
@@ -307,15 +331,16 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     }
 
     /// 切换 pin 状态
-    func togglePin(_ item: ClipboardItem) {
-        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return }
-        guard !usesDatabaseSearch || DatabaseManager.shared.togglePin(id: item.id.uuidString) else {
+    func togglePin(_ item: ClipboardItem) -> Bool {
+        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return false }
+        guard togglePinPersistence(item.id) else {
             diagnosticsLog.error("收藏状态保存失败", event: "store.pin.persistence_failed", metadata: ["item_id": item.id.uuidString])
-            return
+            return false
         }
         items[idx].isPinned.toggle()
         DeveloperDiagnostics.record(items[idx].isPinned ? DiagnosticsEvent.favoritePin : DiagnosticsEvent.favoriteUnpin)
         performSearchImmediate()
+        return true
     }
 
     /// 更新链接预览标题（DB 持久化 + 内存同步）
@@ -349,22 +374,29 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     }
 
     /// 批量设置选中项的 pin 状态
-    func setPinForSelected(_ ids: Set<UUID>, pinned: Bool) {
+    func setPinForSelected(_ ids: Set<UUID>, pinned: Bool) -> PinUpdateResult {
         var changed = false
+        var requested = 0
+        var completed = 0
+        var failed = 0
         for id in ids {
             guard let idx = items.firstIndex(where: { $0.id == id }),
                   items[idx].isPinned != pinned else { continue }
-            guard !usesDatabaseSearch || DatabaseManager.shared.setPin(id: id.uuidString, pinned: pinned) else {
+            requested += 1
+            guard setPinPersistence(id, pinned) else {
                 diagnosticsLog.error("批量收藏状态保存失败", event: "store.pin.persistence_failed", metadata: ["item_id": id.uuidString])
+                failed += 1
                 continue
             }
             items[idx].isPinned = pinned
             changed = true
+            completed += 1
         }
         if changed {
             DeveloperDiagnostics.record(pinned ? DiagnosticsEvent.favoritePin : DiagnosticsEvent.favoriteUnpin)
         }
         performSearchImmediate()
+        return PinUpdateResult(requested: requested, completed: completed, failed: failed)
     }
 
     /// 批量删除选中项。返回实际删除的记录 ID。收藏不豁免用户删除（仅自动保留策略跳过收藏）。
@@ -416,7 +448,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     @discardableResult
     func clearAll() -> Bool {
         ClipboardMonitor.shared.suspend()
-        guard DatabaseManager.shared.clearAll() else {
+        guard clearAllPersistence() else {
             ClipboardMonitor.shared.resume()
             diagnosticsLog.error("清空历史失败", event: "store.clear_all.persistence_failed")
             return false
@@ -424,7 +456,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         items.removeAll()
         filteredItems.removeAll()
         refreshStats()
-        PasteboardWriter.clearSystemClipboard()
+        clearClipboard()
         ClipboardMonitor.shared.resume()
         DeveloperDiagnostics.record(DiagnosticsEvent.clearAll)
         return true

@@ -13,16 +13,6 @@ final class ReleaseWorkflowContractTests: XCTestCase {
         try String(contentsOf: repositoryRoot.appendingPathComponent(relativePath), encoding: .utf8)
     }
 
-    func testReleaseRequiresUnifiedValidationAndSafePublishing() throws {
-        let release = try contents(of: "release.sh")
-        XCTAssertTrue(release.contains("git push --atomic"))
-        XCTAssertTrue(release.contains("gh release create"))
-        XCTAssertTrue(release.contains("scripts/generate_release_notes.sh"))
-        XCTAssertTrue(release.contains("--notes-file"))
-        XCTAssertFalse(release.contains("--generate-notes"))
-        XCTAssertFalse(release.contains("--clobber"))
-    }
-
     func testCIOnlyRunsSourceValidation() throws {
         let workflow = try contents(of: ".github/workflows/release-build-verification.yml")
         XCTAssertTrue(workflow.contains("mise run check"))

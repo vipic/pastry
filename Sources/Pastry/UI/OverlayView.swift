@@ -115,6 +115,8 @@ struct OverlayView: View {
     @State private var stripScrollGeometry = StripScrollGeometry.zero
     /// 辅助功能权限（托盘顶部非阻断 banner）
     @State private var accessibilityTrusted = true
+    @State private var persistenceErrorMessage: String?
+    @State private var retryPersistenceAction: (() -> Void)?
 
     private enum StripEdgeSide {
         case leading
@@ -238,6 +240,25 @@ struct OverlayView: View {
 
     private func attachAlertAndSearchLifecycle<Content: View>(_ content: Content) -> some View {
         content
+            .alert("收藏未保存", isPresented: Binding(
+                get: { persistenceErrorMessage != nil },
+                set: { if !$0 { persistenceErrorMessage = nil } }
+            )) {
+                Button("重试") { retryPersistenceAction?() }
+                Button("取消", role: .cancel) {
+                    persistenceErrorMessage = nil
+                    retryPersistenceAction = nil
+                }
+            } message: {
+                Text(persistenceErrorMessage ?? "")
+            }
+            .onChange(of: persistenceErrorMessage) {
+                NotificationCenter.default.post(
+                    name: .overlayAlertActive,
+                    object: nil,
+                    userInfo: ["active": persistenceErrorMessage != nil]
+                )
+            }
             .onReceive(NotificationCenter.default.publisher(for: .overlayDeleteSelected)) { _ in
                 handleDeleteSelectedRequest()
             }
@@ -375,10 +396,31 @@ struct OverlayView: View {
             return
         }
         if ids.count > 1 {
-            store.setPinForSelected(ids, pinned: !reference.isPinned)
+            applyPins(ids, pinned: !reference.isPinned)
         } else {
-            store.togglePin(reference)
+            applyPin(reference)
         }
+    }
+
+    private func applyPin(_ item: ClipboardItem) {
+        guard !store.togglePin(item) else {
+            persistenceErrorMessage = nil
+            retryPersistenceAction = nil
+            return
+        }
+        persistenceErrorMessage = "该条目的收藏状态未改变，请重试。"
+        retryPersistenceAction = { applyPin(item) }
+    }
+
+    private func applyPins(_ ids: Set<UUID>, pinned: Bool) {
+        let result = store.setPinForSelected(ids, pinned: pinned)
+        guard result.failed > 0 else {
+            persistenceErrorMessage = nil
+            retryPersistenceAction = nil
+            return
+        }
+        persistenceErrorMessage = "已完成 \(result.completed) 项，\(result.failed) 项保存失败；已完成的状态会保留。"
+        retryPersistenceAction = { applyPins(ids, pinned: pinned) }
     }
 
     /// Space：预览光标项（多选时仍只预览光标那一张）。
@@ -1268,9 +1310,9 @@ struct OverlayView: View {
             onPin: { tapped, ids in
                 // 多选且落点在选中集合内 → 整批收藏/取消；否则只动本卡
                 if ids.count > 1, ids.contains(tapped.id) {
-                    store.setPinForSelected(ids, pinned: !tapped.isPinned)
+                    applyPins(ids, pinned: !tapped.isPinned)
                 } else {
-                    store.togglePin(tapped)
+                    applyPin(tapped)
                 }
             },
             onDelete: { deleted in

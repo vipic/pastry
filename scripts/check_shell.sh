@@ -22,6 +22,7 @@ scripts=(
     scripts/tasks/release.sh
     scripts/tasks/release-auto.sh
     scripts/tasks/publish.sh
+    Tests/Scripts/release_gate_test.sh
 )
 
 for script in "${scripts[@]}"; do
