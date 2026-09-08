@@ -12,16 +12,8 @@ enum AppDirectories {
             return appSupport.appendingPathComponent(Constants.appName)
         }
 
-        let fallback = FileManager.default.temporaryDirectory
-            .appendingPathComponent(Constants.appName)
-            .appendingPathComponent("ApplicationSupportFallback")
-        // 严重退化：降级到 tmp 意味着数据库 / 图片缓存将在系统重启时被清除。
-        // 对应 C8 建议，记一条醒目的 log 以便排查。
-        log.error("""
-            ⚠️ 无法获取 Application Support 目录，降级到临时目录。\
-            数据将在重启后丢失：\(fallback.path, privacy: .public)
-            """)
-        return fallback
+        log.error("无法获取 Application Support 目录，停止初始化以避免把用户数据写入临时目录")
+        preconditionFailure("Application Support directory unavailable")
     }
 
     /// `~/Library/Logs/Pastry`（DEBUG 为 Pastry Dev）
