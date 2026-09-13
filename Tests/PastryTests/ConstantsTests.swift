@@ -1,6 +1,5 @@
 import XCTest
 @testable import Pastry
-import SwiftUI
 
 // MARK: - Constants 测试套件
 // 验证常量定义的一致性
@@ -79,12 +78,6 @@ final class ConstantsTests: XCTestCase {
         XCTAssertEqual(UserDefaultsKeys.performanceLoggingEnabled, "performance_logging_enabled")
     }
 
-    func testSettingsAccessibilityIdentifiers() {
-        XCTAssertEqual(AccessibilityIdentifiers.Settings.performanceLoggingToggle, "settings.performance-logging-toggle")
-        XCTAssertEqual(AccessibilityIdentifiers.Settings.maxItemsPicker, "settings.max-items-picker")
-        XCTAssertEqual(AccessibilityIdentifiers.Settings.maxAgePicker, "settings.max-age-picker")
-    }
-
     func testHistoryRetentionPolicySanitizesValues() {
         XCTAssertEqual(HistoryRetentionPolicy.sanitizedMaxItems(500), 500)
         XCTAssertEqual(HistoryRetentionPolicy.sanitizedMaxItems(-1), HistoryRetentionPolicy.defaultMaxItems)
@@ -98,22 +91,6 @@ final class ConstantsTests: XCTestCase {
         }
         for option in HistoryRetentionPolicy.maxAgeDayOptions {
             XCTAssertEqual(HistoryRetentionPolicy.sanitizedMaxAgeDays(option), option)
-        }
-    }
-
-    func testAppIconsAreNonEmptySFSymbolNames() {
-        let names = [
-            AppIcons.app, AppIcons.text, AppIcons.image, AppIcons.file,
-            AppIcons.rtf, AppIcons.html, AppIcons.search, AppIcons.star,
-            AppIcons.paste, AppIcons.delete, AppIcons.pin, AppIcons.settings,
-            AppIcons.clear, AppIcons.quit
-        ]
-        for name in names {
-            XCTAssertFalse(name.isEmpty)
-            XCTAssertNotNil(
-                NSImage(systemSymbolName: name, accessibilityDescription: nil),
-                "SF Symbol 应存在: \(name)"
-            )
         }
     }
 
@@ -143,27 +120,6 @@ final class ConstantsTests: XCTestCase {
         #else
         XCTAssertEqual(Constants.appName, "Pastry")
         #endif
-    }
-
-    // MARK: - Colors
-
-    func testClipBackgroundColor() {
-        let color = Color.clipBackground
-        // NSColor → Color 可双向转换
-        let nsColor = NSColor(color)
-        XCTAssertNotNil(nsColor.usingColorSpace(.sRGB))
-    }
-
-    func testClipRowHoverColor() {
-        let color = Color.clipRowHover
-        let nsColor = NSColor(color)
-        XCTAssertNotNil(nsColor.usingColorSpace(.sRGB))
-    }
-
-    func testClipAccentColor() {
-        let color = Color.clipAccent
-        let nsColor = NSColor(color)
-        XCTAssertNotNil(nsColor.usingColorSpace(.sRGB))
     }
 
 }

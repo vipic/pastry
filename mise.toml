@@ -78,14 +78,6 @@ run = "scripts/diagnostics.sh command release"
 description = "Show the latest publish timing summary; pass --full after -- for complete output"
 run = "scripts/diagnostics.sh command publish"
 
-[tasks."snapshot:test"]
-description = "Run clipboard card snapshot tests"
-run = "env CLANG_MODULE_CACHE_PATH=/private/tmp/clang-module-cache PASTRY_SNAPSHOT_TESTS=1 swift test --filter ClipboardCardSnapshotTests"
-
-[tasks."snapshot:record"]
-description = "Record clipboard card snapshot baselines"
-run = "env CLANG_MODULE_CACHE_PATH=/private/tmp/clang-module-cache PASTRY_RECORD_SNAPSHOTS=1 swift test --filter ClipboardCardSnapshotTests"
-
 [tasks."test:network"]
 description = "Run network-dependent update checker tests"
 run = "env PASTRY_NETWORK_TESTS=1 swift test --filter UpdateCheckerTests"

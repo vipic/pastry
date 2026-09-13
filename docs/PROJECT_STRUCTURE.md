@@ -118,7 +118,6 @@ Pastry/
 │
 ├── Tests/
 │   └── PastryTests/
-│       ├── AccessibilityIdentifiersTests.swift       # 辅助功能标识稳定性
 │       ├── AccessibilityPermissionCheckerTests.swift # 授权查询和提示
 │       ├── AccessibilityPermissionRowModelTests.swift # 授权状态展示
 │       ├── AppDirectoriesTests.swift                  # 应用目录计算和创建
@@ -128,7 +127,6 @@ Pastry/
 │       ├── ClipboardItemPreviewBuilderTests.swift     # 文件和文本预览构建
 │       ├── ClipboardMonitorTests.swift                # 剪贴板读取、过滤和去重
 │       ├── ClipboardSearchTests.swift                 # 内容、备注和应用名搜索
-│       ├── ClipboardCardSnapshotTests.swift           # 卡片 PNG 快照测试
 │       ├── ConstantsTests.swift                       # 默认值和配置 key
 │       ├── DatabaseManagerTests.swift                 # SQLite、CRUD、FTS 和旧库迁移
 │       ├── DeveloperDiagnosticsTests.swift            # 日志、脱敏和轮转
@@ -141,7 +139,6 @@ Pastry/
 │       ├── L10nTests.swift                            # 本地化 key 和降级
 │       ├── LaunchAtLoginManagerTests.swift            # 登录启动封装
 │       ├── LinkPreviewLoaderTests.swift               # 网页元数据和图片选择
-│       ├── MenuBarMenuFactoryTests.swift              # 菜单结构和点击路由
 │       ├── NetworkAccessPolicyTests.swift             # 内网、IPv4 和响应限制
 │       ├── OnboardingFlowTests.swift                  # 引导状态机和激活交接
 │       ├── OverlayEmptyStateModelTests.swift          # 空状态文案
@@ -151,18 +148,10 @@ Pastry/
 │       ├── ReleaseWorkflowContractTests.swift          # 发布工作流契约
 │       ├── BoundedRemoteResourceLoaderTests.swift    # 重定向与流式响应限制
 │       ├── SelectionStateTests.swift                  # 多选和区间选择
-│       ├── SettingsViewTests.swift                    # 设置页签和路由
 │       ├── SigningConfigurationTests.swift            # 签名脚本和文档一致性
-│       ├── SnapshotTestSupport.swift                  # 快照记录和对比基础设施
 │       ├── StoreManagerTests.swift                    # 搜索、筛选、收藏和删除
 │       ├── UpdateCheckerTests.swift                   # 版本比较和下载验证
-│       ├── UpdateInstallScriptBuilderTests.swift      # 安装脚本安全性
-│       └── __Snapshots__/
-│           ├── clipboard-card-html.png
-│           ├── clipboard-card-link.png
-│           ├── clipboard-card-multi-file.png
-│           ├── clipboard-card-text-selected-command.png
-│           └── clipboard-card-text.png                # 卡片视觉回归基线
+│       └── UpdateInstallScriptBuilderTests.swift      # 安装脚本安全性
 │
 ├── docs/
 │   ├── DEVELOPMENT.md                 # 开发、签名、部署和 mise

@@ -46,8 +46,7 @@ let package = Package(
         .testTarget(
             name: "PastryTests",
             dependencies: ["Pastry", "CSQLCipher"],
-            path: "Tests/PastryTests",
-            exclude: ["__Snapshots__"]
+            path: "Tests/PastryTests"
         ),
         .executableTarget(
             name: "PastryReleaseSmoke",

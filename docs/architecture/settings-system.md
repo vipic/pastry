@@ -32,6 +32,6 @@
 
 ## 验证与边界
 
-重点参考 [OnboardingFlowTests](../../Tests/PastryTests/OnboardingFlowTests.swift)、[HotkeyUtilsTests](../../Tests/PastryTests/HotkeyUtilsTests.swift)、[LaunchAtLoginManagerTests](../../Tests/PastryTests/LaunchAtLoginManagerTests.swift)、[AccessibilityPermissionCheckerTests](../../Tests/PastryTests/AccessibilityPermissionCheckerTests.swift)、[SettingsViewTests](../../Tests/PastryTests/SettingsViewTests.swift) 和 [DeveloperDiagnosticsTests](../../Tests/PastryTests/DeveloperDiagnosticsTests.swift)。
+重点参考 [OnboardingFlowTests](../../Tests/PastryTests/OnboardingFlowTests.swift)、[HotkeyUtilsTests](../../Tests/PastryTests/HotkeyUtilsTests.swift)、[LaunchAtLoginManagerTests](../../Tests/PastryTests/LaunchAtLoginManagerTests.swift)、[AccessibilityPermissionCheckerTests](../../Tests/PastryTests/AccessibilityPermissionCheckerTests.swift) 和 [DeveloperDiagnosticsTests](../../Tests/PastryTests/DeveloperDiagnosticsTests.swift)。
 
 这些测试主要覆盖状态与可注入的服务接口，不能代替真实系统权限弹窗、快捷键冲突、登录项审批和多窗口激活验收。改动相关流程时按[测试说明](../TESTING.md)补做 smoke / 人工检查。

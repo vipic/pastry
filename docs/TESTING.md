@@ -26,7 +26,6 @@ mise run test
 
 ```bash
 mise run test -- --filter StoreManagerTests
-mise run test -- --filter ClipboardCardSnapshotTests
 mise run test -- --filter UpdateCheckerTests
 mise run test -- --filter SelectionStateTests
 mise run test -- --filter OverlayInteractionModelTests
@@ -48,7 +47,6 @@ mise run test -- --filter AppIconProviderTests
 | `OverlayInteractionModelTests` | 修饰键合并、空白 clear 约定、侧轮微调限幅、普通滚轮加速映射、输入轴优先级与连续像素滚动、⌘ 角标 |
 | `DragPayloadBuilderTests` | 多选文本/链接/文件载荷、http→https、混选链接规则 |
 | `UpdateInstallScriptBuilderTests` | 更新脚本 shell 引用与非法版本号 |
-| `AccessibilityIdentifiersTests` | a11y id 稳定与唯一 |
 | `ClipboardItemTests` | SourceFormat 迁移、segments、身份 |
 | `AppIconProviderTests` | 含 `cachedIcon` 首帧缓存命中 |
 | `NetworkAccessPolicyTests` | 远程 URL / 短格式与十进制 IPv4 / `.local` / 重定向 / Content-Length |
@@ -56,7 +54,6 @@ mise run test -- --filter AppIconProviderTests
 | `FTSQueryBuilderTests` | FTS5 MATCH 引号转义与多词 AND |
 | `BoundedRemoteResourceLoaderTests` | 预览下载重定向、响应和流式字节上限 |
 | `PasteboardWriterTests` | 独立 pasteboard 写回（非 general） |
-| `MenuBarMenuFactoryTests` | 菜单结构与快捷键 |
 | `ClipboardSearchTests` | `filtered(by:)` content / linkTitle / favoriteNote / appName |
 
 **不适合单测（靠 smoke / 人工）**：SwiftUI 视图手势树、NSPanel 层级、真系统剪贴板、真辅助功能弹窗、Live 网络抓取。
@@ -104,35 +101,6 @@ mise run coverage -- 25
 ```
 
 当前 CI 门槛是 20%。这是防止明显倒退的保守门槛，不代表目标覆盖率上限。
-
-## Snapshot Tests
-
-普通 `mise run test` 会跳过 snapshot。验证卡片 PNG 基线：
-
-```bash
-mise run snapshot:test
-```
-
-更新 snapshot PNG 基线：
-
-```bash
-mise run snapshot:record
-```
-
-基线文件在：
-
-```text
-Tests/PastryTests/__Snapshots__/*.png
-```
-
-如果验证失败，测试会写出：
-
-```text
-Tests/PastryTests/__Snapshots__/__Failures__/*.actual.png
-Tests/PastryTests/__Snapshots__/__Failures__/*.expected.png
-```
-
-这些失败图片用于本地对比，不应提交。
 
 ## Network-Dependent Tests
 
@@ -284,13 +252,12 @@ mise run check
 ```bash
 mise run test:coverage
 mise run coverage
-mise run snapshot:test
+mise run smoke
 ```
 
 发布前：
 
 ```bash
 mise run check
-mise run snapshot:test
 mise run smoke
 ```

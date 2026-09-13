@@ -59,7 +59,6 @@ Esc 按当前 UI 层级逐层处理：确认层、备注编辑、筛选、Quick 
 - `OverlayPanelManagerTests`：面板配置、失焦保留和辅助逻辑。
 - `OverlayInteractionModelTests`、`SelectionStateTests`：点击、键盘导航和多选状态。
 - `FilePreviewTests`、`DragPayloadBuilderTests`：单选和多选拖拽载荷。
-- `ClipboardCardSnapshotTests`：卡片主要视觉状态。
 - `mise run smoke`：真实面板、快捷键、拖拽和应用间交互。
 
 完整验证入口见[测试说明](../TESTING.md)。

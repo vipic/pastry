@@ -112,7 +112,7 @@ mise run smoke
 mise run release-auto
 ```
 
-`mise tasks` 可查看全部入口。常用任务还包括 `test`、`test:coverage`、`bench`、`logs`、`snapshot:test`、`version:next` 和 `publish`；参数通过 `--` 传给底层脚本。`mise` 只是命令面板，真实实现仍在 SwiftPM、根目录工作流脚本和 `scripts/` 中。
+`mise tasks` 可查看全部入口。常用任务还包括 `test`、`test:coverage`、`bench`、`logs`、`version:next` 和 `publish`；参数通过 `--` 传给底层脚本。`mise` 只是命令面板，真实实现仍在 SwiftPM、根目录工作流脚本和 `scripts/` 中。
 
 ## 项目结构
 
