@@ -26,10 +26,13 @@ mise run test
 
 ```bash
 mise run test -- --filter StoreManagerTests
+mise run test -- --filter LocalNaturalLanguageSearchTests
 mise run test -- --filter UpdateCheckerTests
 mise run test -- --filter SelectionStateTests
 mise run test -- --filter OverlayInteractionModelTests
 ```
+
+`StoreManagerTests` 同时覆盖设备端自然语言搜索意图到关键词、来源、类型、日期和收藏等既有筛选条件的映射；测试使用注入解释器，不调用真实系统模型。`LocalNaturalLanguageSearchTests` 覆盖模型生成条件的确定性校验，确保用户未明确提到的来源应用或内容类型不会参与筛选。`DatabaseManagerTests` 覆盖语义索引的待处理查询、进度统计、持久化往返、重建清理以及历史删除后的级联清理。
 
 ### 交互与载荷防回归（建议改相关代码时跑）
 

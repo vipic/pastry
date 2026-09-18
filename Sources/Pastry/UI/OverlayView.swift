@@ -11,6 +11,7 @@ private enum Local {
     }
     enum Control {
         static let inlineActionSize: CGFloat = 16
+        static let statusPopoverWidth: CGFloat = 320
     }
     enum Keycap {
         static let shadowOpacity: Double = 0.18
@@ -85,6 +86,8 @@ struct OverlayView: View {
 
     @EnvironmentObject private var store: StoreManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(UserDefaultsKeys.semanticSearchEnabled)
+    private var semanticSearchEnabled = false
 
     @State private var cardVisible = false
     @State private var selection = SelectionState()
@@ -95,6 +98,7 @@ struct OverlayView: View {
     @State private var pendingClearClipboardWhenEmpty = true
     @State private var showSearch = false
     @State private var showFilterPopover = false
+    @State private var showNaturalLanguageSearchStatus = false
     @State private var hoverSearch = false
     @State private var hoverClearSearch = false
     @State private var hoverFilter = false
@@ -732,6 +736,10 @@ struct OverlayView: View {
                 }
                 .animation(.easeOut(duration: UIConstants.Motion.instant), value: hoverClearSearch)
 
+                if semanticSearchEnabled {
+                    naturalLanguageSearchButton
+                }
+
                 searchCountBadge
                     .transition(.opacity.combined(with: .scale(scale: 0.94)))
             }
@@ -753,6 +761,121 @@ struct OverlayView: View {
     private func openSearch() {
         withAnimation(searchExpansionAnimation) { showSearch = true }
         DeveloperDiagnostics.record(DiagnosticsEvent.searchOpen)
+    }
+
+    private var naturalLanguageSearchButton: some View {
+        Button {
+            if naturalLanguageSearchHasIssue {
+                showNaturalLanguageSearchStatus = true
+                return
+            }
+            Task {
+                await store.performNaturalLanguageSearch()
+                if naturalLanguageSearchHasIssue {
+                    showNaturalLanguageSearchStatus = true
+                }
+            }
+        } label: {
+            Group {
+                switch store.naturalLanguageSearchState {
+                case .searching:
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.white.opacity(UIConstants.OnDark.textSecondary))
+                case .applied:
+                    Image(systemName: "checkmark.circle.fill")
+                case .unavailable, .failed:
+                    Image(systemName: "exclamationmark.triangle.fill")
+                case .idle:
+                    Image(systemName: "sparkles")
+                }
+            }
+            .font(.system(size: UIConstants.TypeSize.label, weight: .semibold))
+            .frame(width: Local.Control.inlineActionSize, height: Local.Control.inlineActionSize)
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(.white.opacity(UIConstants.OnDark.textSecondary))
+        .disabled(
+            store.naturalLanguageSearchState == .searching
+                || (store.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && !naturalLanguageSearchHasIssue)
+        )
+        .opacity(
+            store.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !naturalLanguageSearchHasIssue ? 0.45 : 1
+        )
+        .popover(isPresented: $showNaturalLanguageSearchStatus, arrowEdge: .bottom) {
+            naturalLanguageSearchStatusPopover
+                .presentationBackground(FilterPopoverStyle.surface)
+                .presentationCornerRadius(UIConstants.Radius.panel)
+        }
+        .help(naturalLanguageSearchHelp)
+        .accessibilityLabel(L10n["search.smart"])
+        .accessibilityValue(naturalLanguageSearchHelp)
+        .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.naturalLanguageSearchButton)
+    }
+
+    private var naturalLanguageSearchHasIssue: Bool {
+        switch store.naturalLanguageSearchState {
+        case .unavailable, .failed:
+            return true
+        case .idle, .searching, .applied:
+            return false
+        }
+    }
+
+    private var naturalLanguageSearchStatusPopover: some View {
+        VStack(alignment: .leading, spacing: UIConstants.Card.contentVerticalPadding) {
+            HStack(alignment: .top) {
+                Label(L10n["search.smart_issue_title"], systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: UIConstants.TypeSize.body, weight: .semibold))
+                    .foregroundStyle(PastryPalette.warmAccent)
+
+                Spacer()
+
+                Button {
+                    showNaturalLanguageSearchStatus = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: UIConstants.TypeSize.caption, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n["a11y.close"])
+            }
+
+            Text(naturalLanguageSearchHelp)
+                .font(.system(size: UIConstants.TypeSize.body))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(L10n["search.smart_fallback_hint"])
+                .font(.system(size: UIConstants.TypeSize.caption))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(UIConstants.Overlay.cardSpacing)
+        .frame(width: Local.Control.statusPopoverWidth)
+    }
+
+    private var naturalLanguageSearchHelp: String {
+        switch store.naturalLanguageSearchState {
+        case .idle:
+            return L10n["search.smart"]
+        case .searching:
+            return L10n["search.smart_searching"]
+        case .applied:
+            return L10n["search.smart_applied"]
+        case .failed:
+            return L10n["search.smart_failed"]
+        case .unavailable(.deviceNotEligible):
+            return L10n["search.smart_unavailable_device"]
+        case .unavailable(.appleIntelligenceNotEnabled):
+            return L10n["search.smart_unavailable_disabled"]
+        case .unavailable(.modelNotReady):
+            return L10n["search.smart_unavailable_not_ready"]
+        case .unavailable(.available):
+            return L10n["search.smart_failed"]
+        }
     }
 
     @ViewBuilder

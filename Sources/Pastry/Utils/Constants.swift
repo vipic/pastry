@@ -49,8 +49,16 @@ enum UserDefaultsKeys {
     static let historyMaxItems = "history_max_items"
     static let historyMaxAgeDays = "history_max_age_days"
     static let performanceLoggingEnabled = "performance_logging_enabled"
+    /// 实验性的设备端智能找回。缺省关闭，确保升级后保持既有关键词搜索行为。
+    static let semanticSearchEnabled = "semantic_search_enabled"
     /// 已完成的新手引导版本。使用版本号而非布尔值，便于未来只补充重大新增步骤。
     static let onboardingCompletedVersion = "onboarding_completed_version"
+}
+
+enum SemanticSearchPreference {
+    static var isEnabled: Bool {
+        UserDefaults.standard.bool(forKey: UserDefaultsKeys.semanticSearchEnabled)
+    }
 }
 
 /// 删除确认偏好。缺省键时视为开启，避免 `bool(forKey:)` 对缺失键返回 false。

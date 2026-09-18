@@ -35,6 +35,7 @@ extension Notification.Name {
 struct SettingsSceneView: View {
 
     @ObservedObject var store = StoreManager.shared
+    @ObservedObject var semanticSearchStatus = SemanticSearchStatus.shared
 
     @AppStorage(UserDefaultsKeys.launchAtLogin)
     var launchAtLogin = false
@@ -52,6 +53,8 @@ struct SettingsSceneView: View {
     var linkPreviewNetworkEnabled = false
     @AppStorage(UserDefaultsKeys.performanceLoggingEnabled)
     var performanceLoggingEnabled = false
+    @AppStorage(UserDefaultsKeys.semanticSearchEnabled)
+    var semanticSearchEnabled = false
     @AppStorage(UserDefaultsKeys.historyMaxItems)
     var historyMaxItems = HistoryRetentionPolicy.defaultMaxItems
     @AppStorage(UserDefaultsKeys.historyMaxAgeDays)

@@ -16,6 +16,8 @@
 - `LegacyEncryptedDatabaseMigrator`：把旧 SQLCipher 数据库一次性转换为明文 SQLite。
 - `StoreManager`：主线程上的可观察状态，连接监听器、数据库、搜索筛选和 UI。
 - `HistoryRetentionPolicy`：校验最大条数和保留天数设置。
+- `LocalNaturalLanguageSearchInterpreter`：使用 macOS Foundation Models 设备端模型把用户描述解析为结构化搜索条件；不读取历史正文或访问外部模型服务。
+- `LocalSemanticSearchEngine`：在设备上为历史生成中英文摘要与概念标签，建立句向量索引，合并候选并使用 Foundation Models 重排。
 
 ## 采集数据流
 
@@ -42,7 +44,13 @@ Pastry 写回或清空系统剪贴板时必须协调监听器：
 
 数据库发现已有相同 key 时会删除旧记录并重新插入，把条目移动到最新位置，同时保留收藏和场景备注。没有历史记录但同一 key 在 5 秒内连续出现时，会跳过快速重复。
 
-搜索优先使用外部内容 FTS5 表，索引内容、链接标题和场景备注；查询词会逐词转义并以前缀 AND 组合。FTS 无结果或准备失败时降级为 `LIKE`。来源应用等结构化筛选由 `StoreManager` 合并处理。
+搜索优先使用外部内容 FTS5 表，索引内容、链接标题和场景备注；查询词会逐词转义并以前缀 AND 组合。FTS 无结果或准备失败时降级为 `LIKE`；多个关键词分别做子串匹配并以 AND 合并，避免 `unicode61` 将连续中文视为单个 token 后漏掉自然语言解析结果。来源应用等结构化筛选由 `StoreManager` 合并处理。
+
+自然语言找回是缺省关闭的实验功能，必须先由用户在通用设置中开启，再在搜索框显式触发。关闭时不调用模型、不建立索引，搜索行为保持为关键词搜索。解释器先把描述转换为关键词、来源、类型、日期区间、收藏、备注及 Handoff 条件；用户原句未明确提到的来源、类型和其他布尔条件会被确定性校验丢弃，防止模型猜测额外筛选条件。
+
+语义索引使用独立的 `clip_semantics` 表保存中英文摘要、概念标签和两套句向量。开关开启后分批回填旧历史，新记录写入后异步增量索引；设置页通过独立状态对象展示系统模型可用性、已处理数量和总量。关闭开关会中止后续模型处理，保留的索引不参与搜索。重建入口只清空 `clip_semantics` 后重新生成，不改动 `clips`。正文、标题和备注只取受限前缀交给设备端模型。删除、去重替换和保留策略通过数据库触发器同步清理语义记录。自然语言搜索依次合并 FTS 字面命中、模型概念扩展命中、标签命中和中英文句向量相似候选，最多取 36 条受限正文交给设备端模型重排，再应用日期、来源、类型等确定性条件。精确字面命中不会因重排漏选而消失。
+
+全部模型处理都发生在本机，不调用外部服务。模型不可用、未就绪、索引或重排失败时降级到已有关键词与结构化筛选。诊断只记录状态、数量和耗时，不记录搜索描述、剪贴板正文、摘要、标签或模型输入输出。
 
 FTS 表通过 `clips` 的 INSERT、UPDATE、DELETE 触发器同步。外部内容表删除必须使用 FTS5 的特殊 `delete` 命令；普通删除可能损坏索引。启动迁移后会核对 FTS 列并修复曾经出现过的 schema 与 `user_version` 不一致。
 
@@ -74,8 +82,9 @@ FTS 表通过 `clips` 的 INSERT、UPDATE、DELETE 触发器同步。外部内�
 
 - `ClipboardMonitorTests`：格式优先级、敏感类型、排除应用、Handoff 和独立 pasteboard 读取。
 - `ClipboardItemTests`：格式兼容、图文段、标签和去重身份。
-- `DatabaseManagerTests`：schema 迁移、旧加密库转换、CRUD、FTS、去重和保留策略。
+- `DatabaseManagerTests`：schema 迁移、旧加密库转换、CRUD、FTS、语义索引生命周期、去重和保留策略。
 - `StoreManagerTests`、`ClipboardSearchTests`：筛选、删除、收藏、搜索合并和内存状态。
+- `StoreManagerTests` 额外覆盖自然语言意图到关键词、URL、来源、类型、日期和收藏筛选的映射，以及模型不可用降级。
 - `ImageCacheManagerTests`、`PasteboardWriterTests`：图片缓存和各格式写回。
 
 测试不得使用 `NSPasteboard.general`；每个测试使用 `NSPasteboard.withUniqueName()`，避免触发后台运行的 Pastry 或污染真实剪贴板。完整验证入口见[测试说明](../TESTING.md)。

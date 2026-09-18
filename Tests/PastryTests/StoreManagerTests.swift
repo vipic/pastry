@@ -1,12 +1,26 @@
 import XCTest
 @testable import Pastry
 
+private struct StubNaturalLanguageSearchInterpreter: NaturalLanguageSearchInterpreting {
+    let availability: LocalLanguageModelAvailability
+    var intent: NaturalLanguageSearchIntent?
+
+    func interpret(
+        _ query: String,
+        availableApps: [String],
+        now: Date,
+        calendar: Calendar
+    ) async throws -> NaturalLanguageSearchIntent {
+        guard let intent else { throw CancellationError() }
+        return intent
+    }
+}
+
 // MARK: - StoreManager 测试套件
 // 测试筛选、搜索、状态管理逻辑（CRUD 由 DatabaseManagerTests 覆盖）
 
 @MainActor
 final class StoreManagerTests: XCTestCase {
-
     var store: StoreManager!
 
     override func setUp() async throws {
@@ -263,6 +277,124 @@ final class StoreManagerTests: XCTestCase {
 
         XCTAssertEqual(store.filteredItems.count, 1)
         XCTAssertEqual(store.filteredItems[0].content, "pinned text safari")
+    }
+
+    // MARK: - 设备端自然语言搜索
+
+    func testNaturalLanguageIntentReusesKeywordAndStructuredFilters() {
+        store = makeStoreWithItems([
+            ("SQLite migration plan", .text, "Safari", true, 0),
+            ("SQLite migration plan", .text, "Xcode", true, 0),
+            ("SQLite migration plan", .image, "Safari", true, 0),
+            ("unrelated", .text, "Safari", true, 0),
+            ("SQLite migration plan", .text, "Safari", false, 0),
+        ])
+        store.searchQuery = "今天从 Safari 复制并收藏的 SQLite migration 文本"
+
+        let start = Calendar.current.startOfDay(for: Date())
+        let end = Calendar.current.date(byAdding: .day, value: 1, to: start)!
+        store.applyNaturalLanguageSearchIntent(
+            NaturalLanguageSearchIntent(
+                keywords: ["SQLite", "migration"],
+                appName: "Safari",
+                contentKind: .text,
+                startDate: start,
+                endDate: end,
+                favoritesOnly: true,
+                handoffOnly: false,
+                noteRequirement: .any
+            )
+        )
+
+        XCTAssertEqual(store.filteredItems.count, 1)
+        XCTAssertEqual(store.filteredItems.first?.appName, "Safari")
+        XCTAssertEqual(store.filteredItems.first?.sourceFormat, .text)
+        XCTAssertTrue(store.filteredItems.first?.isPinned == true)
+    }
+
+    func testNaturalLanguageLinkIntentUsesURLTagInsteadOfSourceFormat() {
+        let items = [
+            ClipboardItem(
+                content: "https://example.com",
+                sourceFormat: .text,
+                tags: ContentTags(isURL: true),
+                appName: "Safari"
+            ),
+            ClipboardItem(content: "example", sourceFormat: .text, appName: "Safari"),
+        ]
+        store = StoreManager(items: items)
+        store.searchQuery = "Safari 复制的链接"
+        store.applyNaturalLanguageSearchIntent(
+            NaturalLanguageSearchIntent(
+                keywords: [],
+                appName: "Safari",
+                contentKind: .link,
+                startDate: nil,
+                endDate: nil,
+                favoritesOnly: false,
+                handoffOnly: false,
+                noteRequirement: .any
+            )
+        )
+
+        XCTAssertEqual(store.filteredItems.map(\.content), ["https://example.com"])
+        XCTAssertTrue(store.urlFilter)
+        XCTAssertNil(store.typeFilter)
+    }
+
+    func testNaturalLanguageSearchReportsUnavailableModelWithoutChangingFilters() async {
+        let interpreter = StubNaturalLanguageSearchInterpreter(
+            availability: .appleIntelligenceNotEnabled,
+            intent: nil
+        )
+        store = StoreManager(
+            items: [ClipboardItem(content: "hello", sourceFormat: .text)],
+            naturalLanguageSearchInterpreter: interpreter
+        )
+        store.searchQuery = "昨天复制的内容"
+
+        await store.performNaturalLanguageSearch()
+
+        XCTAssertEqual(
+            store.naturalLanguageSearchState,
+            .unavailable(.appleIntelligenceNotEnabled)
+        )
+        XCTAssertEqual(store.timeFilter, .any)
+    }
+
+    func testNaturalLanguageSearchAppliesInjectedModelResult() async {
+        let intent = NaturalLanguageSearchIntent(
+            keywords: ["release"],
+            appName: "Safari",
+            contentKind: .link,
+            startDate: nil,
+            endDate: nil,
+            favoritesOnly: false,
+            handoffOnly: false,
+            noteRequirement: .any
+        )
+        let interpreter = StubNaturalLanguageSearchInterpreter(
+            availability: .available,
+            intent: intent
+        )
+        store = StoreManager(
+            items: [
+                ClipboardItem(
+                    content: "https://example.com/release",
+                    sourceFormat: .text,
+                    tags: ContentTags(isURL: true),
+                    appName: "Safari"
+                ),
+                ClipboardItem(content: "release notes", sourceFormat: .text, appName: "Safari"),
+            ],
+            naturalLanguageSearchInterpreter: interpreter
+        )
+        store.searchQuery = "Safari 里复制的 release 链接"
+
+        await store.performNaturalLanguageSearch()
+
+        XCTAssertEqual(store.naturalLanguageSearchState, .applied)
+        XCTAssertEqual(store.filteredItems.map(\.content), ["https://example.com/release"])
     }
 
     // MARK: - hasActiveFilters

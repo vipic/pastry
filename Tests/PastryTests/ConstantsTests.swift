@@ -78,6 +78,24 @@ final class ConstantsTests: XCTestCase {
         XCTAssertEqual(UserDefaultsKeys.performanceLoggingEnabled, "performance_logging_enabled")
     }
 
+    func testSemanticSearchDefaultsToDisabled() {
+        let key = UserDefaultsKeys.semanticSearchEnabled
+        let saved = UserDefaults.standard.object(forKey: key)
+        defer {
+            if let saved {
+                UserDefaults.standard.set(saved, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+
+        UserDefaults.standard.removeObject(forKey: key)
+        XCTAssertFalse(SemanticSearchPreference.isEnabled)
+
+        UserDefaults.standard.set(true, forKey: key)
+        XCTAssertTrue(SemanticSearchPreference.isEnabled)
+    }
+
     func testHistoryRetentionPolicySanitizesValues() {
         XCTAssertEqual(HistoryRetentionPolicy.sanitizedMaxItems(500), 500)
         XCTAssertEqual(HistoryRetentionPolicy.sanitizedMaxItems(-1), HistoryRetentionPolicy.defaultMaxItems)

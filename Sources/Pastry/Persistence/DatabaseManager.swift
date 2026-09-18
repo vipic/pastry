@@ -275,6 +275,12 @@ final class DatabaseManager {
         }) {
             userVersion = 11
         }
+        if version < 12, runMigrationInTransaction("v12-semantic-index", {
+            guard migrateExec(Self.semanticIndexTableSQL) else { return false }
+            return migrateExec(Self.semanticDeleteTriggerSQL)
+        }) {
+            userVersion = 12
+        }
 
         repairFTSSchemaIfNeeded()
 
@@ -288,6 +294,8 @@ final class DatabaseManager {
         _ = execute(Self.ftsDeleteTriggerSQL)
         _ = execute(Self.ftsInsertTriggerSQL)
         _ = execute(Self.ftsUpdateTriggerSQL)
+        _ = execute(Self.semanticIndexTableSQL)
+        _ = execute(Self.semanticDeleteTriggerSQL)
     }
 
     /// 修复 user_version 已前进、但 FTS 虚拟表仍停留在旧结构的数据库。
@@ -373,6 +381,27 @@ final class DatabaseManager {
         VALUES('delete', old.rowid, old.content, old.link_title, old.favorite_note);
         INSERT INTO clips_fts(rowid, content, link_title, favorite_note)
         VALUES (new.rowid, new.content, new.link_title, new.favorite_note);
+    END;
+    """
+
+    private static let semanticIndexTableSQL = """
+    CREATE TABLE IF NOT EXISTS clip_semantics (
+        clip_id TEXT PRIMARY KEY,
+        summary_zh TEXT NOT NULL,
+        summary_en TEXT NOT NULL,
+        tags_zh TEXT NOT NULL,
+        tags_en TEXT NOT NULL,
+        embedding_zh BLOB,
+        embedding_en BLOB,
+        indexed_at REAL NOT NULL
+    );
+    """
+
+    private static let semanticDeleteTriggerSQL = """
+    CREATE TRIGGER IF NOT EXISTS trg_clips_semantic_delete
+    AFTER DELETE ON clips
+    BEGIN
+        DELETE FROM clip_semantics WHERE clip_id = old.id;
     END;
     """
 
@@ -636,10 +665,19 @@ final class DatabaseManager {
 
     /// LIKE 降级搜索
     private func fallbackSearch(query: String, limit: Int) -> [ClipboardItem] {
+        let terms = query
+            .split(whereSeparator: \.isWhitespace)
+            .map(String.init)
+        guard !terms.isEmpty else { return [] }
+
+        // unicode61 不会把连续中文按词切开。自然语言解析可能产出多个中文关键词，
+        // 因此不能用包含空格的完整 query 做一次 LIKE；每个词分别匹配，再以 AND 合并。
+        let termClause = "(content LIKE ? OR link_title LIKE ? OR favorite_note LIKE ?)"
+        let whereClause = Array(repeating: termClause, count: terms.count).joined(separator: " AND ")
         let sql = """
         SELECT \(Self.listColumns)
         FROM clips
-        WHERE content LIKE ? OR link_title LIKE ? OR favorite_note LIKE ?
+        WHERE \(whereClause)
         ORDER BY timestamp DESC
         LIMIT ?;
         """
@@ -649,11 +687,15 @@ final class DatabaseManager {
             return []
         }
 
-        let pattern = "%\(query)%"
-        sqlite3_bind_text(stmt, 1, (pattern as NSString).utf8String, -1, nil)
-        sqlite3_bind_text(stmt, 2, (pattern as NSString).utf8String, -1, nil)
-        sqlite3_bind_text(stmt, 3, (pattern as NSString).utf8String, -1, nil)
-        sqlite3_bind_int(stmt, 4, Int32(limit))
+        var bindIndex: Int32 = 1
+        for term in terms {
+            let pattern = "%\(term)%"
+            for _ in 0 ..< 3 {
+                sqlite3_bind_text(stmt, bindIndex, (pattern as NSString).utf8String, -1, nil)
+                bindIndex += 1
+            }
+        }
+        sqlite3_bind_int(stmt, bindIndex, Int32(limit))
 
         let results = readItems(from: stmt)
         sqlite3_finalize(stmt)
@@ -877,6 +919,159 @@ final class DatabaseManager {
         return true
     }
 
+    // MARK: - 本地语义索引
+
+    func semanticIndexProgress() -> (indexed: Int, total: Int) {
+        lock.lock()
+        defer { lock.unlock() }
+        let sql = """
+        SELECT
+            COUNT(s.clip_id),
+            COUNT(c.id)
+        FROM clips c
+        LEFT JOIN clip_semantics s ON s.clip_id = c.id
+        WHERE c.content_type != 'image' OR COALESCE(c.text_annotation, '') != '';
+        """
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return (0, 0) }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return (0, 0) }
+        return (Int(sqlite3_column_int64(stmt, 0)), Int(sqlite3_column_int64(stmt, 1)))
+    }
+
+    /// 只清除可再生成的语义派生数据，不影响任何剪贴板历史。
+    @discardableResult
+    func clearSemanticIndex() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return execute("DELETE FROM clip_semantics;")
+    }
+
+    /// 返回尚未建立语义索引的历史。正文只取有限前缀，避免单条大文本占满模型上下文。
+    func semanticIndexInputs(limit: Int = 80) -> [SemanticIndexInput] {
+        lock.lock()
+        defer { lock.unlock() }
+        let sql = """
+        SELECT c.id,
+               CASE WHEN c.content_type = 'image'
+                    THEN COALESCE(c.text_annotation, '')
+                    ELSE substr(c.content, 1, 2400)
+               END,
+               c.link_title,
+               c.favorite_note
+        FROM clips c
+        LEFT JOIN clip_semantics s ON s.clip_id = c.id
+        WHERE s.clip_id IS NULL
+          AND (c.content_type != 'image' OR COALESCE(c.text_annotation, '') != '')
+        ORDER BY c.timestamp DESC
+        LIMIT ?;
+        """
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int(stmt, 1, Int32(limit))
+
+        var inputs: [SemanticIndexInput] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            guard let idPointer = sqlite3_column_text(stmt, 0),
+                  let id = UUID(uuidString: String(cString: idPointer)),
+                  let contentPointer = sqlite3_column_text(stmt, 1)
+            else { continue }
+            let linkTitle = sqlite3_column_text(stmt, 2).map { String(cString: $0) }
+            let favoriteNote = sqlite3_column_text(stmt, 3).map { String(cString: $0) }
+            inputs.append(
+                SemanticIndexInput(
+                    id: id,
+                    content: String(cString: contentPointer),
+                    linkTitle: linkTitle,
+                    favoriteNote: favoriteNote
+                )
+            )
+        }
+        return inputs
+    }
+
+    @discardableResult
+    func upsertSemanticIndex(_ record: SemanticIndexRecord) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        let sql = """
+        INSERT INTO clip_semantics
+            (clip_id, summary_zh, summary_en, tags_zh, tags_en, embedding_zh, embedding_en, indexed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(clip_id) DO UPDATE SET
+            summary_zh = excluded.summary_zh,
+            summary_en = excluded.summary_en,
+            tags_zh = excluded.tags_zh,
+            tags_en = excluded.tags_en,
+            embedding_zh = excluded.embedding_zh,
+            embedding_en = excluded.embedding_en,
+            indexed_at = excluded.indexed_at;
+        """
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return false }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, (record.clipID.uuidString as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(stmt, 2, (record.summaryZH as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(stmt, 3, (record.summaryEN as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(stmt, 4, (record.tagsZH.joined(separator: "\n") as NSString).utf8String, -1, nil)
+        sqlite3_bind_text(stmt, 5, (record.tagsEN.joined(separator: "\n") as NSString).utf8String, -1, nil)
+        bindBlob(record.embeddingZH, to: stmt, index: 6)
+        bindBlob(record.embeddingEN, to: stmt, index: 7)
+        sqlite3_bind_double(stmt, 8, Date().timeIntervalSince1970)
+        return sqlite3_step(stmt) == SQLITE_DONE
+    }
+
+    func semanticIndexRecords(limit: Int = 2_000) -> [StoredSemanticRecord] {
+        lock.lock()
+        defer { lock.unlock() }
+        let sql = """
+        SELECT clip_id, summary_zh, summary_en, tags_zh, tags_en, embedding_zh, embedding_en
+        FROM clip_semantics
+        ORDER BY indexed_at DESC
+        LIMIT ?;
+        """
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int(stmt, 1, Int32(limit))
+        var records: [StoredSemanticRecord] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            guard let idPointer = sqlite3_column_text(stmt, 0),
+                  let id = UUID(uuidString: String(cString: idPointer))
+            else { continue }
+            records.append(
+                StoredSemanticRecord(
+                    clipID: id,
+                    summaryZH: sqlite3_column_text(stmt, 1).map { String(cString: $0) } ?? "",
+                    summaryEN: sqlite3_column_text(stmt, 2).map { String(cString: $0) } ?? "",
+                    tagsZH: (sqlite3_column_text(stmt, 3).map { String(cString: $0) } ?? "").split(separator: "\n").map(String.init),
+                    tagsEN: (sqlite3_column_text(stmt, 4).map { String(cString: $0) } ?? "").split(separator: "\n").map(String.init),
+                    embeddingZH: readBlob(from: stmt, column: 5),
+                    embeddingEN: readBlob(from: stmt, column: 6)
+                )
+            )
+        }
+        return records
+    }
+
+    func items(ids: [UUID]) -> [ClipboardItem] {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !ids.isEmpty else { return [] }
+        let placeholders = Array(repeating: "?", count: ids.count).joined(separator: ",")
+        let sql = "SELECT \(Self.listColumns) FROM clips WHERE id IN (\(placeholders));"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(stmt) }
+        for (offset, id) in ids.enumerated() {
+            sqlite3_bind_text(stmt, Int32(offset + 1), (id.uuidString as NSString).utf8String, -1, nil)
+        }
+        let found = readItems(from: stmt)
+        let byID = Dictionary(uniqueKeysWithValues: found.map { ($0.id, $0) })
+        return ids.compactMap { byID[$0] }
+    }
+
     // MARK: - 统计
 
     func stats() -> ClipboardStats {
@@ -1061,6 +1256,29 @@ final class DatabaseManager {
             return String(cString: ptr)
         }()
         return (data, type)
+    }
+
+    private func bindBlob(_ data: Data?, to statement: OpaquePointer?, index: Int32) {
+        guard let data else {
+            sqlite3_bind_null(statement, index)
+            return
+        }
+        _ = data.withUnsafeBytes { pointer in
+            sqlite3_bind_blob(
+                statement,
+                index,
+                pointer.baseAddress,
+                Int32(data.count),
+                unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            )
+        }
+    }
+
+    private func readBlob(from statement: OpaquePointer?, column: Int32) -> Data? {
+        guard let pointer = sqlite3_column_blob(statement, column) else { return nil }
+        let byteCount = Int(sqlite3_column_bytes(statement, column))
+        guard byteCount > 0 else { return nil }
+        return Data(bytes: pointer, count: byteCount)
     }
 
     @discardableResult

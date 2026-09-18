@@ -112,6 +112,8 @@ Pastry/
 │           ├── DeveloperDiagnostics.swift    # runtime、perf 和 usage 诊断日志
 │           ├── UpdateChecker.swift           # GitHub Release 查询、比较和下载
 │           ├── UpdateInstallScriptBuilder.swift # 更新安装 helper 脚本生成
+│           ├── LocalNaturalLanguageSearch.swift # Foundation Models 设备端搜索意图解析
+│           ├── LocalSemanticSearch.swift        # 语义标签、句向量召回与候选重排
 │           └── Watchdog.swift                # 主线程卡死检测、采样和恢复
 │   └── PastryReleaseSmoke/
 │       └── main.swift                         # 正式 DMG 首次启动验收器
@@ -149,7 +151,7 @@ Pastry/
 │       ├── BoundedRemoteResourceLoaderTests.swift    # 重定向与流式响应限制
 │       ├── SelectionStateTests.swift                  # 多选和区间选择
 │       ├── SigningConfigurationTests.swift            # 签名脚本和文档一致性
-│       ├── StoreManagerTests.swift                    # 搜索、筛选、收藏和删除
+│       ├── StoreManagerTests.swift                    # 搜索、筛选、收藏、删除和自然语言搜索意图
 │       ├── UpdateCheckerTests.swift                   # 版本比较和下载验证
 │       └── UpdateInstallScriptBuilderTests.swift      # 安装脚本安全性
 │

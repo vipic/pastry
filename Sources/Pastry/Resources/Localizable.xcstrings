@@ -103,6 +103,139 @@
         }
       }
     },
+    "settings.semantic.section": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "智能找回（实验性）" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Smart Retrieval (Experimental)" } }
+      }
+    },
+    "settings.semantic.feature_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用设备端模型分析" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Use On-Device Model Analysis" } }
+      }
+    },
+    "settings.semantic.feature_help": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "默认关闭。开启后才会在本机分析历史并启用智能找回；关闭后仅使用与正式版相同的关键词搜索。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Off by default. When enabled, history is analyzed on this Mac for smart retrieval; when off, search behaves like the stable keyword-only version." } }
+      }
+    },
+    "settings.semantic.model_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple 设备端模型" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Apple On-Device Model" } }
+      }
+    },
+    "settings.semantic.model_help": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "由 macOS 和 Apple Intelligence 提供，不需要安装 Ollama、Qwen 或连接外部 AI 服务。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Provided by macOS and Apple Intelligence. Ollama, Qwen, and external AI services are not required." } }
+      }
+    },
+    "settings.semantic.model_available": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "可用" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Available" } }
+      }
+    },
+    "settings.semantic.model_unsupported": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "此 Mac 不支持" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Not supported on this Mac" } }
+      }
+    },
+    "settings.semantic.model_disabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple Intelligence 未开启" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Apple Intelligence is off" } }
+      }
+    },
+    "settings.semantic.model_not_ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "模型尚未准备好" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Model is not ready" } }
+      }
+    },
+    "settings.semantic.index_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "语义索引" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Semantic Index" } }
+      }
+    },
+    "settings.semantic.index_count": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已处理 %lld / %lld 条" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%lld of %lld processed" } }
+      }
+    },
+    "settings.semantic.index_disabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "功能已关闭，不会分析新内容；已有索引保留在本机但不会参与搜索。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "The feature is off. New content is not analyzed; existing local index data is retained but not used." } }
+      }
+    },
+    "settings.semantic.index_waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "等待设备端模型可用后继续建立索引。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Waiting for the on-device model before indexing continues." } }
+      }
+    },
+    "settings.semantic.index_building": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在后台理解历史内容，期间普通关键词搜索不受影响。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Understanding history in the background. Keyword search remains available." } }
+      }
+    },
+    "settings.semantic.index_ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "索引已完成；新复制的内容会在后台自动补充。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Index is complete; newly copied content is added automatically in the background." } }
+      }
+    },
+    "settings.semantic.index_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "索引未能完成。可稍后重试；若持续异常，再使用下方的重建功能。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Indexing did not finish. Try again later; rebuild only if the issue persists." } }
+      }
+    },
+    "settings.semantic.rebuild_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "重建语义索引" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Rebuild Semantic Index" } }
+      }
+    },
+    "settings.semantic.rebuild_help": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "仅在进度长期卡住、搜索结果明显过期，或系统升级后持续异常时主动使用；日常无需操作。只会重新生成派生索引，不会删除剪贴板历史。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Use only if progress remains stuck, results are clearly stale, or problems persist after a system update. It regenerates derived index data and never deletes clipboard history." } }
+      }
+    },
+    "settings.semantic.rebuild_button": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "重新建立" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Rebuild" } }
+      }
+    },
     "settings.sidebar.subtitle": {
       "extractionState": "manual",
       "localizations": {
@@ -1952,6 +2085,159 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search..."
+          }
+        }
+      }
+    },
+    "search.smart": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用设备端模型智能找回"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find with the on-device model"
+          }
+        }
+      }
+    },
+    "search.smart_applied": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已理解描述并应用搜索条件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Description understood and search filters applied"
+          }
+        }
+      }
+    },
+    "search.smart_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "智能找回失败，仍可使用关键词搜索"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart search failed; keyword search is still available"
+          }
+        }
+      }
+    },
+    "search.smart_fallback_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "普通关键词搜索不受影响：直接输入关键词即可即时筛选。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keyword search is unaffected: enter keywords to filter immediately."
+          }
+        }
+      }
+    },
+    "search.smart_issue_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "智能找回暂不可用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart search is unavailable"
+          }
+        }
+      }
+    },
+    "search.smart_searching": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在设备上理解搜索描述"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Understanding the search description on this Mac"
+          }
+        }
+      }
+    },
+    "search.smart_unavailable_device": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台 Mac 不支持设备端 Apple Intelligence 模型"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Mac does not support the on-device Apple Intelligence model"
+          }
+        }
+      }
+    },
+    "search.smart_unavailable_disabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先在系统设置中开启 Apple Intelligence"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn on Apple Intelligence in System Settings first"
+          }
+        }
+      }
+    },
+    "search.smart_unavailable_not_ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备端模型尚未准备好，请稍后再试"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The on-device model is not ready yet; try again later"
           }
         }
       }

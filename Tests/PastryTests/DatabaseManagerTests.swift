@@ -567,6 +567,26 @@ final class DatabaseManagerTests: XCTestCase {
         XCTAssertEqual(results[0].content, "去买牛奶")
     }
 
+    func testSearchFindsSeparatedChineseKeywordsInsideContinuousText() {
+        db.insert(makeItem(content: "上个月复制过的大明王朝"))
+        db.insert(makeItem(content: "上个月复制过的其他内容"))
+
+        let results = db.search(query: "上个月 大明王朝")
+
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results[0].content, "上个月复制过的大明王朝")
+    }
+
+    func testSearchFindsMultipleChineseKeywordSubstrings() {
+        db.insert(makeItem(content: "我复制过的当年王朝"))
+        db.insert(makeItem(content: "我复制过的现代故事"))
+
+        let results = db.search(query: "复制过 当年王朝")
+
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results[0].content, "我复制过的当年王朝")
+    }
+
     func testSearchFindsFavoriteNote() {
         db.insert(makeItem(content: "https://example.com", pinned: true, favoriteNote: "clientAlpha reference"))
         db.insert(makeItem(content: "普通内容", pinned: true, favoriteNote: "other note"))
@@ -609,6 +629,65 @@ final class DatabaseManagerTests: XCTestCase {
         db.insert(makeItem(content: "Hello"))
         let results = db.search(query: "XYZ不存在")
         XCTAssertEqual(results.count, 0)
+    }
+
+    func testSemanticIndexRoundTripAndPendingState() {
+        let item = makeItem(content: "Use Ollama to run Qwen locally")
+        assertInserted(item)
+        XCTAssertEqual(db.semanticIndexInputs().map(\.id), [item.id])
+        XCTAssertEqual(db.semanticIndexProgress().indexed, 0)
+        XCTAssertEqual(db.semanticIndexProgress().total, 1)
+
+        let vector = Data([1, 2, 3, 4])
+        XCTAssertTrue(
+            db.upsertSemanticIndex(
+                SemanticIndexRecord(
+                    clipID: item.id,
+                    summaryZH: "使用 Ollama 本地运行 Qwen",
+                    summaryEN: "Run Qwen locally with Ollama",
+                    tagsZH: ["本地大模型", "模型推理"],
+                    tagsEN: ["local LLM", "inference"],
+                    embeddingZH: vector,
+                    embeddingEN: nil
+                )
+            )
+        )
+
+        XCTAssertTrue(db.semanticIndexInputs().isEmpty)
+        let stored = db.semanticIndexRecords()
+        XCTAssertEqual(stored.count, 1)
+        XCTAssertEqual(stored[0].clipID, item.id)
+        XCTAssertEqual(stored[0].tagsZH, ["本地大模型", "模型推理"])
+        XCTAssertEqual(stored[0].embeddingZH, vector)
+        XCTAssertNil(stored[0].embeddingEN)
+        XCTAssertEqual(db.semanticIndexProgress().indexed, 1)
+        XCTAssertEqual(db.semanticIndexProgress().total, 1)
+
+        XCTAssertTrue(db.clearSemanticIndex())
+        XCTAssertEqual(db.semanticIndexProgress().indexed, 0)
+        XCTAssertEqual(db.semanticIndexProgress().total, 1)
+        XCTAssertEqual(db.semanticIndexInputs().map(\.id), [item.id])
+    }
+
+    func testDeletingClipAlsoDeletesSemanticIndex() {
+        let item = makeItem(content: "Ollama and Qwen")
+        assertInserted(item)
+        XCTAssertTrue(
+            db.upsertSemanticIndex(
+                SemanticIndexRecord(
+                    clipID: item.id,
+                    summaryZH: "本地模型",
+                    summaryEN: "Local model",
+                    tagsZH: ["本地大模型"],
+                    tagsEN: ["local LLM"],
+                    embeddingZH: nil,
+                    embeddingEN: nil
+                )
+            )
+        )
+
+        XCTAssertTrue(db.delete(id: item.id.uuidString))
+        XCTAssertTrue(db.semanticIndexRecords().isEmpty)
     }
 
     // MARK: - textAnnotation 持久化

@@ -13,6 +13,7 @@
 - `PastryApp` 启动存储层、清理孤儿图片、预热图标、注册 Carbon 热键与菜单栏，并安排下一轮 RunLoop 预热浮层。
 - `AppDelegate` 管理设置、帮助、更新和引导窗口；应用启动时初始化默认排除应用、读取更新错误并按引导版本决定是否展示 onboarding。
 - `SettingsSceneView` 以 `@AppStorage` / UserDefaults 保存配置，按 general、shortcut、security、version、about 五个页签组合视图。窗口复用时用 `settingsSelectTab` 通知切换目标页签。
+- General 中的“智能找回（实验性）”缺省关闭。开关控制设备端模型分析、语义索引回填和浮层智能找回入口；设置区分别展示系统模型可用性和语义索引进度。重建只删除可再生成的 `clip_semantics` 派生数据，不删除历史正文。
 - 侧边栏使用显式按钮修改选择状态，避免把导航建立在旧版曾失效的 `List(selection:)` 行为上。
 
 ## 热键、引导与登录启动

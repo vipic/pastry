@@ -43,6 +43,10 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     @Published var searchQuery = "" {
         didSet {
             guard searchQuery != oldValue else { return }
+            interpretedSearchQuery = nil
+            naturalLanguageDateRange = nil
+            naturalLanguageSearchGeneration += 1
+            naturalLanguageSearchState = .idle
             if !suppressFilterDiagnostics,
                !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 DeveloperDiagnostics.record(DiagnosticsEvent.searchQuery)
@@ -128,6 +132,8 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     @Published private(set) var stats = ClipboardStats(totalItems: 0, todayItems: 0,
                                                          favoriteCount: 0, storageSizeKB: 0)
 
+    @Published private(set) var naturalLanguageSearchState: NaturalLanguageSearchState = .idle
+
     /// clearFilters 批量重置时抑制逐项筛选埋点
     private var suppressFilterDiagnostics = false
 
@@ -200,6 +206,14 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         }
     }
 
+    enum NaturalLanguageSearchState: Equatable {
+        case idle
+        case searching
+        case applied
+        case unavailable(LocalLanguageModelAvailability)
+        case failed
+    }
+
     private struct SearchFilterSnapshot {
         let query: String
         let pinTab: PinTab
@@ -215,7 +229,11 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
 
     private var searchTask: Task<Void, Never>?
     private var searchGeneration = 0
+    private var naturalLanguageSearchGeneration = 0
+    private var interpretedSearchQuery: String?
+    private var naturalLanguageDateRange: Range<Date>?
     private let usesDatabaseSearch: Bool
+    private let naturalLanguageSearchInterpreter: NaturalLanguageSearchInterpreting
     private let togglePinPersistence: (UUID) -> Bool
     private let setPinPersistence: (UUID, Bool) -> Bool
     private let clearAllPersistence: () -> Bool
@@ -229,6 +247,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
 
     private init() {
         usesDatabaseSearch = true
+        naturalLanguageSearchInterpreter = LocalNaturalLanguageSearchInterpreter.shared
         togglePinPersistence = { DatabaseManager.shared.togglePin(id: $0.uuidString) }
         setPinPersistence = { DatabaseManager.shared.setPin(id: $0.uuidString, pinned: $1) }
         clearAllPersistence = { DatabaseManager.shared.clearAll() }
@@ -246,9 +265,11 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         togglePinPersistence: @escaping (UUID) -> Bool = { _ in true },
         setPinPersistence: @escaping (UUID, Bool) -> Bool = { _, _ in true },
         clearAllPersistence: @escaping () -> Bool = { true },
-        clearClipboard: @escaping () -> Void = {}
+        clearClipboard: @escaping () -> Void = {},
+        naturalLanguageSearchInterpreter: NaturalLanguageSearchInterpreting = LocalNaturalLanguageSearchInterpreter.shared
     ) {
         usesDatabaseSearch = false
+        self.naturalLanguageSearchInterpreter = naturalLanguageSearchInterpreter
         self.togglePinPersistence = togglePinPersistence
         self.setPinPersistence = setPinPersistence
         self.clearAllPersistence = clearAllPersistence
@@ -263,6 +284,12 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     func start() {
         ClipboardMonitor.shared.start()
         refreshStats()
+        Task {
+            await LocalSemanticSearchEngine.shared.setEnabled(
+                SemanticSearchPreference.isEnabled,
+                limit: HistoryRetentionPolicy.current.maxItems
+            )
+        }
         // 低频定时器兜底：每 10 分钟执行一次保留策略，确保闲置期间旧数据也会按策略清理
         let retentionTimer = Timer(timeInterval: 600, repeats: true) { [weak self] _ in
             DatabaseManager.shared.enforceHistoryRetention()
@@ -489,6 +516,10 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         urlFilter = false
         handoffFilter = false
         noteFilter = .any
+        interpretedSearchQuery = nil
+        naturalLanguageDateRange = nil
+        naturalLanguageSearchGeneration += 1
+        naturalLanguageSearchState = .idle
         if recordDiagnostics {
             DeveloperDiagnostics.record(DiagnosticsEvent.filterClear)
         }
@@ -497,6 +528,122 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     func refresh() {
         loadRecent()
         refreshStats()
+    }
+
+    func performNaturalLanguageSearch() async {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+        guard !usesDatabaseSearch || SemanticSearchPreference.isEnabled else { return }
+
+        naturalLanguageSearchGeneration += 1
+        let generation = naturalLanguageSearchGeneration
+
+        let availability = naturalLanguageSearchInterpreter.availability
+        guard availability == .available else {
+            naturalLanguageSearchState = .unavailable(availability)
+            return
+        }
+
+        naturalLanguageSearchState = .searching
+        do {
+            let intent = try await naturalLanguageSearchInterpreter.interpret(
+                query,
+                availableApps: availableApps,
+                now: Date(),
+                calendar: .current
+            )
+            let semanticResults: [ClipboardItem]?
+            if usesDatabaseSearch {
+                semanticResults = await LocalSemanticSearchEngine.shared.search(
+                    query: query,
+                    intent: intent
+                )
+            } else {
+                semanticResults = nil
+            }
+            guard generation == naturalLanguageSearchGeneration,
+                  query == searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+            else { return }
+
+            applyNaturalLanguageSearchIntent(intent, semanticResults: semanticResults)
+            naturalLanguageSearchState = .applied
+        } catch is CancellationError {
+            guard generation == naturalLanguageSearchGeneration else { return }
+            naturalLanguageSearchState = .idle
+        } catch {
+            guard generation == naturalLanguageSearchGeneration else { return }
+            naturalLanguageSearchState = .failed
+            diagnosticsLog.error(
+                "设备端自然语言搜索解析失败",
+                event: "store.natural_language_search.failed"
+            )
+        }
+    }
+
+    func applyNaturalLanguageSearchIntent(
+        _ intent: NaturalLanguageSearchIntent,
+        semanticResults: [ClipboardItem]? = nil
+    ) {
+        interpretedSearchQuery = intent.keywords.joined(separator: " ")
+        naturalLanguageDateRange = intent.dateRange
+
+        suppressFilterDiagnostics = true
+        pinTab = intent.favoritesOnly ? .pinned : .all
+        appFilter = intent.appName
+        handoffFilter = intent.handoffOnly
+        noteFilter = switch intent.noteRequirement {
+        case .any: .any
+        case .withNote: .withNote
+        case .withoutNote: .withoutNote
+        }
+        timeFilter = .any
+
+        switch intent.contentKind {
+        case .any:
+            typeFilter = nil
+            urlFilter = false
+        case .text:
+            typeFilter = .text
+            urlFilter = false
+        case .link:
+            typeFilter = nil
+            urlFilter = true
+        case .image:
+            typeFilter = .image
+            urlFilter = false
+        case .file:
+            typeFilter = .fileURL
+            urlFilter = false
+        case .rtf:
+            typeFilter = .rtf
+            urlFilter = false
+        case .html:
+            typeFilter = .html
+            urlFilter = false
+        }
+        suppressFilterDiagnostics = false
+        if let semanticResults {
+            searchTask?.cancel()
+            searchGeneration += 1
+            let filters = SearchFilterSnapshot(
+                query: interpretedSearchQuery ?? "",
+                pinTab: pinTab,
+                typeFilter: typeFilter,
+                urlFilter: urlFilter,
+                appFilter: appFilter,
+                handoffFilter: handoffFilter,
+                noteFilter: noteFilter,
+                dateRange: naturalLanguageDateRange
+            )
+            filteredItems = Self.filteredResults(
+                base: semanticResults,
+                recentItems: items,
+                filters: filters,
+                searchedInDatabase: true
+            )
+        } else {
+            executeSearch()
+        }
     }
 
     func applyHistoryRetentionSettings(
@@ -527,6 +674,10 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
             favoriteNoteUpdatedAt = preservedNoteAt
         case .inserted:
             break
+        }
+
+        Task {
+            await LocalSemanticSearchEngine.shared.index(item)
         }
 
         // 内存中的 items 数组截断 content 至 256 字符（DB 保留完整内容用于粘贴和 FTS）
@@ -621,7 +772,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     }
 
     private func executeSearch() {
-        let query = searchQuery.trimmingCharacters(in: .whitespaces)
+        let query = (interpretedSearchQuery ?? searchQuery).trimmingCharacters(in: .whitespaces)
         let filters = SearchFilterSnapshot(
             query: query,
             pinTab: pinTab,
@@ -630,7 +781,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
             appFilter: appFilter,
             handoffFilter: handoffFilter,
             noteFilter: noteFilter,
-            dateRange: timeFilter.dateRange
+            dateRange: naturalLanguageDateRange ?? timeFilter.dateRange
         )
         let recentItems = items
         searchGeneration += 1
