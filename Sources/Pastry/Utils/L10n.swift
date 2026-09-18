@@ -7,13 +7,34 @@ enum L10n {
     nonisolated(unsafe) private static var catalog: [String: [String: String]] = loadCatalog()
 
     private static func loadCatalog() -> [String: [String: String]] {
-        let url = catalogURL()
+        if let catalog = loadRawCatalog(from: Bundle.main) {
+            return catalog
+        }
 
-        guard let url,
+        if let resourceURL = Bundle.main.resourceURL?
+            .appendingPathComponent("Pastry_Pastry.bundle"),
+           let resourceBundle = Bundle(url: resourceURL) {
+            if let catalog = loadRawCatalog(from: resourceBundle) {
+                return catalog
+            }
+            let compiled = loadCompiledCatalog(from: resourceBundle)
+            if !compiled.isEmpty { return compiled }
+        }
+
+        // SwiftPM development/test fallback. Access this last because Bundle.module
+        // traps if the generated bundle cannot be found in a repackaged .app.
+        if let catalog = loadRawCatalog(from: Bundle.module) {
+            return catalog
+        }
+        return loadCompiledCatalog(from: Bundle.module)
+    }
+
+    private static func loadRawCatalog(from bundle: Bundle) -> [String: [String: String]]? {
+        guard let url = bundle.url(forResource: "Localizable", withExtension: "xcstrings"),
               let data = try? Data(contentsOf: url),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let strings = json["strings"] as? [String: [String: Any]]
-        else { return [:] }
+        else { return nil }
 
         var catalog: [String: [String: String]] = [:]
         for (key, value) in strings {
@@ -31,23 +52,25 @@ enum L10n {
         return catalog
     }
 
-    private static func catalogURL() -> URL? {
-        // deploy.sh copies Localizable.xcstrings directly into Contents/Resources.
-        if let mainURL = Bundle.main.url(forResource: "Localizable", withExtension: "xcstrings") {
-            return mainURL
-        }
+    /// 新版 SwiftPM/Xcode 构建系统会把 String Catalog 编译为各语言的 `.strings`。
+    private static func loadCompiledCatalog(from bundle: Bundle) -> [String: [String: String]] {
+        var catalog: [String: [String: String]] = [:]
+        for language in ["zh-Hans", "en"] {
+            guard let url = bundle.url(
+                forResource: "Localizable",
+                withExtension: "strings",
+                subdirectory: nil,
+                localization: language
+            ),
+            let data = try? Data(contentsOf: url),
+            let values = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: String]
+            else { continue }
 
-        // release.sh copies the SwiftPM resource bundle into Contents/Resources.
-        if let resourceURL = Bundle.main.resourceURL?
-            .appendingPathComponent("Pastry_Pastry.bundle")
-            .appendingPathComponent("Localizable.xcstrings"),
-           FileManager.default.fileExists(atPath: resourceURL.path) {
-            return resourceURL
+            for (key, value) in values {
+                catalog[key, default: [:]][language] = value
+            }
         }
-
-        // SwiftPM development/test fallback. Access this last because Bundle.module
-        // traps if the generated bundle cannot be found in a repackaged .app.
-        return Bundle.module.url(forResource: "Localizable", withExtension: "xcstrings")
+        return catalog
     }
 
     static subscript(_ key: String) -> String {
