@@ -293,7 +293,7 @@ extension SettingsSceneView {
     }
 
     var shouldResumeSemanticIndex: Bool {
-        semanticSearchStatus.indexedCount < semanticSearchStatus.totalCount
+        semanticSearchStatus.indexPhase == .failed
     }
 
     var semanticIndexActionTitleKey: String {
