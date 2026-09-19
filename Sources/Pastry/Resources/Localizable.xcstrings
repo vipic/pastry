@@ -215,6 +215,27 @@
         "en": { "stringUnit": { "state": "translated", "value": "Indexing did not finish. Try again later; rebuild only if the issue persists." } }
       }
     },
+    "settings.semantic.resume_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "继续建立语义索引" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Resume Semantic Index" } }
+      }
+    },
+    "settings.semantic.resume_help": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "从上次完成的位置继续，只处理尚未建立索引的历史，不会清除已有进度。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Continue from the last completed item and process only unindexed history without clearing existing progress." } }
+      }
+    },
+    "settings.semantic.resume_button": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "继续建立" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Resume" } }
+      }
+    },
     "settings.semantic.rebuild_title": {
       "extractionState": "manual",
       "localizations": {

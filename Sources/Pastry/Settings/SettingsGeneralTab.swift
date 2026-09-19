@@ -256,21 +256,27 @@ extension SettingsSceneView {
     var semanticRebuildRow: some View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(L10n["settings.semantic.rebuild_title"])
+                Text(L10n[semanticIndexActionTitleKey])
                     .font(.system(size: UIConstants.TypeSize.body, weight: .semibold))
                     .foregroundStyle(SettingsPalette.ink)
-                Text(L10n["settings.semantic.rebuild_help"])
+                Text(L10n[semanticIndexActionHelpKey])
                     .font(.system(size: UIConstants.TypeSize.label))
                     .foregroundStyle(SettingsPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button(L10n["settings.semantic.rebuild_button"]) {
+            Button(L10n[semanticIndexActionButtonKey]) {
                 Task {
-                    await LocalSemanticSearchEngine.shared.rebuild(
-                        limit: HistoryRetentionPolicy.current.maxItems
-                    )
+                    if shouldResumeSemanticIndex {
+                        await LocalSemanticSearchEngine.shared.backfill(
+                            limit: HistoryRetentionPolicy.current.maxItems
+                        )
+                    } else {
+                        await LocalSemanticSearchEngine.shared.rebuild(
+                            limit: HistoryRetentionPolicy.current.maxItems
+                        )
+                    }
                 }
             }
             .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
@@ -284,6 +290,28 @@ extension SettingsSceneView {
         .padding(.horizontal, UIConstants.Settings.rowHorizontalPadding)
         .padding(.vertical, 10)
         .frame(minHeight: UIConstants.Settings.rowMinHeight)
+    }
+
+    var shouldResumeSemanticIndex: Bool {
+        semanticSearchStatus.indexedCount < semanticSearchStatus.totalCount
+    }
+
+    var semanticIndexActionTitleKey: String {
+        shouldResumeSemanticIndex
+            ? "settings.semantic.resume_title"
+            : "settings.semantic.rebuild_title"
+    }
+
+    var semanticIndexActionHelpKey: String {
+        shouldResumeSemanticIndex
+            ? "settings.semantic.resume_help"
+            : "settings.semantic.rebuild_help"
+    }
+
+    var semanticIndexActionButtonKey: String {
+        shouldResumeSemanticIndex
+            ? "settings.semantic.resume_button"
+            : "settings.semantic.rebuild_button"
     }
 
     var semanticModelStatusText: String {
