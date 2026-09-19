@@ -120,8 +120,8 @@
     "settings.semantic.feature_help": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "默认关闭。开启后才会在本机分析历史并启用智能找回；关闭后仅使用与正式版相同的关键词搜索。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Off by default. When enabled, history is analyzed on this Mac for smart retrieval; when off, search behaves like the stable keyword-only version." } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "默认关闭。开启后会在本机分析历史并启用智能找回；关闭后使用关键词搜索。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Off by default. When enabled, history is analyzed on this Mac for smart retrieval; when off, search uses keywords." } }
       }
     },
     "settings.semantic.model_title": {
