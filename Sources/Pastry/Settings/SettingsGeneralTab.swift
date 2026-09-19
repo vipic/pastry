@@ -28,7 +28,7 @@ extension SettingsSceneView {
 
                 HStack(spacing: 10) {
                     metricCard(
-                        value: store.items.count.formatted(.number.grouping(.automatic)),
+                        value: store.stats.totalItems.formatted(.number.grouping(.automatic)),
                         label: L10n["settings.general.metric_current_items"]
                     )
                     metricCard(

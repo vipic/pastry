@@ -750,7 +750,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     }
 
     private func loadRecent() {
-        items = DatabaseManager.shared.recent(limit: 500)
+        items = DatabaseManager.shared.recent(limit: HistoryRetentionPolicy.current.maxItems)
         performSearchImmediate()
         refreshAvailableApps()
     }
@@ -803,7 +803,10 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         let manager = self
         searchTask = Task.detached(priority: .userInitiated) { [manager] in
             guard !Task.isCancelled else { return }
-            let databaseResults = DatabaseManager.shared.search(query: query, limit: 500)
+            let databaseResults = DatabaseManager.shared.search(
+                query: query,
+                limit: HistoryRetentionPolicy.current.maxItems
+            )
             guard !Task.isCancelled else { return }
             let filteredResults = Self.filteredResults(
                 base: databaseResults,
