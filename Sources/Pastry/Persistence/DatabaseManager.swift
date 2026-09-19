@@ -6,8 +6,8 @@ import OSLog
 // 使用原生 sqlite3 API；vendored SQLCipher 仅作为带 FTS5 的 SQLite 引擎，数据库以明文保存。
 //
 // ⚠️ 线程安全由 NSRecursiveLock 保证（非 Sendable / nonisolated(unsafe) 压制 Swift 6 检查）。
-// 新增任何公开方法必须手动 lock.lock() / defer { lock.unlock() }，否则 data race。
-// 目前只有 StoreManager.performSearch() 从 Task.detached 调用 DatabaseManager。
+// 新增任何公开方法必须覆盖完整加锁边界；耗时的文件系统检查应先复制候选，再释放锁。
+// StoreManager 的搜索和低频维护会从后台任务调用 DatabaseManager。
 final class DatabaseManager {
 
     nonisolated(unsafe) static let shared = DatabaseManager()
@@ -613,6 +613,96 @@ final class DatabaseManager {
         sqlite3_bind_int(stmt, 1, Int32(policy.maxItems))
         sqlite3_step(stmt)
         sqlite3_finalize(stmt)
+    }
+
+    /// 删除所有路径均已失效的非收藏文件类记录。`nil` 表示路径当前不可判定（例如外置卷未挂载）。
+    /// 数据库读取和删除分别加锁，文件系统检查不占用数据库锁。
+    @discardableResult
+    func pruneMissingFileItems(
+        pathAvailability: (String) -> Bool? = { DatabaseManager.defaultPathAvailability(at: $0) }
+    ) -> Int? {
+        let candidates: [(id: String, paths: [String])]
+
+        lock.lock()
+        let sql = """
+        SELECT id, content
+        FROM clips
+        WHERE content_type IN ('fileURL', 'image')
+          AND is_favorite = 0;
+        """
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            lock.unlock()
+            log.error("失效文件清理查询 prepare 失败: \(self.lastError)")
+            return nil
+        }
+        var loaded: [(String, [String])] = []
+        var stepResult = sqlite3_step(stmt)
+        while stepResult == SQLITE_ROW {
+            if let idPointer = sqlite3_column_text(stmt, 0),
+               let contentPointer = sqlite3_column_text(stmt, 1) {
+                let paths = String(cString: contentPointer)
+                    .split(whereSeparator: \.isNewline)
+                    .map(String.init)
+                if !paths.isEmpty {
+                    loaded.append((String(cString: idPointer), paths))
+                }
+            }
+            stepResult = sqlite3_step(stmt)
+        }
+        sqlite3_finalize(stmt)
+        lock.unlock()
+        guard stepResult == SQLITE_DONE else {
+            log.error("失效文件清理查询失败: \(self.lastError)")
+            return nil
+        }
+        candidates = loaded
+
+        let missingIDs = candidates.compactMap { candidate -> String? in
+            let availability = candidate.paths.map(pathAvailability)
+            guard availability.allSatisfy({ $0 == false }) else { return nil }
+            return candidate.id
+        }
+        guard !missingIDs.isEmpty else { return 0 }
+
+        lock.lock()
+        defer { lock.unlock() }
+        guard execute("BEGIN IMMEDIATE;") else { return nil }
+        let deleteSQL = "DELETE FROM clips WHERE id = ? AND is_favorite = 0;"
+        var deleteStmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, deleteSQL, -1, &deleteStmt, nil) == SQLITE_OK else {
+            _ = execute("ROLLBACK;")
+            return nil
+        }
+        var deleted = 0
+        var deleteFailed = false
+        for id in missingIDs {
+            sqlite3_reset(deleteStmt)
+            sqlite3_clear_bindings(deleteStmt)
+            sqlite3_bind_text(deleteStmt, 1, (id as NSString).utf8String, -1, nil)
+            guard sqlite3_step(deleteStmt) == SQLITE_DONE else {
+                deleteFailed = true
+                break
+            }
+            deleted += Int(sqlite3_changes(db))
+        }
+        sqlite3_finalize(deleteStmt)
+        guard !deleteFailed, execute("COMMIT;") else {
+            _ = execute("ROLLBACK;")
+            return nil
+        }
+        if deleted > 0 { lastKey = nil }
+        return deleted
+    }
+
+    private static func defaultPathAvailability(at path: String) -> Bool? {
+        let standardizedPath = URL(fileURLWithPath: path).standardizedFileURL.path
+        let components = URL(fileURLWithPath: standardizedPath).pathComponents
+        if components.count >= 3, components[1] == "Volumes" {
+            let volumeRoot = URL(fileURLWithPath: "/Volumes").appendingPathComponent(components[2]).path
+            guard FileManager.default.fileExists(atPath: volumeRoot) else { return nil }
+        }
+        return FileManager.default.fileExists(atPath: standardizedPath)
     }
 
     /// 搜索（优先 FTS，fallback LIKE）

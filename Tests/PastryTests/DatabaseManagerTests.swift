@@ -943,6 +943,40 @@ final class DatabaseManagerTests: XCTestCase {
         XCTAssertTrue(items.contains { $0.content == "Recent" })
     }
 
+    func testMissingFileCleanupDeletesOnlyFullyMissingNonFavoriteFileItems() {
+        let missingFile = makeItem(content: "/local/gone.txt", type: .fileURL)
+        let missingImage = makeItem(content: "/local/gone.png", type: .image)
+        let allMissing = makeItem(content: "/local/gone-a.txt\n/local/gone-b.txt", type: .fileURL)
+        let partial = makeItem(content: "/local/gone.txt\n/local/existing.txt", type: .fileURL)
+        let unavailable = makeItem(content: "/Volumes/Offline/file.txt", type: .fileURL)
+        let favorite = makeItem(content: "/local/favorite-gone.txt", type: .fileURL, pinned: true)
+        let text = makeItem(content: "/local/gone.txt", type: .text)
+        for item in [missingFile, missingImage, allMissing, partial, unavailable, favorite, text] {
+            assertInserted(item)
+        }
+
+        let removed = db.pruneMissingFileItems { path in
+            switch path {
+            case "/local/existing.txt":
+                true
+            case "/Volumes/Offline/file.txt":
+                nil
+            default:
+                false
+            }
+        }
+
+        XCTAssertEqual(removed, 3)
+        let remainingIDs = Set(db.recent(limit: 20).map(\.id))
+        XCTAssertFalse(remainingIDs.contains(missingFile.id))
+        XCTAssertFalse(remainingIDs.contains(missingImage.id))
+        XCTAssertFalse(remainingIDs.contains(allMissing.id))
+        XCTAssertTrue(remainingIDs.contains(partial.id))
+        XCTAssertTrue(remainingIDs.contains(unavailable.id))
+        XCTAssertTrue(remainingIDs.contains(favorite.id))
+        XCTAssertTrue(remainingIDs.contains(text.id))
+    }
+
     /// favorites(limit:) 应遵守 limit
     func testFavoritesLimit() {
         for i in 0..<10 {

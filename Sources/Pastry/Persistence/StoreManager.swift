@@ -228,6 +228,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     // MARK: 防抖
 
     private var searchTask: Task<Void, Never>?
+    private var missingFileCleanupTask: Task<Void, Never>?
     private var searchGeneration = 0
     private var naturalLanguageSearchGeneration = 0
     private var interpretedSearchQuery: String?
@@ -290,10 +291,16 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
                 limit: HistoryRetentionPolicy.current.maxItems
             )
         }
-        // 低频定时器兜底：每 10 分钟执行一次保留策略，确保闲置期间旧数据也会按策略清理
+        runMissingFileCleanupIfNeeded()
+        // 低频定时器兜底：保留策略每 10 分钟执行；失效文件清理在其中按 24 小时节流。
         let retentionTimer = Timer(timeInterval: 600, repeats: true) { [weak self] _ in
-            DatabaseManager.shared.enforceHistoryRetention()
-            self?.refreshStats()
+            Task { @MainActor [weak self] in
+                await Task.detached(priority: .utility) {
+                    DatabaseManager.shared.enforceHistoryRetention()
+                }.value
+                self?.refreshStats()
+                self?.runMissingFileCleanupIfNeeded()
+            }
         }
         RunLoop.main.add(retentionTimer, forMode: .common)
         log.info("Store 启动")
@@ -302,6 +309,40 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
             event: "store.started",
             metadata: ["item_count": String(items.count)]
         )
+    }
+
+    private func runMissingFileCleanupIfNeeded(now: Date = Date()) {
+        guard missingFileCleanupTask == nil else { return }
+        let lastRun = UserDefaults.standard.double(forKey: UserDefaultsKeys.missingFileCleanupLastRun)
+        let elapsed = now.timeIntervalSince1970 - lastRun
+        guard lastRun == 0 || elapsed < 0 || elapsed >= 86_400 else { return }
+
+        missingFileCleanupTask = Task { [weak self] in
+            let removed = await Task.detached(priority: .utility) {
+                DatabaseManager.shared.pruneMissingFileItems()
+            }.value
+            guard let self else { return }
+            missingFileCleanupTask = nil
+            guard let removed else {
+                diagnosticsLog.error(
+                    "每日失效文件记录清理失败",
+                    event: "store.missing_file_cleanup.failed"
+                )
+                return
+            }
+            UserDefaults.standard.set(
+                Date().timeIntervalSince1970,
+                forKey: UserDefaultsKeys.missingFileCleanupLastRun
+            )
+            guard removed > 0 else { return }
+            loadRecent()
+            refreshStats()
+            diagnosticsLog.info(
+                "每日失效文件记录清理完成",
+                event: "store.missing_file_cleanup.completed",
+                metadata: ["item_count": String(removed)]
+            )
+        }
     }
 
     func pasteItem(_ item: ClipboardItem) async {

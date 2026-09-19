@@ -1113,13 +1113,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "超过容量或保留周期的普通历史会自动清理，收藏项目不受影响。"
+            "value": "超过容量或保留周期的普通历史会自动清理；所有路径都已失效的文件和图片记录每天清理一次。收藏项目不受影响。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Regular history beyond the capacity or retention period is cleaned automatically. Favorites are kept."
+            "value": "Regular history beyond the capacity or retention period is cleaned automatically. File and image records whose paths are all missing are cleaned daily. Favorites are kept."
           }
         }
       }
