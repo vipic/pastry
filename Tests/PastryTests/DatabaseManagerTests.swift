@@ -632,7 +632,7 @@ final class DatabaseManagerTests: XCTestCase {
     }
 
     func testSemanticIndexRoundTripAndPendingState() {
-        let item = makeItem(content: "Use Ollama to run Qwen locally")
+        let item = makeItem(content: "Use the on-device model locally")
         assertInserted(item)
         XCTAssertEqual(db.semanticIndexInputs().map(\.id), [item.id])
         XCTAssertEqual(db.semanticIndexProgress().indexed, 0)
@@ -643,8 +643,8 @@ final class DatabaseManagerTests: XCTestCase {
             db.upsertSemanticIndex(
                 SemanticIndexRecord(
                     clipID: item.id,
-                    summaryZH: "使用 Ollama 本地运行 Qwen",
-                    summaryEN: "Run Qwen locally with Ollama",
+                    summaryZH: "使用设备端模型本地处理",
+                    summaryEN: "Process locally with the on-device model",
                     tagsZH: ["本地大模型", "模型推理"],
                     tagsEN: ["local LLM", "inference"],
                     embeddingZH: vector,
@@ -670,7 +670,7 @@ final class DatabaseManagerTests: XCTestCase {
     }
 
     func testDeletingClipAlsoDeletesSemanticIndex() {
-        let item = makeItem(content: "Ollama and Qwen")
+        let item = makeItem(content: "On-device model")
         assertInserted(item)
         XCTAssertTrue(
             db.upsertSemanticIndex(

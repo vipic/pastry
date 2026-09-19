@@ -16,7 +16,7 @@
 - `LegacyEncryptedDatabaseMigrator`：把旧 SQLCipher 数据库一次性转换为明文 SQLite。
 - `StoreManager`：主线程上的可观察状态，连接监听器、数据库、搜索筛选和 UI。
 - `HistoryRetentionPolicy`：校验最大条数和保留天数设置。
-- `LocalNaturalLanguageSearchInterpreter`：使用 macOS Foundation Models 设备端模型把用户描述解析为结构化搜索条件；不读取历史正文或访问外部模型服务。
+- `LocalNaturalLanguageSearchInterpreter`：使用 macOS Foundation Models 设备端模型把用户描述解析为结构化搜索条件；不读取历史正文。
 - `LocalSemanticSearchEngine`：在设备上为历史生成中英文摘要与概念标签，建立句向量索引，合并候选并使用 Foundation Models 重排。
 
 ## 采集数据流

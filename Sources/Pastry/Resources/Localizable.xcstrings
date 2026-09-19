@@ -134,8 +134,8 @@
     "settings.semantic.model_help": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "由 macOS 和 Apple Intelligence 提供，不需要安装 Ollama、Qwen 或连接外部 AI 服务。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Provided by macOS and Apple Intelligence. Ollama, Qwen, and external AI services are not required." } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "由 macOS 和 Apple Intelligence 提供。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Provided by macOS and Apple Intelligence." } }
       }
     },
     "settings.semantic.model_available": {
