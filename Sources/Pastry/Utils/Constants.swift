@@ -48,8 +48,8 @@ enum UserDefaultsKeys {
     static let linkPreviewNetworkEnabled = "link_preview_network_enabled"
     static let historyMaxItems = "history_max_items"
     static let historyMaxAgeDays = "history_max_age_days"
-    /// 上次完成失效文件记录清理的时间；用于把低频维护限制为每天一次。
-    static let missingFileCleanupLastRun = "missing_file_cleanup_last_run"
+    /// 上次完成失效文件记录清理的时间；v2 会把未挂载卷视为不可访问并触发一次重新检查。
+    static let missingFileCleanupLastRun = "missing_file_cleanup_v2_last_run"
     static let performanceLoggingEnabled = "performance_logging_enabled"
     /// 实验性的设备端智能找回。缺省关闭，确保升级后保持既有关键词搜索行为。
     static let semanticSearchEnabled = "semantic_search_enabled"

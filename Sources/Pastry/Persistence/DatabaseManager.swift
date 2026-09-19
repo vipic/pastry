@@ -615,11 +615,11 @@ final class DatabaseManager {
         sqlite3_finalize(stmt)
     }
 
-    /// 删除所有路径均已失效的非收藏文件类记录。`nil` 表示路径当前不可判定（例如外置卷未挂载）。
+    /// 删除所有路径当前都不存在的非收藏文件类记录。
     /// 数据库读取和删除分别加锁，文件系统检查不占用数据库锁。
     @discardableResult
     func pruneMissingFileItems(
-        pathAvailability: (String) -> Bool? = { DatabaseManager.defaultPathAvailability(at: $0) }
+        pathExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
     ) -> Int? {
         let candidates: [(id: String, paths: [String])]
 
@@ -659,8 +659,7 @@ final class DatabaseManager {
         candidates = loaded
 
         let missingIDs = candidates.compactMap { candidate -> String? in
-            let availability = candidate.paths.map(pathAvailability)
-            guard availability.allSatisfy({ $0 == false }) else { return nil }
+            guard candidate.paths.allSatisfy({ !pathExists($0) }) else { return nil }
             return candidate.id
         }
         guard !missingIDs.isEmpty else { return 0 }
@@ -693,16 +692,6 @@ final class DatabaseManager {
         }
         if deleted > 0 { lastKey = nil }
         return deleted
-    }
-
-    private static func defaultPathAvailability(at path: String) -> Bool? {
-        let standardizedPath = URL(fileURLWithPath: path).standardizedFileURL.path
-        let components = URL(fileURLWithPath: standardizedPath).pathComponents
-        if components.count >= 3, components[1] == "Volumes" {
-            let volumeRoot = URL(fileURLWithPath: "/Volumes").appendingPathComponent(components[2]).path
-            guard FileManager.default.fileExists(atPath: volumeRoot) else { return nil }
-        }
-        return FileManager.default.fileExists(atPath: standardizedPath)
     }
 
     /// 搜索（优先 FTS，fallback LIKE）

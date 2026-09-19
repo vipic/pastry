@@ -948,31 +948,24 @@ final class DatabaseManagerTests: XCTestCase {
         let missingImage = makeItem(content: "/local/gone.png", type: .image)
         let allMissing = makeItem(content: "/local/gone-a.txt\n/local/gone-b.txt", type: .fileURL)
         let partial = makeItem(content: "/local/gone.txt\n/local/existing.txt", type: .fileURL)
-        let unavailable = makeItem(content: "/Volumes/Offline/file.txt", type: .fileURL)
+        let unmountedVolume = makeItem(content: "/Volumes/Offline/file.txt", type: .fileURL)
         let favorite = makeItem(content: "/local/favorite-gone.txt", type: .fileURL, pinned: true)
         let text = makeItem(content: "/local/gone.txt", type: .text)
-        for item in [missingFile, missingImage, allMissing, partial, unavailable, favorite, text] {
+        for item in [missingFile, missingImage, allMissing, partial, unmountedVolume, favorite, text] {
             assertInserted(item)
         }
 
         let removed = db.pruneMissingFileItems { path in
-            switch path {
-            case "/local/existing.txt":
-                true
-            case "/Volumes/Offline/file.txt":
-                nil
-            default:
-                false
-            }
+            path == "/local/existing.txt"
         }
 
-        XCTAssertEqual(removed, 3)
+        XCTAssertEqual(removed, 4)
         let remainingIDs = Set(db.recent(limit: 20).map(\.id))
         XCTAssertFalse(remainingIDs.contains(missingFile.id))
         XCTAssertFalse(remainingIDs.contains(missingImage.id))
         XCTAssertFalse(remainingIDs.contains(allMissing.id))
+        XCTAssertFalse(remainingIDs.contains(unmountedVolume.id))
         XCTAssertTrue(remainingIDs.contains(partial.id))
-        XCTAssertTrue(remainingIDs.contains(unavailable.id))
         XCTAssertTrue(remainingIDs.contains(favorite.id))
         XCTAssertTrue(remainingIDs.contains(text.id))
     }
