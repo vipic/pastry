@@ -25,10 +25,9 @@ final class ClipboardOverlayPanel: NSPanel {
             routeOpenSearchKey()
             return
         }
-        // 部分鼠标侧滚轮事件会先到 panel 而不是 local monitor；与 KeyboardEventHandler 共用解析。
+        // 只在事件属于托盘面板本身时桥接卡带滚动；popover / 设置窗口保留系统滚动链。
         if event.type == .scrollWheel,
-           OverlayPanelManager.shared.isHorizontalCardLayout,
-           !OverlayPanelManager.shared.isAlertActive,
+           OverlayPanelManager.shared.shouldRouteCardStripScroll(event),
            KeyboardEventHandler.cardStripDelta(from: event) != nil {
             _ = KeyboardEventHandler.handleScrollWheel(event)
             return
@@ -37,8 +36,7 @@ final class ClipboardOverlayPanel: NSPanel {
     }
 
     override func scrollWheel(with event: NSEvent) {
-        if OverlayPanelManager.shared.isHorizontalCardLayout,
-           !OverlayPanelManager.shared.isAlertActive,
+        if OverlayPanelManager.shared.shouldRouteCardStripScroll(event),
            KeyboardEventHandler.cardStripDelta(from: event) != nil {
             _ = KeyboardEventHandler.handleScrollWheel(event)
             return
@@ -344,6 +342,13 @@ final class OverlayPanelManager: @unchecked Sendable {
         ) { [weak self] note in
             self?.alertActive = (note.userInfo?["active"] as? Bool) ?? false
         }
+    }
+
+    func shouldRouteCardStripScroll(_ event: NSEvent) -> Bool {
+        isVisible
+            && isHorizontalCardLayout
+            && !isAlertActive
+            && event.window === panel
     }
 
     // MARK: - 显示/隐藏

@@ -81,6 +81,8 @@ final class L10nTests: XCTestCase {
             "settings.sidebar.subtitle",
             "settings.sidebar.footer",
             "settings.tab.version",
+            "settings.tab.experimental",
+            "settings.experimental.subtitle",
             "settings.shortcut.subtitle",
             "shortcut.section_title",
             "shortcut.overlay_shortcut",

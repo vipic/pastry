@@ -18,6 +18,40 @@
         }
       }
     },
+    "settings.tab.experimental": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "实验功能"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Experimental"
+          }
+        }
+      }
+    },
+    "settings.experimental.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "体验依赖系统能力、仍在持续完善中的功能。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try features that depend on system capabilities and are still evolving."
+          }
+        }
+      }
+    },
     "settings.tab.shortcut": {
       "extractionState": "manual",
       "localizations": {
@@ -215,15 +249,15 @@
     "settings.semantic.feature_title": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用设备端模型分析" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Use On-Device Model Analysis" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "开启智能找回" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Enable Smart Retrieval" } }
       }
     },
     "settings.semantic.feature_help": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "默认关闭。开启后会在本机分析历史并启用智能找回；关闭后使用关键词搜索。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Off by default. When enabled, history is analyzed on this Mac for smart retrieval; when off, search uses keywords." } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple 设备端模型可用时才能开启。开启后会在本机分析历史并启用智能找回；关闭后使用关键词搜索。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Requires the Apple on-device model. When enabled, history is analyzed on this Mac for smart retrieval; when off, search uses keywords." } }
       }
     },
     "settings.semantic.model_title": {

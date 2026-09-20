@@ -52,6 +52,7 @@ Pastry/
 │       ├── Settings/
 │       │   ├── SettingsSceneView.swift       # 设置窗口、侧边栏和页签路由
 │       │   ├── SettingsGeneralTab.swift      # 语言、启动、声音、点击和历史设置
+│       │   ├── SettingsExperimentalTab.swift # 设备端模型状态、智能找回与语义索引
 │       │   ├── SettingsShortcutTab.swift     # 全局快捷键录制和清除
 │       │   ├── SettingsSecurityTab.swift     # 网络、诊断、授权和排除应用
 │       │   ├── SettingsVersionTab.swift      # 版本状态、版本说明和更新操作

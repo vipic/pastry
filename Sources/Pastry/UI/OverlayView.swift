@@ -2075,9 +2075,7 @@ final class KeyboardEventHandler: ObservableObject {
 
     /// 托盘面板上的 SwiftUI 横向 ScrollView 常收不到侧滚轮；在 AppKit 层桥接。
     static func handleScrollWheel(_ event: NSEvent) -> NSEvent? {
-        guard OverlayPanelManager.shared.isVisible else { return event }
-        guard OverlayPanelManager.shared.isHorizontalCardLayout else { return event }
-        guard !OverlayPanelManager.shared.isAlertActive else { return event }
+        guard OverlayPanelManager.shared.shouldRouteCardStripScroll(event) else { return event }
         guard let delta = cardStripDelta(from: event) else { return event }
 
         NotificationCenter.default.post(

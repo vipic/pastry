@@ -114,24 +114,26 @@ struct SettingsSceneView: View {
     }
 
     enum SettingsTab: String, CaseIterable, Identifiable {
-        case general, shortcut, security, version, about
+        case general, shortcut, security, experimental, version, about
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .general:  return L10n["settings.tab.general"]
-            case .shortcut: return L10n["settings.tab.shortcut"]
-            case .security: return L10n["settings.tab.security"]
-            case .version:  return L10n["settings.tab.version"]
-            case .about:    return L10n["settings.tab.about"]
+            case .general:      return L10n["settings.tab.general"]
+            case .shortcut:     return L10n["settings.tab.shortcut"]
+            case .security:     return L10n["settings.tab.security"]
+            case .experimental: return L10n["settings.tab.experimental"]
+            case .version:      return L10n["settings.tab.version"]
+            case .about:        return L10n["settings.tab.about"]
             }
         }
         var icon: String {
             switch self {
-            case .general:  return "gearshape"
-            case .shortcut: return "command"
-            case .security: return "shield"
-            case .version:  return "arrow.triangle.2.circlepath"
-            case .about:    return "info.circle"
+            case .general:      return "gearshape"
+            case .shortcut:     return "command"
+            case .security:     return "shield"
+            case .experimental: return "flask"
+            case .version:      return "arrow.triangle.2.circlepath"
+            case .about:        return "info.circle"
             }
         }
         var usesSymbolIcon: Bool {
@@ -330,11 +332,12 @@ struct SettingsSceneView: View {
     @ViewBuilder
     func detail(for tab: SettingsTab) -> some View {
         switch tab {
-        case .general:  generalTab
-        case .shortcut: shortcutTab
-        case .security: securityTab
-        case .version:  versionTab
-        case .about:    aboutTab
+        case .general:      generalTab
+        case .shortcut:     shortcutTab
+        case .security:     securityTab
+        case .experimental: experimentalTab
+        case .version:      versionTab
+        case .about:        aboutTab
         }
     }
 
