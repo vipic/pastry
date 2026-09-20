@@ -58,6 +58,8 @@ struct SettingsSceneView: View {
     var performanceLoggingEnabled = false
     @AppStorage(UserDefaultsKeys.semanticSearchEnabled)
     var semanticSearchEnabled = false
+    @AppStorage(UserDefaultsKeys.compactSideTrayEnabled)
+    var compactSideTrayEnabled = false
     @AppStorage(UserDefaultsKeys.historyMaxItems)
     var historyMaxItems = HistoryRetentionPolicy.defaultMaxItems
     @AppStorage(UserDefaultsKeys.historyMaxAgeDays)

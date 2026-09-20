@@ -35,9 +35,19 @@ private enum Local {
         static let trayContentMinHeight: CGFloat = 262  // 240 card + paddings
         static let trayCornerRadius: CGFloat = UIConstants.Radius.tray
         static let sideInset: CGFloat = 12
-        static let sideTrayWidth = TrayPanelLayout.sideTrayWidth
         static let sideSearchExpandedWidth: CGFloat = 200
-        static var cardInsertPushDistance: CGFloat { 240 + UIConstants.Overlay.cardSpacing }
+        static let compactSideSearchExpandedWidth: CGFloat = 184
+        /// 24 pt 托盘圆角与 10 pt 工具按钮圆角同心所需的边缘 inset。
+        static let sideHeaderControlInset: CGFloat = 14
+        static var sideHeaderHorizontalPadding: CGFloat {
+            sideHeaderControlInset - sideInset
+        }
+        static var regularCardInsertPushDistance: CGFloat {
+            UIConstants.Card.size + UIConstants.Overlay.cardSpacing
+        }
+        static var compactRowInsertPushDistance: CGFloat {
+            UIConstants.Overlay.compactRowHeight + UIConstants.Overlay.cardSpacing
+        }
     }
 }
 enum TrayPlacement: String, CaseIterable, Identifiable {
@@ -124,11 +134,16 @@ enum TrayPlacementPreferences {
 }
 
 enum TrayPanelLayout {
-    static let sideTrayWidth: CGFloat = 320
+    static let regularSideTrayWidth: CGFloat = 320
+    static let compactSideTrayWidth: CGFloat = 272
     static let sideInset: CGFloat = 12
     static let bottomHeight: CGFloat = 336
 
-    static func panelFrame(for placement: TrayPlacement, in screenFrame: NSRect) -> NSRect {
+    static func panelFrame(
+        for placement: TrayPlacement,
+        in screenFrame: NSRect,
+        compactSideTray: Bool = false
+    ) -> NSRect {
         switch placement {
         case .bottom:
             return NSRect(
@@ -141,11 +156,11 @@ enum TrayPanelLayout {
             return NSRect(
                 x: screenFrame.minX,
                 y: screenFrame.minY,
-                width: min(sideTrayWidth + sideInset * 2, screenFrame.width),
+                width: min(sideTrayWidth(compact: compactSideTray) + sideInset * 2, screenFrame.width),
                 height: screenFrame.height
             )
         case .right:
-            let width = min(sideTrayWidth + sideInset * 2, screenFrame.width)
+            let width = min(sideTrayWidth(compact: compactSideTray) + sideInset * 2, screenFrame.width)
             return NSRect(
                 x: screenFrame.maxX - width,
                 y: screenFrame.minY,
@@ -155,13 +170,25 @@ enum TrayPanelLayout {
         }
     }
 
-    static func dockingPlacement(at point: NSPoint, in screenFrame: NSRect) -> TrayPlacement? {
+    static func sideTrayWidth(compact: Bool) -> CGFloat {
+        compact ? compactSideTrayWidth : regularSideTrayWidth
+    }
+
+    static func dockingPlacement(
+        at point: NSPoint,
+        in screenFrame: NSRect,
+        compactSideTray: Bool = false
+    ) -> TrayPlacement? {
         let candidates: [(placement: TrayPlacement, distance: CGFloat)] = [
             (.left, abs(point.x - screenFrame.minX)),
             (.right, abs(screenFrame.maxX - point.x)),
             (.bottom, abs(point.y - screenFrame.minY))
         ].filter {
-            panelFrame(for: $0.placement, in: screenFrame).contains(point)
+            panelFrame(
+                for: $0.placement,
+                in: screenFrame,
+                compactSideTray: compactSideTray
+            ).contains(point)
         }
         return candidates.min(by: { $0.distance < $1.distance })?.placement
     }
@@ -218,12 +245,15 @@ struct OverlayView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(UserDefaultsKeys.semanticSearchEnabled)
     private var semanticSearchEnabled = false
+    @AppStorage(UserDefaultsKeys.compactSideTrayEnabled)
+    private var compactSideTrayEnabled = false
 
     @State private var trayPlacement = TrayPlacementPreferences.effectivePlacement()
     @State private var isTrayPinned = false
     @State private var cardVisible = false
     @State private var selection = SelectionState()
     @State private var renderedIds: Set<UUID> = []    // 当前已渲染（可见）的卡片 ID
+    @State private var commandShortcutIds: [UUID] = []
     @State private var showDeleteConfirm = false
     @State private var pendingDeleteIds: Set<UUID> = []
     /// 右键删除不主动清剪贴板；键盘 / 工具栏批量删除在历史变空时同步清空。
@@ -314,14 +344,14 @@ struct OverlayView: View {
             .offset(y: cardVisible ? 0 : 200)
         case .left:
             cardContainer
-                .frame(width: Local.Overlay.sideTrayWidth)
+                .frame(width: TrayPanelLayout.sideTrayWidth(compact: compactSideTrayEnabled))
                 .padding(.vertical, Local.Overlay.sideInset)
                 .padding(.leading, Local.Overlay.sideInset)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 .offset(x: cardVisible ? 0 : -200)
         case .right:
             cardContainer
-                .frame(width: Local.Overlay.sideTrayWidth)
+                .frame(width: TrayPanelLayout.sideTrayWidth(compact: compactSideTrayEnabled))
                 .padding(.vertical, Local.Overlay.sideInset)
                 .padding(.trailing, Local.Overlay.sideInset)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
@@ -616,13 +646,17 @@ struct OverlayView: View {
 
     private func handleCommandPaste(_ note: Notification) {
         guard !showDeleteConfirm else { return }
-        guard let idx = note.userInfo?["index"] as? Int,
-              idx > 0,
-              idx <= visibleItems.count else {
+        guard let idx = note.userInfo?["index"] as? Int else {
             SoundFeedback.invalidAction()
             return
         }
-        let item = visibleItems[idx - 1]
+        let itemsByID = Dictionary(uniqueKeysWithValues: visibleItems.map { ($0.id, $0) })
+        let shortcutItems = commandShortcutIds.compactMap { itemsByID[$0] }
+        guard idx > 0, idx <= shortcutItems.count else {
+            SoundFeedback.invalidAction()
+            return
+        }
+        let item = shortcutItems[idx - 1]
         DeveloperDiagnostics.record(DiagnosticsEvent.pasteCmdNumber)
         Task { await OverlayPanelManager.shared.hideAndPaste(item) }
     }
@@ -650,11 +684,11 @@ struct OverlayView: View {
         OverlayPanelManager.shared.isFilterPopoverActive = false
         OverlayPanelManager.shared.keyboardOwner = .overlayNavigation
         store.clearFilters(recordDiagnostics: false)
+        renderedIds = []
+        commandShortcutIds = []
         // 打开面板默认选中第一张卡片，便于立刻 Enter / 方向键 / Delete
         selectFirstVisibleCard()
-        renderedIds = []
     }
-
     private func prepareForPresentation() {
         resetAllState()
         trayPlacement = OverlayPanelManager.shared.currentPlacement
@@ -689,6 +723,7 @@ struct OverlayView: View {
         withTransaction(transaction) {
             selection.selectFirst(visibleItems: items)
             stripScrollPosition.scrollTo(edge: .leading)
+            commandShortcutIds = items.prefix(9).map(\.id)
         }
     }
 
@@ -828,7 +863,9 @@ struct OverlayView: View {
     private var searchControlWidth: CGFloat {
         guard showSearch else { return searchControlHeight }
         return trayPlacement.isSide
-            ? Local.Overlay.sideSearchExpandedWidth
+            ? (compactSideTrayEnabled
+                ? Local.Overlay.compactSideSearchExpandedWidth
+                : Local.Overlay.sideSearchExpandedWidth)
             : Local.Overlay.searchExpandedWidth
     }
 
@@ -1172,7 +1209,7 @@ struct OverlayView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: trayPlacement.isSide ? .infinity : nil)
         .fixedSize(horizontal: false, vertical: !trayPlacement.isSide)
-        .padding(.top, 10)
+        .padding(.top, trayPlacement.isSide ? Local.Overlay.sideHeaderControlInset : 10)
         .padding(.horizontal, 12)
         .padding(.bottom, 10)
         .background(panelTrayBackground)
@@ -1218,7 +1255,7 @@ struct OverlayView: View {
                     trayUtilityControls
                 }
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, Local.Overlay.sideHeaderHorizontalPadding)
             .background(TrayDragHandle())
         } else {
             HStack(spacing: 0) {
@@ -1568,6 +1605,12 @@ struct OverlayView: View {
                 .scrollTargetLayout()
             }
             .scrollPosition($stripScrollPosition)
+            .onScrollTargetVisibilityChange(idType: UUID.self) { ids in
+                commandShortcutIds = OverlayInteractionModel.commandShortcutItemIDs(
+                    orderedItemIDs: items.map(\.id),
+                    viewportItemIDs: ids
+                )
+            }
             .onScrollGeometryChange(for: StripScrollGeometry.self) { geometry in
                 StripScrollGeometry(
                     offsetX: max(0, geometry.contentOffset.x),
@@ -1609,14 +1652,25 @@ struct OverlayView: View {
                     LazyVStack(spacing: UIConstants.Overlay.cardSpacing) {
                         ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
                             cardView(item, index: idx)
-                                .frame(maxWidth: Local.Overlay.compactCardMaxWidth)
+                                .frame(
+                                    maxWidth: compactSideTrayEnabled
+                                        ? .infinity
+                                        : Local.Overlay.compactCardMaxWidth
+                                )
                                 .clipped()
                         }
                     }
                     .padding(.vertical, 3)
                     .padding(.horizontal, 8)
+                    .scrollTargetLayout()
                 }
                 .frame(maxWidth: Local.Overlay.compactListMaxWidth)
+                .onScrollTargetVisibilityChange(idType: UUID.self) { ids in
+                    commandShortcutIds = OverlayInteractionModel.commandShortcutItemIDs(
+                        orderedItemIDs: items.map(\.id),
+                        viewportItemIDs: ids
+                    )
+                }
                 .animation(nil, value: items.count)
                 .onAppear {
                     OverlayPanelManager.shared.isHorizontalCardLayout = false
@@ -1646,7 +1700,14 @@ struct OverlayView: View {
         ClipboardCardView(
             item: item,
             isSelected: selection.selectedIds.contains(item.id),
-            cmdBadgeIndex: OverlayInteractionModel.commandBadgeIndex(cmdDown: cmdDown, itemIndex: index),
+            cmdBadgeIndex: OverlayInteractionModel.commandBadgeIndex(
+                cmdDown: cmdDown,
+                itemID: item.id,
+                shortcutItemIDs: commandShortcutIds
+            ),
+            presentation: compactSideTrayEnabled && trayPlacement.isSide
+                ? .compactSide
+                : .card,
             selectedIds: Binding(
                 get: { selection.selectedIds },
                 set: { selection.selectedIds = $0 }
@@ -1674,7 +1735,10 @@ struct OverlayView: View {
         .id(item.id)
         .modifier(CardInsertAppearance(
             role: insertRole,
-            axis: isHorizontalLayout ? .horizontal : .vertical
+            axis: isHorizontalLayout ? .horizontal : .vertical,
+            step: compactSideTrayEnabled && trayPlacement.isSide
+                ? Local.Overlay.compactRowInsertPushDistance
+                : Local.Overlay.regularCardInsertPushDistance
         ))
         .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.card(item.id.uuidString))
         .onAppear { renderedIds.insert(item.id) }
@@ -1997,6 +2061,7 @@ private struct CardInsertAppearance: ViewModifier {
 
     let role: Role
     let axis: Axis
+    let step: CGFloat
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var settled = false
 
@@ -2022,7 +2087,6 @@ private struct CardInsertAppearance: ViewModifier {
     private var offset: CGFloat {
         if reduceMotion { return 0 }
         guard !settled else { return 0 }
-        let step = Local.Overlay.cardInsertPushDistance
         switch role {
         case .none, .fadingIn:
             return 0

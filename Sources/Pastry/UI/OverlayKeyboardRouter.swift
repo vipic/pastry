@@ -9,7 +9,8 @@ enum OverlayKeyboardOwner: Equatable {
 final class OverlayKeyboardRouter {
     private var keyboardMonitor: Any?
     private var flagsChangedMonitor: Any?
-    private var cmdWasDown = false
+    private var applicationResignObserver: NSObjectProtocol?
+    private(set) var cmdWasDown = false
 
     private let isAlertActive: () -> Bool
     private let isSearchActive: () -> Bool
@@ -35,6 +36,14 @@ final class OverlayKeyboardRouter {
         flagsChangedMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.handleFlagsChanged(event) ?? event
         }
+
+        applicationResignObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.setCommandBadgesVisible(false)
+        }
     }
 
     func remove() {
@@ -46,7 +55,11 @@ final class OverlayKeyboardRouter {
             NSEvent.removeMonitor(monitor)
             flagsChangedMonitor = nil
         }
-        cmdWasDown = false
+        if let observer = applicationResignObserver {
+            NotificationCenter.default.removeObserver(observer)
+            applicationResignObserver = nil
+        }
+        setCommandBadgesVisible(false)
     }
 
     private func handleKeyDown(_ event: NSEvent) -> NSEvent? {
@@ -221,14 +234,25 @@ final class OverlayKeyboardRouter {
     }
 
     private func handleFlagsChanged(_ event: NSEvent) -> NSEvent {
-        let shouldShowCmdBadges = event.modifierFlags.contains(.command)
-            && keyboardOwner() == .overlayNavigation
-        if shouldShowCmdBadges != cmdWasDown {
-            cmdWasDown = shouldShowCmdBadges
-            NotificationCenter.default.post(name: .overlayCmdStateChanged, object: nil,
-                                            userInfo: ["cmdDown": shouldShowCmdBadges])
-        }
+        updateCommandBadgeState(modifierFlags: event.modifierFlags)
         return event
+    }
+
+    func updateCommandBadgeState(modifierFlags: NSEvent.ModifierFlags) {
+        setCommandBadgesVisible(
+            modifierFlags.contains(.command)
+                && keyboardOwner() == .overlayNavigation
+        )
+    }
+
+    private func setCommandBadgesVisible(_ isVisible: Bool) {
+        guard isVisible != cmdWasDown else { return }
+        cmdWasDown = isVisible
+        NotificationCenter.default.post(
+            name: .overlayCmdStateChanged,
+            object: nil,
+            userInfo: ["cmdDown": isVisible]
+        )
     }
 
     private func postCursorMove(delta: Int? = nil, pageDelta: Int? = nil, target: String? = nil, extend: Bool) {

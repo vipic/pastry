@@ -67,12 +67,27 @@ final class ConstantsTests: XCTestCase {
         XCTAssertEqual(TrayPanelLayout.panelFrame(for: .bottom, in: screen), NSRect(x: 0, y: 0, width: 1_440, height: 336))
         XCTAssertEqual(TrayPanelLayout.panelFrame(for: .left, in: screen), NSRect(x: 0, y: 0, width: 344, height: 900))
         XCTAssertEqual(TrayPanelLayout.panelFrame(for: .right, in: screen), NSRect(x: 1_096, y: 0, width: 344, height: 900))
+        XCTAssertEqual(
+            TrayPanelLayout.panelFrame(for: .left, in: screen, compactSideTray: true),
+            NSRect(x: 0, y: 0, width: 296, height: 900)
+        )
+        XCTAssertEqual(
+            TrayPanelLayout.panelFrame(for: .right, in: screen, compactSideTray: true),
+            NSRect(x: 1_144, y: 0, width: 296, height: 900)
+        )
         XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 300, y: 450), in: screen), .left)
         XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 1_140, y: 450), in: screen), .right)
         XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 720, y: 300), in: screen), .bottom)
         XCTAssertNil(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 400, y: 450), in: screen))
         XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 30, y: 80), in: screen), .left)
         XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 80, y: 30), in: screen), .bottom)
+        XCTAssertNil(
+            TrayPanelLayout.dockingPlacement(
+                at: NSPoint(x: 320, y: 450),
+                in: screen,
+                compactSideTray: true
+            )
+        )
     }
 
     func testDeleteRequiresConfirmationDefaultsToTrueWhenUnset() {

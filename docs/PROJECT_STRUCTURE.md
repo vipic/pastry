@@ -52,7 +52,7 @@ Pastry/
 │       ├── Settings/
 │       │   ├── SettingsSceneView.swift       # 设置窗口、侧边栏和页签路由
 │       │   ├── SettingsGeneralTab.swift      # 语言、启动、声音、点击和历史设置
-│       │   ├── SettingsExperimentalTab.swift # 设备端模型状态、智能找回与语义索引
+│       │   ├── SettingsExperimentalTab.swift # 侧边紧凑列表、设备端模型、智能找回与语义索引
 │       │   ├── SettingsShortcutTab.swift     # 全局快捷键录制和清除
 │       │   ├── SettingsSecurityTab.swift     # 网络、诊断、授权和排除应用
 │       │   ├── SettingsVersionTab.swift      # 版本状态、版本说明和更新操作
@@ -62,13 +62,13 @@ Pastry/
 │       │
 │       ├── UI/
 │       │   ├── OverlayPanelManager.swift     # 全屏透明 NSPanel 与粘贴生命周期
-│       │   ├── OverlayView.swift             # 主面板、工具栏、卡片、搜索和多选
+│       │   ├── OverlayView.swift             # 主面板、双侧边布局、工具栏、搜索和多选
 │       │   ├── OverlayKeyboardRouter.swift   # 面板键盘事件路由
 │       │   ├── OverlayInteractionModel.swift # 点击、滚动和选中目标决策
 │       │   ├── OverlayEmptyStateModel.swift  # 空历史和无结果状态模型
 │       │   ├── OnboardingFlow.swift          # 首次启动引导状态机
 │       │   ├── OnboardingView.swift          # 首次启动引导界面
-│       │   ├── ClipboardCardView.swift       # 卡片主体、手势、备注和拖拽入口
+│       │   ├── ClipboardCardView.swift       # 完整卡片与紧凑条目、手势、备注和拖拽入口
 │       │   ├── ClipboardCardContentViews.swift # 不同格式的卡片内容视图
 │       │   ├── ClipboardCardActions.swift    # 右键菜单、复制、打开、分享和删除
 │       │   ├── ClipboardDisplayMode.swift    # 卡片展示类型判定

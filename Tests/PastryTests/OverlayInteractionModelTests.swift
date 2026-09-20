@@ -142,6 +142,25 @@ final class OverlayInteractionModelTests: XCTestCase {
         XCTAssertNotEqual(normalized.rawValue, raw.rawValue)
     }
 
+    func testCommandBadgesClearWhenApplicationResignsActive() {
+        let router = OverlayKeyboardRouter(
+            isAlertActive: { false },
+            isSearchActive: { false },
+            keyboardOwner: { .overlayNavigation }
+        )
+        router.install()
+        defer { router.remove() }
+
+        router.updateCommandBadgeState(modifierFlags: .command)
+        XCTAssertTrue(router.cmdWasDown)
+
+        NotificationCenter.default.post(
+            name: NSApplication.didResignActiveNotification,
+            object: nil
+        )
+        XCTAssertFalse(router.cmdWasDown)
+    }
+
     /// 多选中普通点击已选卡片 → 折叠为单选，不粘贴（防 ⌘ 读丢误粘贴）。
     func testEnhancedModeMultiSelectionClickSelectsInsteadOfPaste() {
         XCTAssertEqual(
@@ -424,12 +443,61 @@ final class OverlayInteractionModelTests: XCTestCase {
         )
     }
 
-    func testCommandBadgeIndexOnlyForFirstNineWhileCmdDown() {
-        XCTAssertNil(OverlayInteractionModel.commandBadgeIndex(cmdDown: false, itemIndex: 0))
-        XCTAssertEqual(OverlayInteractionModel.commandBadgeIndex(cmdDown: true, itemIndex: 0), 1)
-        XCTAssertEqual(OverlayInteractionModel.commandBadgeIndex(cmdDown: true, itemIndex: 8), 9)
-        XCTAssertNil(OverlayInteractionModel.commandBadgeIndex(cmdDown: true, itemIndex: 9))
-        XCTAssertNil(OverlayInteractionModel.commandBadgeIndex(cmdDown: true, itemIndex: -1))
+    func testCommandBadgesFollowCurrentViewportAfterScrolling() {
+        let ids = (0..<12).map { _ in UUID() }
+        let shortcutIDs = OverlayInteractionModel.commandShortcutItemIDs(
+            orderedItemIDs: ids,
+            viewportItemIDs: [ids[10], ids[7], ids[5], ids[6], ids[8], ids[9]]
+        )
+
+        XCTAssertEqual(shortcutIDs, Array(ids[5...10]))
+        XCTAssertNil(
+            OverlayInteractionModel.commandBadgeIndex(
+                cmdDown: true,
+                itemID: ids[0],
+                shortcutItemIDs: shortcutIDs
+            )
+        )
+        XCTAssertEqual(
+            OverlayInteractionModel.commandBadgeIndex(
+                cmdDown: true,
+                itemID: ids[5],
+                shortcutItemIDs: shortcutIDs
+            ),
+            1
+        )
+        XCTAssertEqual(
+            OverlayInteractionModel.commandBadgeIndex(
+                cmdDown: true,
+                itemID: ids[10],
+                shortcutItemIDs: shortcutIDs
+            ),
+            6
+        )
+        XCTAssertNil(
+            OverlayInteractionModel.commandBadgeIndex(
+                cmdDown: false,
+                itemID: ids[5],
+                shortcutItemIDs: shortcutIDs
+            )
+        )
+    }
+
+    func testCommandShortcutItemsCapViewportAtNine() {
+        let ids = (0..<12).map { _ in UUID() }
+        let shortcutIDs = OverlayInteractionModel.commandShortcutItemIDs(
+            orderedItemIDs: ids,
+            viewportItemIDs: ids
+        )
+
+        XCTAssertEqual(shortcutIDs, Array(ids.prefix(9)))
+        XCTAssertNil(
+            OverlayInteractionModel.commandBadgeIndex(
+                cmdDown: true,
+                itemID: ids[9],
+                shortcutItemIDs: shortcutIDs
+            )
+        )
     }
 
     // MARK: - 横向卡带滚轮策略

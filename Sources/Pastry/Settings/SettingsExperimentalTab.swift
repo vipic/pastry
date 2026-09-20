@@ -17,6 +17,8 @@ extension SettingsSceneView {
                     subtitle: L10n["settings.experimental.subtitle"]
                 )
 
+
+                compactSideTraySection
                 semanticSearchSection
             }
             .padding(.vertical, 24)
@@ -31,6 +33,26 @@ extension SettingsSceneView {
         .onChange(of: semanticSearchStatus.modelAvailability) { _, availability in
             if availability != .available {
                 disableSemanticSearchWhenModelUnavailable()
+            }
+        }
+    }
+
+    var compactSideTraySection: some View {
+        settingsSection(title: L10n["settings.compact_side_tray.section"]) {
+            settingsRow(
+                title: L10n["settings.compact_side_tray.title"],
+                help: L10n["settings.compact_side_tray.help"]
+            ) {
+                Toggle(
+                    L10n["settings.compact_side_tray.title"],
+                    isOn: $compactSideTrayEnabled
+                )
+                .labelsHidden()
+                .toggleStyle(SettingsSwitchStyle())
+                .onChange(of: compactSideTrayEnabled) { _, enabled in
+                    OverlayPanelManager.shared.refreshSideTrayLayout(compact: enabled)
+                }
+                .accessibilityIdentifier(AccessibilityIdentifiers.Settings.compactSideTrayToggle)
             }
         }
     }

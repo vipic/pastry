@@ -123,9 +123,24 @@ enum OverlayInteractionModel {
         "\(max(0, filteredCount))/\(max(0, totalCount))"
     }
 
-    static func commandBadgeIndex(cmdDown: Bool, itemIndex: Int) -> Int? {
-        guard cmdDown, itemIndex >= 0, itemIndex < 9 else { return nil }
-        return itemIndex + 1
+    static func commandShortcutItemIDs(
+        orderedItemIDs: [UUID],
+        viewportItemIDs: [UUID]
+    ) -> [UUID] {
+        let viewportSet = Set(viewportItemIDs)
+        return orderedItemIDs.filter(viewportSet.contains).prefix(9).map { $0 }
+    }
+
+    static func commandBadgeIndex(
+        cmdDown: Bool,
+        itemID: UUID,
+        shortcutItemIDs: [UUID]
+    ) -> Int? {
+        guard cmdDown,
+              let index = shortcutItemIDs.firstIndex(of: itemID),
+              index < 9
+        else { return nil }
+        return index + 1
     }
 
     // MARK: - 鼠标多选（可单测的点击管线）

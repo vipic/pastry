@@ -29,21 +29,29 @@ private enum Local {
         static let hoverActionReserveWidth: CGFloat = 68
         static let hoverActionSize: CGFloat = 20
         static let hoverActionSpacing: CGFloat = 4
+        static let hoverActionGroupPadding: CGFloat = 3
         static let hoverBorderOpacity: CGFloat = 0.30
         static let idleBorderOpacity: CGFloat = 0.22
         static let noteAccentStrokeOpacity: Double = 0.18
         static let noteIdleFillOpacity: Double = 0.035
         static let pasteScale: CGFloat = 0.95
         static let selectedBorderWidth: CGFloat = UIConstants.Stroke.emphasis
+        static let compactImagePreviewWidth: CGFloat = 92
     }
 }
 
 // MARK: - 剪贴板卡片视图
 struct ClipboardCardView: View {
+    enum Presentation: Equatable {
+        case card
+        case compactSide
+    }
+
 
     let item: ClipboardItem
     let isSelected: Bool
     let cmdBadgeIndex: Int?
+    let presentation: Presentation
     @Binding var selectedIds: Set<UUID>
     let onTap: (ClipboardItem) -> Void
     let onPin: (ClipboardItem, Set<UUID>) -> Void
@@ -96,7 +104,7 @@ struct ClipboardCardView: View {
     }
 
     var body: some View {
-        cardBase
+        presentedBase
             .overlay(alignment: .bottomTrailing) {
                 if showHoverActions {
                     hoverActionBar
@@ -143,6 +151,13 @@ struct ClipboardCardView: View {
                     applyCachedFilePreviewIfAvailable()
                 }
             }
+            .onChange(of: presentation) { _, newPresentation in
+                if newPresentation == .card {
+                    loadAppInfo()
+                } else {
+                    appIcon = nil
+                }
+            }
             .onDisappear { CardPreviewAnchorRegistry.unregister(item.id) }
             .task(id: item.id) { await fetchLinkPreviewIfNeeded() }
             .onChange(of: item.content) { old, _ in
@@ -152,6 +167,16 @@ struct ClipboardCardView: View {
                 guard item.sourceFormat == .image || item.sourceFormat == .fileURL else { return }
                 await loadFilePreviewsIfNeeded()
             }
+    }
+
+    @ViewBuilder
+    private var presentedBase: some View {
+        switch presentation {
+        case .card:
+            cardBase
+        case .compactSide:
+            compactRowBase
+        }
     }
 
     private var showHoverActions: Bool {
@@ -194,6 +219,221 @@ struct ClipboardCardView: View {
             .joined(separator: " ")
         guard !normalized.isEmpty else { return nil }
         return String(normalized.prefix(160))
+    }
+
+    private var compactRowBase: some View {
+        compactRowContent
+            .frame(
+                maxWidth: .infinity,
+                minHeight: UIConstants.Overlay.compactRowHeight,
+                maxHeight: UIConstants.Overlay.compactRowHeight
+            )
+            .background(cardSurface)
+            .compositingGroup()
+            .clipShape(RoundedRectangle(cornerRadius: Local.Card.cornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Local.Card.cornerRadius, style: .continuous)
+                    .strokeBorder(cardChromeBorderColor, lineWidth: cardChromeBorderWidth)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: Local.Card.animationDuration), value: isHovered)
+                    .animation(reduceMotion ? nil : .easeOut(duration: UIConstants.Motion.paste), value: didPaste)
+            )
+            .overlay(alignment: .bottomTrailing) {
+                if let idx = cmdBadgeIndex {
+                    cmdBadge(idx)
+                        .transition(.scale(scale: 0.74, anchor: .bottomTrailing).combined(with: .opacity))
+                }
+            }
+            .animation(reduceMotion ? nil : .easeInOut(duration: Local.Card.animationDuration), value: isHovered)
+            .scaleEffect(reduceMotion ? 1 : (didPaste ? Local.Card.pasteScale : 1.0))
+            .animation(
+                reduceMotion ? nil : .spring(
+                    response: UIConstants.Motion.fast,
+                    dampingFraction: UIConstants.Motion.pasteDamping
+                ),
+                value: didPaste
+            )
+            .animation(reduceMotion ? nil : .easeInOut(duration: UIConstants.Motion.fast), value: item.isPinned)
+            .animation(reduceMotion ? nil : .easeInOut(duration: UIConstants.Motion.fast), value: isEditingFavoriteNote)
+            .contentShape(RoundedRectangle(cornerRadius: Local.Card.cornerRadius))
+    }
+
+    private var compactRowContent: some View {
+        HStack(spacing: 0) {
+            compactInfoColumn
+                .padding(.horizontal, Local.Card.contentHorizontalPadding)
+                .padding(.vertical, UIConstants.Card.contentVerticalPadding)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .layoutPriority(1)
+
+            compactTrailingPreview
+        }
+    }
+
+    private var compactInfoColumn: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            compactTypeLabel
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if isCompactLink, let url = detectedLink {
+                Text(compactLinkTitle(for: url))
+                    .font(.system(size: UIConstants.TypeSize.label, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(url.absoluteString)
+                    .font(.system(size: UIConstants.TypeSize.caption2))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if isMultiFile {
+                compactMultiFileList
+            } else {
+                Text(compactPrimaryText)
+                    .font(.system(size: UIConstants.TypeSize.label, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(favoriteNoteText == nil && !isEditingFavoriteNote ? 2 : 1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if isEditingFavoriteNote || favoriteNoteText != nil {
+                favoriteNoteStrip
+                    .padding(.trailing, infoHoverActionReserveWidth)
+            } else {
+                footerBar
+            }
+        }
+    }
+
+    private var compactTypeLabel: some View {
+        HStack(spacing: 5) {
+            Image(systemName: item.sourceFormat.iconName)
+                .font(.system(size: UIConstants.TypeSize.caption2, weight: .semibold))
+                .foregroundStyle(themeColor)
+            Text(cardTypeLabel)
+                .font(.system(size: UIConstants.TypeSize.caption, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            if item.isPinned {
+                Image(systemName: "bookmark.fill")
+                    .font(.system(size: UIConstants.TypeSize.caption2, weight: .semibold))
+                    .foregroundStyle(themeColor)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
+    private var compactMultiFileList: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(0..<min(fileURLs.count, 2), id: \.self) { index in
+                let url = fileURLs[index]
+                let isMissing = missingFileURLs.contains(url)
+                HStack(spacing: 4) {
+                    if isMissing {
+                        Image(systemName: "questionmark.folder")
+                            .foregroundStyle(.secondary.opacity(UIConstants.OnLight.textFaint))
+                    } else if let icon = asyncFileIcons[url] {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .frame(
+                                width: UIConstants.Control.microIconSize,
+                                height: UIConstants.Control.microIconSize
+                            )
+                    } else {
+                        Image(systemName: "doc")
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(url.lastPathComponent)
+                        .foregroundColor(isMissing ? Color.secondary.opacity(UIConstants.OnLight.textFaint) : Color.primary)
+                        .strikethrough(isMissing)
+                        .lineLimit(1)
+                }
+                .font(.system(size: UIConstants.TypeSize.caption2))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+
+    @ViewBuilder
+    private var compactTrailingPreview: some View {
+        if let imageURL = compactHTMLImageURL {
+            RemoteThumbnail(urlString: imageURL)
+                .aspectRatio(contentMode: .fill)
+                .frame(
+                    width: Local.Card.compactImagePreviewWidth,
+                    height: UIConstants.Overlay.compactRowHeight
+                )
+                .clipped()
+        } else if item.sourceFormat == .image || (item.sourceFormat == .fileURL && !isMultiFile) {
+            compactFilePreview
+        }
+    }
+
+    private var compactFilePreview: some View {
+        ZStack {
+            themeColor.opacity(UIConstants.OnDark.fillSubtle)
+            if let firstURL = fileURLs.first,
+               let image = asyncFilePreview ?? asyncFileIcons[firstURL] {
+                if item.sourceFormat == .image {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else if case .thumbnail = Self.filePreviewStyle(for: firstURL) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .padding(14)
+                }
+            } else {
+                Image(systemName: item.sourceFormat == .image ? "photo" : "doc")
+                    .font(.system(size: UIConstants.TypeSize.title, weight: .medium))
+                    .foregroundStyle(themeColor)
+            }
+        }
+        .frame(
+            width: Local.Card.compactImagePreviewWidth,
+            height: UIConstants.Overlay.compactRowHeight
+        )
+        .clipped()
+    }
+
+    private var compactHTMLImageURL: String? {
+        guard item.sourceFormat == .html else { return nil }
+        return item.imageURLs?.first
+    }
+
+    private var hasCompactTrailingPreview: Bool {
+        compactHTMLImageURL != nil
+            || item.sourceFormat == .image
+            || (item.sourceFormat == .fileURL && !isMultiFile)
+    }
+
+    private var isCompactLink: Bool {
+        item.sourceFormat == .text && item.tags.isURL && detectedLink != nil
+    }
+
+    private func compactLinkTitle(for url: URL) -> String {
+        let host = url.host ?? ""
+        if let storedTitle = Self.normalizedLinkText(item.linkTitle),
+           let sanitized = Self.sanitizedLinkTitle(storedTitle, host: host) {
+            return sanitized
+        }
+        return Self.linkCardText(url: url, preview: linkPreview).title
+    }
+
+    private var compactPrimaryText: String {
+        if item.sourceFormat == .image, let fileName = fileURLs.first?.lastPathComponent, !fileName.isEmpty {
+            return fileName
+        }
+        return accessibilityContentPreview ?? cardTypeLabel
     }
 
     /// 卡片基础渲染（样式 + 内容，不含手势和生命周期）
@@ -586,8 +826,14 @@ struct ClipboardCardView: View {
                 missingFileURLs = result.missing
                 asyncFileSizes = result.sizes
                 for (url, icon, isThumbnail) in result.icons {
-                    if isThumbnail { asyncFilePreview = icon }
-                    else { asyncFileIcons[url] = icon }
+                    if isThumbnail {
+                        asyncFilePreview = icon
+                        if result.urls.count > 1 {
+                            asyncFileIcons[url] = icon
+                        }
+                    } else {
+                        asyncFileIcons[url] = icon
+                    }
                 }
             }
         }
@@ -825,7 +1071,7 @@ struct ClipboardCardView: View {
                 Text("·").font(.caption2).foregroundColor(.secondary)
                 Text(app).font(.system(size: UIConstants.TypeSize.caption2)).foregroundColor(.secondary).lineLimit(1)
             }
-            Spacer(minLength: showHoverActions ? Local.Card.hoverActionReserveWidth : 0)
+            Spacer(minLength: infoHoverActionReserveWidth)
         }
     }
 
@@ -858,8 +1104,34 @@ struct ClipboardCardView: View {
                 onDelete(item)
             }
         }
+        .padding(compactHoverActionsNeedBackdrop ? Local.Card.hoverActionGroupPadding : 0)
+        .background {
+            if compactHoverActionsNeedBackdrop {
+                RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
+                    .fill(.regularMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
+                            .strokeBorder(
+                                Color.white.opacity(UIConstants.OnDark.stroke),
+                                lineWidth: UIConstants.Stroke.hairline
+                            )
+                    )
+            }
+        }
         .padding(.trailing, Local.Card.contentHorizontalPadding)
         .padding(.bottom, UIConstants.Card.footerBottomPadding)
+    }
+
+    private var infoHoverActionReserveWidth: CGFloat {
+        guard showHoverActions else { return 0 }
+        if presentation == .compactSide, hasCompactTrailingPreview {
+            return 0
+        }
+        return Local.Card.hoverActionReserveWidth
+    }
+
+    private var compactHoverActionsNeedBackdrop: Bool {
+        presentation == .compactSide && hasCompactTrailingPreview
     }
 
     private func hoverActionButton(
@@ -1069,26 +1341,27 @@ struct ClipboardCardView: View {
         let provider = AppIconProvider.shared
         let name: String? = item.isHandoff ? "📱 Handoff" : item.appName
         let isHandoff = item.isHandoff
+        let wantsIcon = presentation == .card && !isHandoff
 
         // 命中缓存则同步贴上，首帧就与正式版一样完整；未命中再后台补，避免扫盘卡入场。
         if let cached = provider.cachedThemeColor(for: name) {
             themeColor = Color(nsColor: cached)
             usesDarkHeaderForeground = AppIconProvider.prefersDarkForeground(on: cached)
         }
-        if isHandoff {
+        if !wantsIcon {
             appIcon = nil
         } else if let cached = provider.cachedIcon(for: name) {
             appIcon = cached
         }
 
         let needsColor = provider.cachedThemeColor(for: name) == nil
-        let needsIcon = !isHandoff && provider.cachedIcon(for: name) == nil
+        let needsIcon = wantsIcon && provider.cachedIcon(for: name) == nil
         guard needsColor || needsIcon else { return }
 
         Task {
             let (color, icon) = await Task.detached(priority: .userInitiated) {
                 let color = provider.themeColor(for: name)
-                let icon: NSImage? = isHandoff ? nil : provider.icon(for: name)
+                let icon: NSImage? = wantsIcon ? provider.icon(for: name) : nil
                 return (color, icon)
             }.value
             guard !Task.isCancelled else { return }

@@ -36,6 +36,7 @@ enum AccessibilityIdentifiers {
         static let linkPreviewNetworkToggle = "settings.link-preview-network-toggle"
         static let performanceLoggingToggle = "settings.performance-logging-toggle"
         static let semanticSearchToggle = "settings.semantic-search-toggle"
+        static let compactSideTrayToggle = "settings.compact-side-tray-toggle"
         static let semanticIndexProgress = "settings.semantic-index-progress"
         static let rebuildSemanticIndexButton = "settings.rebuild-semantic-index-button"
         static let clearAllButton = "settings.clear-all-button"

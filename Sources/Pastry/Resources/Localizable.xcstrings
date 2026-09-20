@@ -52,6 +52,27 @@
         }
       }
     },
+    "settings.compact_side_tray.section": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "侧边托盘（实验性）" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Side Tray (Experimental)" } }
+      }
+    },
+    "settings.compact_side_tray.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用紧凑列表" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Use Compact List" } }
+      }
+    },
+    "settings.compact_side_tray.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "托盘停靠在屏幕左右边缘时，以更窄的列表展示历史记录；关闭后继续使用完整卡片。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Show history in a narrower list when the tray is docked to either side of the screen. Turn this off to keep full cards." } }
+      }
+    },
     "settings.tab.shortcut": {
       "extractionState": "manual",
       "localizations": {

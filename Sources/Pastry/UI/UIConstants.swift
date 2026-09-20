@@ -61,6 +61,7 @@ enum UIConstants {
         static let accentFillOpacity: Double = 0.12
         static let accentSoftOpacity: Double = 0.35
         static let cardSpacing: CGFloat = 10
+        static let compactRowHeight: CGFloat = 84
         static let overlaySurfaceTintOpacity: Double = 0.55
     }
 

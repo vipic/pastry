@@ -56,6 +56,8 @@ enum UserDefaultsKeys {
     static let performanceLoggingEnabled = "performance_logging_enabled"
     /// 实验性的设备端智能找回。缺省关闭，确保升级后保持既有关键词搜索行为。
     static let semanticSearchEnabled = "semantic_search_enabled"
+    /// 实验性的侧边紧凑列表。缺省关闭，升级后继续使用既有方形卡片。
+    static let compactSideTrayEnabled = "compact_side_tray_enabled"
     /// 已完成的新手引导版本。使用版本号而非布尔值，便于未来只补充重大新增步骤。
     static let onboardingCompletedVersion = "onboarding_completed_version"
 }

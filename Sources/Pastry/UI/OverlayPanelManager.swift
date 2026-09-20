@@ -326,6 +326,9 @@ final class OverlayPanelManager: @unchecked Sendable {
     private var dockingDragMonitor: Any?
     private var dockingPreviewPanel: NSPanel?
     private var pendingDockingTarget: DockingTarget?
+    private var compactSideTrayEnabled: Bool {
+        UserDefaults.standard.bool(forKey: UserDefaultsKeys.compactSideTrayEnabled)
+    }
     /// 关掉预览后 popover.close() 会让面板失焦；短暂忽略 resignKey→hide，避免 Esc 连带关托盘。
     private var suppressResignKeyHideUntil: CFAbsoluteTime = 0
     /// 同一按键可能同时走 monitor / cancelOperation / keyEquivalent；预览关掉后极短吞掉重复 cancel。
@@ -393,7 +396,8 @@ final class OverlayPanelManager: @unchecked Sendable {
         currentPlacement = TrayPlacementPreferences.effectivePlacement()
         let panelFrame = TrayPanelLayout.panelFrame(
             for: currentPlacement,
-            in: screen.visibleFrame
+            in: screen.visibleFrame,
+            compactSideTray: compactSideTrayEnabled
         )
         let warmPanel = ClipboardOverlayPanel(
             contentRect: panelFrame,
@@ -543,7 +547,8 @@ final class OverlayPanelManager: @unchecked Sendable {
               }) ?? panel.screen,
               let placement = TrayPanelLayout.dockingPlacement(
                   at: mouseLocation,
-                  in: screen.visibleFrame
+                  in: screen.visibleFrame,
+                  compactSideTray: compactSideTrayEnabled
               ),
               placement != currentPlacement
         else {
@@ -559,7 +564,11 @@ final class OverlayPanelManager: @unchecked Sendable {
 
     @MainActor
     private func showDockingPreview(for target: DockingTarget) {
-        let frame = TrayPanelLayout.panelFrame(for: target.placement, in: target.screenFrame)
+        let frame = TrayPanelLayout.panelFrame(
+            for: target.placement,
+            in: target.screenFrame,
+            compactSideTray: compactSideTrayEnabled
+        )
         let previewPanel: NSPanel
         if let dockingPreviewPanel {
             previewPanel = dockingPreviewPanel
@@ -597,7 +606,11 @@ final class OverlayPanelManager: @unchecked Sendable {
         currentPlacement = target.placement
         TrayPlacementPreferences.remember(target.placement)
         panel.setFrame(
-            TrayPanelLayout.panelFrame(for: target.placement, in: target.screenFrame),
+            TrayPanelLayout.panelFrame(
+                for: target.placement,
+                in: target.screenFrame,
+                compactSideTray: compactSideTrayEnabled
+            ),
             display: true,
             animate: false
         )
@@ -817,6 +830,22 @@ final class OverlayPanelManager: @unchecked Sendable {
 
     var isVisible: Bool { panel?.isVisible == true }
 
+    @MainActor
+    func refreshSideTrayLayout(compact: Bool) {
+        guard isVisible,
+              currentPlacement.isSide,
+              let panel,
+              let screen = panel.screen
+        else { return }
+        let frame = TrayPanelLayout.panelFrame(
+            for: currentPlacement,
+            in: screen.visibleFrame,
+            compactSideTray: compact
+        )
+        panel.setFrame(frame, display: true, animate: false)
+        panel.contentView?.frame = NSRect(origin: .zero, size: frame.size)
+    }
+
     /// 搜索栏是否展开 — ESC 优先级判断
     var isSearchActive = false
 
@@ -864,7 +893,8 @@ final class OverlayPanelManager: @unchecked Sendable {
 
         let panelFrame = TrayPanelLayout.panelFrame(
             for: currentPlacement,
-            in: screen.visibleFrame
+            in: screen.visibleFrame,
+            compactSideTray: compactSideTrayEnabled
         )
 
         let activePanel: ClipboardOverlayPanel
