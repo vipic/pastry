@@ -81,6 +81,11 @@ final class ConstantsTests: XCTestCase {
         XCTAssertNil(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 400, y: 450), in: screen))
         XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 30, y: 80), in: screen), .left)
         XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 80, y: 30), in: screen), .bottom)
+        let dockInsetScreen = NSRect(x: 0, y: 72, width: 1_440, height: 828)
+        XCTAssertEqual(
+            TrayPanelLayout.dockingPlacement(at: NSPoint(x: 30, y: 20), in: dockInsetScreen),
+            .bottom
+        )
         XCTAssertNil(
             TrayPanelLayout.dockingPlacement(
                 at: NSPoint(x: 320, y: 450),

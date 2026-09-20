@@ -179,6 +179,14 @@ enum TrayPanelLayout {
         in screenFrame: NSRect,
         compactSideTray: Bool = false
     ) -> TrayPlacement? {
+        // The Dock can reserve space below visibleFrame. Treat that physical
+        // screen strip as the bottom edge instead of dropping the drag target.
+        if point.y <= screenFrame.minY,
+           point.x >= screenFrame.minX,
+           point.x <= screenFrame.maxX {
+            return .bottom
+        }
+
         let candidates: [(placement: TrayPlacement, distance: CGFloat)] = [
             (.left, abs(point.x - screenFrame.minX)),
             (.right, abs(screenFrame.maxX - point.x)),
