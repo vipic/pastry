@@ -281,6 +281,11 @@ final class DatabaseManager {
         }) {
             userVersion = 12
         }
+        if version < 13, runMigrationInTransaction("v13-file-bookmarks", {
+            migrateExec("ALTER TABLE clips ADD COLUMN file_bookmarks BLOB;")
+        }) {
+            userVersion = 13
+        }
 
         repairFTSSchemaIfNeeded()
 
@@ -407,11 +412,13 @@ final class DatabaseManager {
 
     // MARK: - CRUD
 
-    /// 列表查询的公共列（不含 raw_format_data BLOB，该字段仅在粘贴时按需加载）
+    /// 列表查询的公共列（不含 raw_format_data BLOB，该字段仅在粘贴时按需加载）。
+    /// 文件路径必须完整保留，否则多文件书签无法与原路径一一对应。
     private static let listColumns = """
-        id, timestamp, substr(content, 1, 256) AS content, content_type, app_name, \
-        text_annotation, image_urls, segments, is_favorite, display_count, \
-        is_handoff, is_url, link_title, favorite_note, favorite_note_updated_at
+        id, timestamp, \
+        CASE WHEN content_type IN ('fileURL', 'image') THEN content ELSE substr(content, 1, 256) END AS content, \
+        content_type, app_name, text_annotation, image_urls, segments, is_favorite, display_count, \
+        is_handoff, is_url, link_title, favorite_note, favorite_note_updated_at, file_bookmarks
         """
 
     enum InsertResult: Equatable {
@@ -479,8 +486,8 @@ final class DatabaseManager {
         }
 
         let sql = """
-        INSERT OR IGNORE INTO clips (id, timestamp, content, content_type, app_name, text_annotation, image_urls, segments, is_favorite, display_count, is_handoff, raw_format_data, raw_format_type, is_url, dedup_key, link_title, favorite_note, favorite_note_updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        INSERT OR IGNORE INTO clips (id, timestamp, content, content_type, app_name, text_annotation, image_urls, segments, is_favorite, display_count, is_handoff, raw_format_data, raw_format_type, is_url, dedup_key, link_title, favorite_note, favorite_note_updated_at, file_bookmarks)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
 
         var stmt: OpaquePointer?
@@ -534,6 +541,12 @@ final class DatabaseManager {
             sqlite3_bind_double(stmt, 18, updatedAt.timeIntervalSince1970)
         } else {
             sqlite3_bind_null(stmt, 18)
+        }
+        if let bookmarks = item.fileBookmarks,
+           let bookmarkData = try? JSONEncoder().encode(bookmarks) {
+            bindBlob(bookmarkData, to: stmt, index: 19)
+        } else {
+            sqlite3_bind_null(stmt, 19)
         }
 
         let rc = sqlite3_step(stmt)
@@ -621,11 +634,11 @@ final class DatabaseManager {
     func pruneMissingFileItems(
         pathExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }
     ) -> Int? {
-        let candidates: [(id: String, paths: [String])]
+        let candidates: [(id: String, item: ClipboardItem)]
 
         lock.lock()
         let sql = """
-        SELECT id, content
+        SELECT id, content, content_type, file_bookmarks
         FROM clips
         WHERE content_type IN ('fileURL', 'image')
           AND is_favorite = 0;
@@ -636,17 +649,22 @@ final class DatabaseManager {
             log.error("失效文件清理查询 prepare 失败: \(self.lastError)")
             return nil
         }
-        var loaded: [(String, [String])] = []
+        var loaded: [(String, ClipboardItem)] = []
         var stepResult = sqlite3_step(stmt)
         while stepResult == SQLITE_ROW {
             if let idPointer = sqlite3_column_text(stmt, 0),
-               let contentPointer = sqlite3_column_text(stmt, 1) {
-                let paths = String(cString: contentPointer)
-                    .split(whereSeparator: \.isNewline)
-                    .map(String.init)
-                if !paths.isEmpty {
-                    loaded.append((String(cString: idPointer), paths))
+               let contentPointer = sqlite3_column_text(stmt, 1),
+               let typePointer = sqlite3_column_text(stmt, 2) {
+                let bookmarkData = readBlob(from: stmt, column: 3)
+                let bookmarks = bookmarkData.flatMap {
+                    try? JSONDecoder().decode([Data?].self, from: $0)
                 }
+                let item = ClipboardItem(
+                    content: String(cString: contentPointer),
+                    sourceFormat: SourceFormat(storageKey: String(cString: typePointer)),
+                    fileBookmarks: bookmarks
+                )
+                loaded.append((String(cString: idPointer), item))
             }
             stepResult = sqlite3_step(stmt)
         }
@@ -659,7 +677,8 @@ final class DatabaseManager {
         candidates = loaded
 
         let missingIDs = candidates.compactMap { candidate -> String? in
-            guard candidate.paths.allSatisfy({ !pathExists($0) }) else { return nil }
+            let paths = FileLocationResolver.resolvedURLs(for: candidate.item).map(\.path)
+            guard !paths.isEmpty, paths.allSatisfy({ !pathExists($0) }) else { return nil }
             return candidate.id
         }
         guard !missingIDs.isEmpty else { return 0 }
@@ -1254,6 +1273,10 @@ final class DatabaseManager {
                 guard sqlite3_column_type(stmt, 14) != SQLITE_NULL else { return nil }
                 return Date(timeIntervalSince1970: sqlite3_column_double(stmt, 14))
             }()
+            let fileBookmarks: [Data?]? = {
+                let data = readBlob(from: stmt, column: 15)
+                return data.flatMap { try? JSONDecoder().decode([Data?].self, from: $0) }
+            }()
 
             let sourceFormat = SourceFormat(storageKey: typeStr)
             let tags = ContentTags(
@@ -1274,6 +1297,7 @@ final class DatabaseManager {
                 textAnnotation: textAnnotation,
                 linkTitle: linkTitle,
                 segmentsJSON: segmentsJSON,
+                fileBookmarks: fileBookmarks,
                 displayCount: dispCount,
                 isPinned: pinned,
                 favoriteNote: favoriteNote,

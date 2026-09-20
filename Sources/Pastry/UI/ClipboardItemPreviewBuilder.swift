@@ -9,8 +9,10 @@ enum ClipboardItemPreviewBuilder {
         switch item.sourceFormat {
         case .fileURL:
             if item.content.contains("\n") { return false }
-            return FileManager.default.fileExists(atPath: item.content)
+            return !FileLocationResolver.existingURLs(for: item).isEmpty
         case .image:
+            if item.fileBookmarks != nil,
+               !FileLocationResolver.existingURLs(for: item).isEmpty { return true }
             let path = ImageCacheManager.shared.originalPath(forThumbnail: item.content) ?? item.content
             return FileManager.default.fileExists(atPath: path)
         case .text, .rtf, .html:
@@ -25,8 +27,8 @@ enum ClipboardItemPreviewBuilder {
         if let url = openableURL(for: item) {
             switch item.sourceFormat {
             case .fileURL:
-                let fileName = (item.content as NSString).lastPathComponent
-                let ext = (fileName as NSString).pathExtension.uppercased()
+                let fileName = url.lastPathComponent
+                let ext = url.pathExtension.uppercased()
                 return QLPreviewHelper.PreviewMetadata(
                     url: url,
                     displayName: fileName,
@@ -101,9 +103,12 @@ enum ClipboardItemPreviewBuilder {
     private static func openableURL(for item: ClipboardItem) -> URL? {
         switch item.sourceFormat {
         case .fileURL:
-            let urls = item.content.split(separator: "\n").map { URL(fileURLWithPath: String($0)) }
-            return urls.first { FileManager.default.fileExists(atPath: $0.path) }
+            return FileLocationResolver.existingURLs(for: item).first
         case .image:
+            if item.fileBookmarks != nil,
+               let movedURL = FileLocationResolver.existingURLs(for: item).first {
+                return movedURL
+            }
             let path = ImageCacheManager.shared.originalPath(forThumbnail: item.content) ?? item.content
             let url = URL(fileURLWithPath: path)
             return FileManager.default.fileExists(atPath: url.path) ? url : nil

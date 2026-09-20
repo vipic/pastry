@@ -98,6 +98,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     let segmentsJSON: String?         // segments 的原始 JSON（延迟解码）
     let rawFormatData: Data?          // 原始格式数据（RTF/HTML 的原始字节，粘贴时写回）
     let rawFormatType: String?        // 原始格式的剪贴板类型（public.rtf / public.html）
+    let fileBookmarks: [Data?]?     // 文件原路径失效后用于跟随 Finder 移动
     var displayCount: Int             // 被粘贴回的次数（可变，不计入 hash）
     var isPinned: Bool                // 收藏（favorite）；自动清理会跳过，用户删除不豁免
     var favoriteNote: String?         // 场景备注；所有条目均可添加（可变，不计入 hash）
@@ -137,6 +138,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         segmentsJSON: String? = nil,
         rawFormatData: Data? = nil,
         rawFormatType: String? = nil,
+        fileBookmarks: [Data?]? = nil,
         displayCount: Int = 0,
         isPinned: Bool = false,
         favoriteNote: String? = nil,
@@ -163,6 +165,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         self.rawFormatData = rawFormatData
         self.rawFormatType = rawFormatType
         self.displayCount = displayCount
+        self.fileBookmarks = fileBookmarks
         self.isPinned = isPinned
         self.favoriteNote = favoriteNote
         self.favoriteNoteUpdatedAt = favoriteNoteUpdatedAt

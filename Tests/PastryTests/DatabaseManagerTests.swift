@@ -196,6 +196,19 @@ final class DatabaseManagerTests: XCTestCase {
         XCTAssertEqual(items[0].appName, "Safari")
     }
 
+    func testFileBookmarksPersistWithHistoryItem() {
+        let bookmarks: [Data?] = [Data([0x01, 0x02]), nil, Data([0x03])]
+        let item = ClipboardItem(
+            content: "/tmp/one.txt\n/tmp/two.txt\n/tmp/three.txt",
+            sourceFormat: .fileURL,
+            fileBookmarks: bookmarks
+        )
+
+        assertInserted(item)
+
+        XCTAssertEqual(db.recent().first?.fileBookmarks, bookmarks)
+    }
+
     /// 插入多条 → recent() 按时间倒序
     func testInsertMultiple() {
         let a = makeItem(content: "A", timestamp: Date(timeIntervalSince1970: 1))

@@ -718,7 +718,8 @@ final class OverlayPanelManager: @unchecked Sendable {
             case .text, .rtf, .html:
                 return DatabaseManager.shared.loadFullContent(id: item.id) ?? item.content
             case .fileURL:
-                return item.content  // 文件路径也是文本
+                let resolvedPaths = FileLocationResolver.existingURLs(for: item).map(\.path)
+                return resolvedPaths.isEmpty ? item.content : resolvedPaths.joined(separator: "\n")
             case .image:
                 return nil  // 跳过多选的图片
             }

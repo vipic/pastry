@@ -12,7 +12,7 @@ extension ClipboardCardView {
     /// 用默认应用打开（多文件/多链接时逐个打开所有存在的 URL）
     private func openItem() {
         if isMultiFile {
-            let urls = existingFileURLs
+            let urls = FileLocationResolver.existingURLs(for: item)
             guard !urls.isEmpty else { return }
             OverlayPanelManager.shared.hide()
             for url in urls { NSWorkspace.shared.open(url) }
@@ -62,7 +62,7 @@ extension ClipboardCardView {
 
     /// 在访达中显示文件所在位置
     private func showInFinder() {
-        guard let url = openableURL else { return }
+        guard let url = FileLocationResolver.existingURLs(for: item).first else { return }
         OverlayPanelManager.shared.hide()
         NSWorkspace.shared.activateFileViewerSelecting([url])
         DeveloperDiagnostics.record(DiagnosticsEvent.showInFinder)
@@ -96,7 +96,8 @@ extension ClipboardCardView {
         } else {
             let lines = targets.map { target in
                 if target.sourceFormat == .fileURL || target.sourceFormat == .image {
-                    return target.content
+                    let resolvedPaths = FileLocationResolver.existingURLs(for: target).map(\.path)
+                    return resolvedPaths.isEmpty ? target.content : resolvedPaths.joined(separator: "\n")
                 }
                 return DatabaseManager.shared.loadFullContent(id: target.id) ?? target.content
             }
@@ -200,7 +201,7 @@ extension ClipboardCardView {
         menu.addItem(copyMenuItem)
 
         let isFileBased = item.sourceFormat == .fileURL || item.sourceFormat == .image
-        let hasAnyFile = isFileBased && !existingFileURLs.isEmpty
+        let hasAnyFile = isFileBased && !FileLocationResolver.existingURLs(for: item).isEmpty
 
         // Open / Open With — 文件类始终显示（缺失时灰显）
         let isTextLike = item.sourceFormat == .text || item.sourceFormat == .rtf || item.sourceFormat == .html
@@ -286,7 +287,7 @@ extension ClipboardCardView {
     private func shareItem(from view: NSView) {
         let items: [Any]
         if isMultiFile {
-            let urls = existingFileURLs
+            let urls = FileLocationResolver.existingURLs(for: item)
             guard !urls.isEmpty else { return }
             items = urls
         } else if let url = openableURL {

@@ -303,6 +303,27 @@ final class ClipboardMonitorTests: XCTestCase {
         XCTAssertEqual(item?.content, "/tmp/actual-file.pdf")
     }
 
+    func testCopiedFileStillResolvesAfterFinderMove() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pastry-moved-file-\(UUID().uuidString)")
+        let destinationDirectory = root.appendingPathComponent("destination")
+        try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let originalURL = root.appendingPathComponent("report.txt")
+        try "content".write(to: originalURL, atomically: true, encoding: .utf8)
+        let pb = makeTestPasteboard("movedFile")
+        pb.clearContents()
+        pb.writeObjects([originalURL as NSURL])
+
+        let item = try XCTUnwrap(ClipboardMonitor.readFileURLsForTesting(from: pb))
+        let movedURL = destinationDirectory.appendingPathComponent(originalURL.lastPathComponent)
+        try FileManager.default.moveItem(at: originalURL, to: movedURL)
+
+        XCTAssertEqual(FileLocationResolver.existingURLs(for: item).map(\.path), [movedURL.path])
+        XCTAssertEqual(ClipboardItemPreviewBuilder.makeMetadata(for: item)?.url.path, movedURL.path)
+    }
+
     func testImageDataPrefersPNGOverTIFF() {
         let pb = makeTestPasteboard("imagePrefersPNG")
         pb.clearContents()

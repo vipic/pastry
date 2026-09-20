@@ -23,7 +23,12 @@ enum DragPayloadBuilder {
 
         switch item.sourceFormat {
         case .image:
-            let imagePath = ImageCacheManager.shared.originalPath(forThumbnail: item.content) ?? item.content
+            let movedImagePath = item.fileBookmarks == nil
+                ? nil
+                : FileLocationResolver.existingURLs(for: item).first?.path
+            let imagePath = movedImagePath
+                ?? ImageCacheManager.shared.originalPath(forThumbnail: item.content)
+                ?? item.content
             let imageURL = URL(fileURLWithPath: imagePath)
             if FileManager.default.fileExists(atPath: imagePath),
                let provider = NSItemProvider(contentsOf: imageURL) {
@@ -32,9 +37,7 @@ enum DragPayloadBuilder {
             }
             return NSItemProvider(object: item.content as NSString)
         case .fileURL:
-            let firstPath = item.content.split(separator: "\n").first.map(String.init) ?? item.content
-            let fileURL = URL(fileURLWithPath: firstPath)
-            if FileManager.default.fileExists(atPath: firstPath),
+            if let fileURL = FileLocationResolver.existingURLs(for: item).first,
                let provider = NSItemProvider(contentsOf: fileURL) {
                 provider.suggestedName = fileURL.lastPathComponent
                 return provider
@@ -100,12 +103,12 @@ enum DragPayloadBuilder {
         items.flatMap { item -> [URL] in
             switch item.sourceFormat {
             case .fileURL:
-                return item.content
-                    .split(whereSeparator: \.isNewline)
-                    .map(String.init)
-                    .filter { FileManager.default.fileExists(atPath: $0) }
-                    .map { URL(fileURLWithPath: $0) }
+                return FileLocationResolver.existingURLs(for: item)
             case .image:
+                if item.fileBookmarks != nil,
+                   let movedURL = FileLocationResolver.existingURLs(for: item).first {
+                    return [movedURL]
+                }
                 let path = ImageCacheManager.shared.originalPath(forThumbnail: item.content) ?? item.content
                 guard FileManager.default.fileExists(atPath: path) else { return [] }
                 return [URL(fileURLWithPath: path)]

@@ -81,6 +81,7 @@ struct ClipboardCardView: View {
     @State private var asyncFileIcons: [URL: NSImage] = [:]
     @State private var asyncFileSizes: [URL: Int64] = [:]
     @State private var missingFileURLs: Set<URL> = []
+    @State private var locatedFileURLs: [URL]?
 
     /// 路径 → NSImage 缓存，避免重绘时重复创建实例导致闪烁
     private nonisolated(unsafe) static let imageCache = NSCache<NSString, NSImage>()
@@ -251,7 +252,7 @@ struct ClipboardCardView: View {
     var openableURL: URL? {
         switch item.sourceFormat {
         case .fileURL:
-            return existingFileURLs.first
+            return FileLocationResolver.existingURLs(for: item).first
         case .image:
             return imageOpenableURL
         case .text, .rtf, .html:
@@ -479,21 +480,26 @@ struct ClipboardCardView: View {
 
         // 图片类型 — 异步加载 NSImage
         if item.sourceFormat == .image {
-            let path = item.content
-            let key = path as NSString
-
-            // 文件已删除 → 清除缓存，显示缺失状态
-            if !FileManager.default.fileExists(atPath: path) {
-                Self.imageCache.removeObject(forKey: key)
-                await MainActor.run {
-                    missingFileURLs.insert(URL(fileURLWithPath: path))
-                    asyncFilePreview = nil
+            let urls = await Task.detached(priority: .userInitiated) {
+                FileLocationResolver.existingURLs(for: item)
+            }.value
+            guard !Task.isCancelled else { return }
+            guard let url = urls.first else {
+                let originalURL = FileLocationResolver.originalURLs(for: item).first
+                if let originalURL {
+                    Self.imageCache.removeObject(forKey: originalURL.path as NSString)
+                    missingFileURLs.insert(originalURL)
                 }
+                locatedFileURLs = []
+                asyncFilePreview = nil
                 return
             }
 
+            locatedFileURLs = urls
+            missingFileURLs = []
+            let path = url.path
+            let key = path as NSString
             if let cached = Self.imageCache.object(forKey: key) {
-                guard !Task.isCancelled else { return }
                 asyncFilePreview = cached
                 return
             }
@@ -507,7 +513,7 @@ struct ClipboardCardView: View {
                 imageLoadTask.cancel()
             }
             guard !Task.isCancelled else { return }
-            if let img = img {
+            if let img {
                 Self.imageCache.setObject(img, forKey: key)
                 var t = Transaction()
                 t.disablesAnimations = true
@@ -520,8 +526,8 @@ struct ClipboardCardView: View {
 
         // 文件 URL 类型 — 异步检查存在性并加载图标和文件大小
         if item.sourceFormat == .fileURL {
-            let urls = fileURLs
-            let fileLoadTask = Task.detached(priority: .userInitiated, operation: { () -> (missing: Set<URL>, icons: [(URL, NSImage, Bool)], sizes: [URL: Int64]) in
+            let fileLoadTask = Task.detached(priority: .userInitiated, operation: { () -> (urls: [URL], missing: Set<URL>, icons: [(URL, NSImage, Bool)], sizes: [URL: Int64]) in
+                let urls = FileLocationResolver.resolvedURLs(for: item)
                 var missing: Set<URL> = []
                 var icons: [(URL, NSImage, Bool)] = []
                 var sizes: [URL: Int64] = [:]
@@ -564,7 +570,7 @@ struct ClipboardCardView: View {
                         icons.append((url, loaded, needsThumbnail))
                     }
                 }
-                return (missing, icons, sizes)
+                return (urls, missing, icons, sizes)
             })
             let result = await withTaskCancellationHandler {
                 await fileLoadTask.value
@@ -576,6 +582,7 @@ struct ClipboardCardView: View {
             var t = Transaction()
             t.disablesAnimations = true
             withTransaction(t) {
+                locatedFileURLs = result.urls
                 missingFileURLs = result.missing
                 asyncFileSizes = result.sizes
                 for (url, icon, isThumbnail) in result.icons {
@@ -1020,7 +1027,7 @@ struct ClipboardCardView: View {
     }
 
     var fileURLs: [URL] {
-        item.content.split(separator: "\n").map { URL(fileURLWithPath: String($0)) }
+        locatedFileURLs ?? FileLocationResolver.originalURLs(for: item)
     }
 
     /// 所有实际存在于磁盘的文件 URL（从异步加载的 missingFileURLs 反推，不阻塞主线程）
@@ -1034,13 +1041,13 @@ struct ClipboardCardView: View {
     }
 
     private var imageOpenableURL: URL? {
-        if item.content.contains("\n") {
-            return fileURLs.first { FileManager.default.fileExists(atPath: $0.path) }
+        if item.fileBookmarks != nil,
+           let movedURL = FileLocationResolver.existingURLs(for: item).first {
+            return movedURL
         }
-        let preferredPath = ImageCacheManager.shared.originalPath(forThumbnail: item.content) ?? item.content
-        let url = URL(fileURLWithPath: preferredPath)
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        return url
+        let path = ImageCacheManager.shared.originalPath(forThumbnail: item.content) ?? item.content
+        let url = URL(fileURLWithPath: path)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
     /// 是否为多文件条目
@@ -1190,8 +1197,13 @@ struct ClipboardCardView: View {
     static func multiSelectTextForTesting(_ items: [ClipboardItem]) -> String {
         items.compactMap { item -> String? in
             switch item.sourceFormat {
-            case .text, .rtf, .html, .fileURL: return item.content
-            default: return nil
+            case .text, .rtf, .html:
+                return item.content
+            case .fileURL:
+                let resolvedPaths = FileLocationResolver.existingURLs(for: item).map(\.path)
+                return resolvedPaths.isEmpty ? item.content : resolvedPaths.joined(separator: "\n")
+            default:
+                return nil
             }
         }.joined(separator: "\n")
     }
@@ -1200,7 +1212,8 @@ struct ClipboardCardView: View {
     static func dragPayloadForTesting(_ item: ClipboardItem) -> (isFile: Bool, content: String) {
         switch item.sourceFormat {
         case .image, .fileURL:
-            return (true, item.content)
+            let resolvedPath = FileLocationResolver.existingURLs(for: item).first?.path ?? item.content
+            return (true, resolvedPath)
         default:
             return (false, item.content)
         }
@@ -1215,9 +1228,11 @@ struct ClipboardCardView: View {
     static func openableURLForTesting(_ item: ClipboardItem) -> URL? {
         switch item.sourceFormat {
         case .fileURL:
-            let urls = item.content.split(separator: "\n").map { URL(fileURLWithPath: String($0)) }
-            return urls.first { FileManager.default.fileExists(atPath: $0.path) }
+            return FileLocationResolver.existingURLs(for: item).first
         case .image:
+            if item.fileBookmarks != nil {
+                return FileLocationResolver.existingURLs(for: item).first
+            }
             let path = ImageCacheManager.shared.originalPath(forThumbnail: item.content) ?? item.content
             let url = URL(fileURLWithPath: path)
             return FileManager.default.fileExists(atPath: url.path) ? url : nil

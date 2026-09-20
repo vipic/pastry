@@ -63,9 +63,7 @@ struct PasteboardWriter {
             return .written
 
         case .fileURL:
-            let urls = item.content
-                .split(separator: "\n")
-                .map { URL(fileURLWithPath: String($0)) }
+            let urls = FileLocationResolver.resolvedURLs(for: item)
             let writableURLs = options.filterMissingFileURLs
                 ? urls.filter { FileManager.default.fileExists(atPath: $0.path) }
                 : urls
@@ -74,9 +72,15 @@ struct PasteboardWriter {
             return .written
 
         case .image:
-            let imagePath = options.preferOriginalImage
-                ? (originalImagePath(item.content) ?? item.content)
-                : item.content
+            let imagePath: String
+            if item.fileBookmarks != nil,
+               let movedURL = FileLocationResolver.existingURLs(for: item).first {
+                imagePath = movedURL.path
+            } else {
+                imagePath = options.preferOriginalImage
+                    ? (originalImagePath(item.content) ?? item.content)
+                    : item.content
+            }
             guard let image = await Task.detached(priority: .userInitiated, operation: { () -> NSImage? in
                 NSImage(contentsOfFile: imagePath)
             }).value else {

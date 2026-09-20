@@ -34,6 +34,7 @@ Pastry/
 │       │   ├── ClipboardItem.swift           # 剪贴板记录、格式、标签和去重模型
 │       │   ├── ClipboardMonitor.swift        # NSPasteboard 轮询、去重和来源识别
 │       │   ├── ClipboardMonitorReaders.swift # 文本、URL、RTF、HTML、图片和文件读取器
+│       │   ├── FileLocationResolver.swift    # 文件书签创建、移动后解析与存在性检查
 │       │   └── ImageCacheManager.swift       # 图片缩略图、原图映射和缓存清理
 │       │
 │       ├── Generated/

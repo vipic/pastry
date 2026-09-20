@@ -245,6 +245,7 @@ extension ClipboardMonitor {
 
         guard !paths.isEmpty else { return nil }
         let content = paths.joined(separator: "\n")
+        let fileBookmarks = FileLocationResolver.makeBookmarks(for: paths)
 
         // 所有文件都是图片 → 归为 .image
         let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "heic", "heif"]
@@ -252,10 +253,22 @@ extension ClipboardMonitor {
             imageExtensions.contains(URL(fileURLWithPath: p).pathExtension.lowercased())
         }
         if allImages {
-            return ClipboardItem(content: content, sourceFormat: .image, appName: appName, isHandoff: isHandoff)
+            return ClipboardItem(
+                content: content,
+                sourceFormat: .image,
+                appName: appName,
+                isHandoff: isHandoff,
+                fileBookmarks: fileBookmarks
+            )
         }
 
-        return ClipboardItem(content: content, sourceFormat: .fileURL, appName: appName, isHandoff: isHandoff)
+        return ClipboardItem(
+            content: content,
+            sourceFormat: .fileURL,
+            appName: appName,
+            isHandoff: isHandoff,
+            fileBookmarks: fileBookmarks
+        )
     }
 
     /// 检测剪贴板中的 URL 链接（http/https），优于纯文本捕获

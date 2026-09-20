@@ -721,8 +721,11 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
             await LocalSemanticSearchEngine.shared.index(item)
         }
 
-        // 内存中的 items 数组截断 content 至 256 字符（DB 保留完整内容用于粘贴和 FTS）
-        let truncatedContent = item.content.count > 256 ? String(item.content.prefix(256)) : item.content
+        // 文本列表项截断至 256 字符；文件路径完整保留以维持多文件和书签的逐项对应。
+        let keepsFullContent = item.sourceFormat == .fileURL || item.sourceFormat == .image
+        let truncatedContent = keepsFullContent || item.content.count <= 256
+            ? item.content
+            : String(item.content.prefix(256))
         let listItem = ClipboardItem(
             id: item.id, timestamp: item.timestamp,
             content: truncatedContent, sourceFormat: item.sourceFormat, tags: item.tags,
@@ -731,6 +734,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
             linkTitle: item.linkTitle,
             segmentsJSON: item.segmentsJSON,
             rawFormatData: item.rawFormatData, rawFormatType: item.rawFormatType,
+            fileBookmarks: item.fileBookmarks,
             displayCount: item.displayCount, isPinned: isPinned,
             favoriteNote: favoriteNote,
             favoriteNoteUpdatedAt: favoriteNoteUpdatedAt
