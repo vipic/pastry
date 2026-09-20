@@ -13,6 +13,8 @@ final class DeveloperDiagnosticsTests: XCTestCase {
         DeveloperDiagnostics.resetUsageForTesting()
         DeveloperDiagnostics.resetRuntimeLogForTesting()
         DeveloperDiagnostics.runtimeLogMaxBytesOverrideForTesting = nil
+        DeveloperDiagnostics.contextOverrideForTesting = nil
+        DeveloperDiagnostics.dateOverrideForTesting = nil
 
         UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.performanceLoggingEnabled)
     }
@@ -21,6 +23,8 @@ final class DeveloperDiagnosticsTests: XCTestCase {
         DeveloperDiagnostics.resetUsageForTesting()
         DeveloperDiagnostics.resetRuntimeLogForTesting()
         DeveloperDiagnostics.runtimeLogMaxBytesOverrideForTesting = nil
+        DeveloperDiagnostics.contextOverrideForTesting = nil
+        DeveloperDiagnostics.dateOverrideForTesting = nil
         DeveloperDiagnostics.logsDirectoryOverrideForTesting = nil
         UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.performanceLoggingEnabled)
         if let tempLogsDir {
@@ -49,6 +53,7 @@ final class DeveloperDiagnosticsTests: XCTestCase {
 
     func testWritePerfLineCreatesFileWhenEnabled() {
         UserDefaults.standard.set(true, forKey: UserDefaultsKeys.performanceLoggingEnabled)
+        DeveloperDiagnostics.contextOverrideForTesting = .development
         DeveloperDiagnostics.writePerfLine("test | type: panel | total: 1ms")
 
         // 等待异步队列落盘
@@ -58,10 +63,13 @@ final class DeveloperDiagnosticsTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: perfURL.path))
         let body = (try? String(contentsOf: perfURL, encoding: .utf8)) ?? ""
         XCTAssertTrue(body.contains("type: panel"))
+        XCTAssertTrue(body.contains("context: development"))
     }
 
-    func testUsagePersistsAcrossSnapshot() {
+    func testUsagePersistsDailyAndContextCounts() {
         UserDefaults.standard.set(true, forKey: UserDefaultsKeys.performanceLoggingEnabled)
+        DeveloperDiagnostics.contextOverrideForTesting = .development
+        DeveloperDiagnostics.dateOverrideForTesting = Date(timeIntervalSince1970: 1_700_000_000)
         DeveloperDiagnostics.record(DiagnosticsEvent.favoritePin)
         _ = DeveloperDiagnostics.snapshotCountsForTesting()
 
@@ -70,8 +78,49 @@ final class DeveloperDiagnosticsTests: XCTestCase {
         let data = try! Data(contentsOf: usageURL)
         let json = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
         let counts = json["counts"] as! [String: Any]
+        let contextCounts = json["contextCounts"] as! [String: [String: Int]]
+        let dailyCounts = json["dailyCounts"] as! [String: [String: [String: Int]]]
         XCTAssertEqual(counts[DiagnosticsEvent.favoritePin] as? Int, 1)
-        XCTAssertEqual(json["version"] as? Int, 1)
+        XCTAssertEqual(contextCounts["development"]?[DiagnosticsEvent.favoritePin], 1)
+        XCTAssertEqual(dailyCounts["2023-11-14"]?["development"]?[DiagnosticsEvent.favoritePin], 1)
+        XCTAssertEqual(json["version"] as? Int, 2)
+        XCTAssertNotNil(json["startedAt"] as? String)
+        XCTAssertNotNil(json["dailyCountsStartedAt"] as? String)
+    }
+
+    func testLegacyUsageUpgradePreservesTotalsAndStartsAttributedCounts() throws {
+        UserDefaults.standard.set(true, forKey: UserDefaultsKeys.performanceLoggingEnabled)
+        let usageURL = tempLogsDir.appendingPathComponent("usage.json")
+        let legacy = """
+        {"version":1,"updatedAt":"2026-01-02T00:00:00Z","counts":{"preview":4}}
+        """
+        try legacy.write(to: usageURL, atomically: true, encoding: .utf8)
+        try """
+        {"timestamp":"2026-01-01T00:00:00Z"}
+
+        """.write(
+            to: tempLogsDir.appendingPathComponent("runtime.jsonl"),
+            atomically: true,
+            encoding: .utf8
+        )
+        DeveloperDiagnostics.contextOverrideForTesting = .normal
+        DeveloperDiagnostics.dateOverrideForTesting = ISO8601DateFormatter().date(
+            from: "2026-01-03T00:00:00Z"
+        )
+
+        DeveloperDiagnostics.record(DiagnosticsEvent.copy)
+        _ = DeveloperDiagnostics.snapshotCountsForTesting()
+
+        let data = try Data(contentsOf: usageURL)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let counts = try XCTUnwrap(json["counts"] as? [String: Int])
+        let contextCounts = try XCTUnwrap(json["contextCounts"] as? [String: [String: Int]])
+        XCTAssertEqual(counts[DiagnosticsEvent.preview], 4)
+        XCTAssertEqual(counts[DiagnosticsEvent.copy], 1)
+        XCTAssertEqual(contextCounts["normal"]?[DiagnosticsEvent.copy], 1)
+        XCTAssertNil(contextCounts["normal"]?[DiagnosticsEvent.preview])
+        XCTAssertEqual(json["startedAt"] as? String, "2026-01-01T00:00:00Z")
+        XCTAssertEqual(json["dailyCountsStartedAt"] as? String, "2026-01-03T00:00:00Z")
     }
 
     func testLogsDirectoryUsesAppName() {
@@ -119,6 +168,7 @@ final class DeveloperDiagnosticsTests: XCTestCase {
         let data = Data(line.utf8)
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
+        XCTAssertEqual(json["context"] as? String, "normal")
         XCTAssertEqual(json["level"] as? String, "warning")
         XCTAssertEqual(json["category"] as? String, "update")
         XCTAssertEqual(json["event"] as? String, "update.check.failed")

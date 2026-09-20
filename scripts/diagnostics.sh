@@ -83,11 +83,12 @@ for raw in sys.stdin:
     metadata_text = " ".join(f"{k}={v}" for k, v in sorted(metadata.items()))
     timestamp = row.get("timestamp", "-")
     level = row.get("level", "?").upper()
+    context = row.get("context", "unclassified")
     category = row.get("category", "-")
     event = row.get("event", "-")
     message = row.get("message", "-")
     print(f"{timestamp} {level:8} {category}/{event}{duration_text} "
-          f"{message} {metadata_text}".rstrip())
+          f"{message} context={context} {metadata_text}".rstrip())
 '
 }
 

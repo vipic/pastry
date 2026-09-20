@@ -169,13 +169,13 @@ mise run bench -- --report
 mise run bench -- --report-dev
 ```
 
-`--report` 读取正式版的 `~/Library/Logs/Pastry/perf.log`，`--report-dev` 读取 `~/Library/Logs/Pastry Dev/perf.log`。开发诊断默认关闭，可在设置 → Security → Privacy 打开「开发诊断记录」，同时写入：
+`--report` 读取正式版的 `~/Library/Logs/Pastry/perf.log`，`--report-dev` 读取 `~/Library/Logs/Pastry Dev/perf.log`。日常调试使用 `mise run deploy`，避免开发操作污染正式版数据。开发诊断默认关闭，可在设置 → Security → Privacy 打开「开发诊断记录」，同时写入：
 
-- `perf.log`：面板打开 / 粘贴计时
-- `usage.json`：功能使用次数累加（收藏、删除、预览、筛选等）
-- `runtime.jsonl`：按会话记录启动、数据库、热键、面板、粘贴、更新与 watchdog 等结构化事件
+- `perf.log`：面板打开 / 粘贴计时及 `normal`、`development`、`release_smoke` 上下文
+- `usage.json`：功能累计次数、起始时间，以及按 UTC 日期和运行上下文拆分的次数
+- `runtime.jsonl`：按会话和运行上下文记录启动、数据库、热键、面板、粘贴、更新与 watchdog 等结构化事件
 
-`runtime.jsonl` 达到 5 MB 后自动轮转，最多保留当前文件和三个历史文件。日志不会记录剪贴板内容、搜索词或完整 URL。查看最近日志：
+`runtime.jsonl` 达到 5 MB 后自动轮转，最多保留当前文件和三个历史文件。正式 DMG 烟测显式标记为 `release_smoke`；日志不会记录剪贴板内容、搜索词、完整 URL 或模型输入输出。查看最近日志：
 
 ```bash
 mise run logs:app -- "Pastry Dev" 80

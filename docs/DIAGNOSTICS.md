@@ -43,11 +43,13 @@ mise run logs:publish -- --full
 ~/Library/Logs/Pastry Dev/
 ```
 
-- `runtime.jsonl`：结构化事件，每行一个 JSON 对象，包含时间、session ID、level、category、event、message、可选 duration 和 metadata。
-- `perf.log`：供 `scripts/bench.sh --report`（正式版）或 `--report-dev`（开发版）使用的面板与粘贴性能样本。
-- `usage.json`：功能使用次数累加，不包含操作内容。
+- `runtime.jsonl`：结构化事件，每行一个 JSON 对象，包含时间、session ID、运行 `context`、level、category、event、message、可选 duration 和 metadata。
+- `perf.log`：供 `scripts/bench.sh --report`（正式版）或 `--report-dev`（开发版）使用的面板与粘贴性能样本；每条新样本包含运行 `context`。
+- `usage.json`：功能使用累计次数、记录起始时间、按 UTC 日期及运行 `context` 拆分的次数，不包含操作内容。
 
-结构化日志覆盖应用生命周期、数据库打开与旧库迁移、剪贴板监听、全局热键、面板显示/关闭、单选和多选粘贴、更新检查及 watchdog。`runtime.jsonl` 到 5 MB 时轮转，保留 `runtime.1.jsonl` 至 `runtime.3.jsonl`。
+运行上下文固定为 `normal`、`development`、`release_smoke`。开发版按 `.dev` bundle id 或 `-dev` 版本号自动识别；正式 DMG 烟测通过启动参数标记，不再混入正常使用统计。`usage.json` v1 升级时保留既有累计次数；旧次数无法追溯到日期或上下文，因此 `dailyCountsStartedAt` 只标记可归因统计的起点。
+
+结构化日志覆盖应用生命周期、数据库打开与旧库结构协调、剪贴板监听、全局热键、面板显示/关闭、单选和多选粘贴、更新检查及 watchdog。语义索引失败只记录错误 domain、code、类型、模型可用状态、阶段和数量，不记录模型输入输出。`runtime.jsonl` 到 5 MB 时轮转，保留 `runtime.1.jsonl` 至 `runtime.3.jsonl`。
 
 ### 隐私边界
 
@@ -77,6 +79,6 @@ mise run logs:publish -- --full
 
 1. 用 `scripts/diagnostics.sh summary` 确认相关日志是否存在。
 2. 性能问题先看 command/stage 的 `duration_ms`，定位最慢阶段后再看 `--full` 输出。
-3. 应用问题按同一个 `session_id` 串联事件，优先查 `WARNING`、`ERROR`、`CRITICAL`。
+3. 应用问题按同一个 `session_id` 串联事件，优先查 `WARNING`、`ERROR`、`CRITICAL`，并用 `context` 排除开发或正式制品烟测。
 4. 将日志时间与代码中的 category/event 对齐；日志事件名应稳定，用户可见文案可以独立调整。
-5. 若复现前未开启开发诊断记录，先打开开关再复现；不需要退出应用。
+5. 日常调试优先运行 `mise run deploy` 使用 `Pastry Dev`；若复现前未开启开发诊断记录，先打开开关再复现，不需要退出应用。

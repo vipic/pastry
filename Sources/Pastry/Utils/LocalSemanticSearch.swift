@@ -71,6 +71,33 @@ actor LocalSemanticSearchEngine {
 
     private var isAvailable: Bool { availability == .available }
 
+    private func failureMetadata(
+        for error: Error,
+        stage: String,
+        itemCount: Int
+    ) -> [String: String] {
+        let nsError = error as NSError
+        let availabilityValue: String
+        switch availability {
+        case .available:
+            availabilityValue = "available"
+        case .deviceNotEligible:
+            availabilityValue = "device_not_eligible"
+        case .appleIntelligenceNotEnabled:
+            availabilityValue = "apple_intelligence_not_enabled"
+        case .modelNotReady:
+            availabilityValue = "model_not_ready"
+        }
+        return [
+            "stage": stage,
+            "error_domain": nsError.domain,
+            "error_code": String(nsError.code),
+            "error_type": String(reflecting: type(of: error)),
+            "model_availability": availabilityValue,
+            "item_count": String(itemCount)
+        ]
+    }
+
     func refreshStatus() async {
         let currentAvailability = availability
         let progress = DatabaseManager.shared.semanticIndexProgress()
@@ -160,7 +187,11 @@ actor LocalSemanticSearchEngine {
                     total: progress.total
                 )
             } catch {
-                diagnosticsLog.error("设备端语义索引失败", event: "semantic.index.failed")
+                diagnosticsLog.error(
+                    "设备端语义索引失败",
+                    event: "semantic.index.failed",
+                    metadata: failureMetadata(for: error, stage: "backfill", itemCount: inputs.count)
+                )
                 progress = DatabaseManager.shared.semanticIndexProgress()
                 await SemanticSearchStatus.shared.updateIndex(
                     phase: .failed,
@@ -221,7 +252,11 @@ actor LocalSemanticSearchEngine {
                 total: progress.total
             )
         } catch {
-            diagnosticsLog.error("新增历史语义索引失败", event: "semantic.index_incremental.failed")
+            diagnosticsLog.error(
+                "新增历史语义索引失败",
+                event: "semantic.index_incremental.failed",
+                metadata: failureMetadata(for: error, stage: "incremental", itemCount: 1)
+            )
             let progress = DatabaseManager.shared.semanticIndexProgress()
             await SemanticSearchStatus.shared.updateIndex(
                 phase: .failed,

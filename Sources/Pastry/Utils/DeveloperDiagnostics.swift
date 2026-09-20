@@ -10,6 +10,12 @@ enum DiagnosticLogLevel: String, Codable {
     case critical
 }
 
+enum DiagnosticsContext: String, Codable {
+    case normal
+    case development
+    case releaseSmoke = "release_smoke"
+}
+
 /// Pastry 统一运行日志 interface。
 ///
 /// 所有事件始终进入 Apple Unified Logging；开启“开发诊断记录”后，额外写入本地
@@ -130,7 +136,7 @@ enum DeveloperDiagnostics {
     private static let runtimeRotatedFilePrefix = "runtime"
     private static let runtimeLogDefaultMaxBytes: UInt64 = 5 * 1024 * 1024
     private static let runtimeLogGenerationCount = 3
-    private static let usageVersion = 1
+    private static let usageVersion = 2
     private static let sessionID = UUID().uuidString.lowercased()
     private static let sensitiveMetadataKeys: Set<String> = [
         "clipboard", "content", "html", "pasteboard", "query", "rtf", "text", "url"
@@ -146,26 +152,28 @@ enum DeveloperDiagnostics {
     /// 功能使用计数 +1（开关关闭时 no-op）。
     static func record(_ event: String) {
         guard isEnabled, !event.isEmpty else { return }
+        let context = currentContext
+        let now = currentDate
         queue.async {
-            mutateUsageCounts { counts in
-                counts[event, default: 0] += 1
-            }
+            incrementUsage(event, context: context, at: now)
         }
     }
 
     /// 写入一行性能日志（格式保持与 scripts/bench.sh 兼容）。
     static func writePerfLine(_ line: String) {
         guard isEnabled else { return }
+        let context = currentContext
         queue.async {
             let logDir = logsDirectoryOverrideForTesting ?? AppDirectories.logsDirectory()
             guard AppDirectories.ensureDirectory(logDir, logCategory: "diagnostics") else { return }
             let logFile = logDir.appendingPathComponent(perfFileName)
+            let renderedLine = "\(line) | context: \(context.rawValue)\n"
             if let handle = try? FileHandle(forWritingTo: logFile) {
                 defer { try? handle.close() }
                 handle.seekToEndOfFile()
-                handle.write(Data((line + "\n").utf8))
+                handle.write(Data(renderedLine.utf8))
             } else {
-                try? (line + "\n").write(to: logFile, atomically: true, encoding: .utf8)
+                try? renderedLine.write(to: logFile, atomically: true, encoding: .utf8)
             }
         }
     }
@@ -180,16 +188,18 @@ enum DeveloperDiagnostics {
         durationMilliseconds: Int? = nil
     ) {
         guard isEnabled, !category.isEmpty, !event.isEmpty else { return }
+        let context = currentContext
         queue.async {
             let record = RuntimeLogRecord(
                 timestamp: isoNow(),
                 sessionID: sessionID,
+                context: context,
                 level: level,
                 category: category,
                 event: event,
                 message: message,
-                durationMilliseconds: durationMilliseconds,
                 metadata: sanitizedMetadata(metadata),
+                durationMilliseconds: durationMilliseconds,
                 appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
                     ?? AppVersion.current,
                 build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String
@@ -245,36 +255,91 @@ enum DeveloperDiagnostics {
     /// 指定测试目录覆盖（测试用）；传 nil 恢复默认。
     nonisolated(unsafe) static var logsDirectoryOverrideForTesting: URL?
     nonisolated(unsafe) static var runtimeLogMaxBytesOverrideForTesting: UInt64?
-
+    nonisolated(unsafe) static var contextOverrideForTesting: DiagnosticsContext?
+    nonisolated(unsafe) static var dateOverrideForTesting: Date?
     // MARK: - Private
 
     private struct UsageFile: Codable {
         var version: Int
+        var startedAt: String
+        var dailyCountsStartedAt: String
         var updatedAt: String
         var counts: [String: Int]
+        var contextCounts: [String: [String: Int]]
+        var dailyCounts: [String: [String: [String: Int]]]
+
+        enum CodingKeys: String, CodingKey {
+            case version
+            case startedAt
+            case dailyCountsStartedAt
+            case updatedAt
+            case counts
+            case contextCounts
+            case dailyCounts
+        }
+
+        init(
+            version: Int,
+            startedAt: String,
+            dailyCountsStartedAt: String,
+            updatedAt: String,
+            counts: [String: Int] = [:],
+            contextCounts: [String: [String: Int]] = [:],
+            dailyCounts: [String: [String: [String: Int]]] = [:]
+        ) {
+            self.version = version
+            self.startedAt = startedAt
+            self.dailyCountsStartedAt = dailyCountsStartedAt
+            self.updatedAt = updatedAt
+            self.counts = counts
+            self.contextCounts = contextCounts
+            self.dailyCounts = dailyCounts
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+            updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt) ?? isoNow()
+            startedAt = try container.decodeIfPresent(String.self, forKey: .startedAt) ?? updatedAt
+            dailyCountsStartedAt = try container.decodeIfPresent(
+                String.self,
+                forKey: .dailyCountsStartedAt
+            ) ?? updatedAt
+            counts = try container.decodeIfPresent([String: Int].self, forKey: .counts) ?? [:]
+            contextCounts = try container.decodeIfPresent(
+                [String: [String: Int]].self,
+                forKey: .contextCounts
+            ) ?? [:]
+            dailyCounts = try container.decodeIfPresent(
+                [String: [String: [String: Int]]].self,
+                forKey: .dailyCounts
+            ) ?? [:]
+        }
     }
 
     private struct RuntimeLogRecord: Codable {
         let timestamp: String
         let sessionID: String
+        let context: DiagnosticsContext
         let level: DiagnosticLogLevel
         let category: String
         let event: String
         let message: String
-        let durationMilliseconds: Int?
         let metadata: [String: String]
+        let durationMilliseconds: Int?
         let appVersion: String
         let build: String
 
         enum CodingKeys: String, CodingKey {
             case timestamp
             case sessionID = "session_id"
+            case context
             case level
             case category
             case event
             case message
-            case durationMilliseconds = "duration_ms"
             case metadata
+            case durationMilliseconds = "duration_ms"
             case appVersion = "app_version"
             case build
         }
@@ -285,24 +350,39 @@ enum DeveloperDiagnostics {
         return dir.appendingPathComponent(usageFileName)
     }
 
-    private static func loadUsageFile() -> UsageFile {
+    private static func loadUsageFile(at now: Date = currentDate) -> UsageFile {
         let url = usageFileURL()
+        let timestamp = isoNow(now)
         guard let data = try? Data(contentsOf: url),
-              let decoded = try? JSONDecoder().decode(UsageFile.self, from: data)
+              var decoded = try? JSONDecoder().decode(UsageFile.self, from: data)
         else {
-            return UsageFile(version: usageVersion, updatedAt: isoNow(), counts: [:])
+            return UsageFile(
+                version: usageVersion,
+                startedAt: timestamp,
+                dailyCountsStartedAt: timestamp,
+                updatedAt: timestamp
+            )
+        }
+        if decoded.version < usageVersion {
+            decoded.version = usageVersion
+            decoded.startedAt = earliestRuntimeTimestamp() ?? decoded.startedAt
+            decoded.dailyCountsStartedAt = timestamp
         }
         return decoded
     }
 
-    private static func mutateUsageCounts(_ body: (inout [String: Int]) -> Void) {
+    private static func incrementUsage(_ event: String, context: DiagnosticsContext, at now: Date) {
         let dir = logsDirectoryOverrideForTesting ?? AppDirectories.logsDirectory()
         guard AppDirectories.ensureDirectory(dir, logCategory: "diagnostics") else { return }
 
-        var file = loadUsageFile()
-        body(&file.counts)
+        var file = loadUsageFile(at: now)
+        let timestamp = isoNow(now)
+        let day = String(timestamp.prefix(10))
+        file.counts[event, default: 0] += 1
+        file.contextCounts[context.rawValue, default: [:]][event, default: 0] += 1
+        file.dailyCounts[day, default: [:]][context.rawValue, default: [:]][event, default: 0] += 1
         file.version = usageVersion
-        file.updatedAt = isoNow()
+        file.updatedAt = timestamp
 
         do {
             let data = try JSONEncoder().encode(file)
@@ -380,8 +460,48 @@ enum DeveloperDiagnostics {
         return value.replacingOccurrences(of: home, with: "~")
     }
 
-    private static func isoNow() -> String {
-        ISO8601DateFormatter().string(from: Date())
+    private static var currentContext: DiagnosticsContext {
+        if let contextOverrideForTesting {
+            return contextOverrideForTesting
+        }
+        let arguments = ProcessInfo.processInfo.arguments
+        if let flagIndex = arguments.firstIndex(of: "--diagnostics-context"),
+           arguments.indices.contains(flagIndex + 1),
+           let context = DiagnosticsContext(rawValue: arguments[flagIndex + 1]) {
+            return context
+        }
+        if let rawValue = ProcessInfo.processInfo.environment["PASTRY_DIAGNOSTICS_CONTEXT"],
+           let context = DiagnosticsContext(rawValue: rawValue) {
+            return context
+        }
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        if bundleIdentifier.hasSuffix(".dev") || version.contains("-dev") {
+            return .development
+        }
+        return .normal
+    }
+
+    private static var currentDate: Date {
+        dateOverrideForTesting ?? Date()
+    }
+
+    private static func earliestRuntimeTimestamp() -> String? {
+        for url in runtimeLogURLs().reversed() where FileManager.default.fileExists(atPath: url.path) {
+            guard let handle = try? FileHandle(forReadingFrom: url) else { continue }
+            defer { try? handle.close() }
+            guard let data = try? handle.read(upToCount: 8 * 1024),
+                  let line = String(data: data, encoding: .utf8)?.split(separator: "\n").first,
+                  let object = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+                  let timestamp = object["timestamp"] as? String
+            else { continue }
+            return timestamp
+        }
+        return nil
+    }
+
+    private static func isoNow(_ date: Date = currentDate) -> String {
+        ISO8601DateFormatter().string(from: date)
     }
 }
 
