@@ -259,8 +259,9 @@ struct OverlayView: View {
     @State private var stripEdgeGlow: StripEdgeSide? = nil
     @State private var stripEdgeGlowClearTask: Task<Void, Never>?
     @State private var lastStripEdgeHapticAt: CFAbsoluteTime = 0
-    /// 横向卡带的声明式滚动位置与几何边界；不依赖私有 NSScrollView 层级。
+    /// 横向卡带与侧边列表的声明式滚动位置；不依赖私有 NSScrollView 层级。
     @State private var stripScrollPosition = ScrollPosition(idType: UUID.self, edge: .leading)
+    @State private var sideScrollPosition = ScrollPosition(idType: UUID.self, edge: .top)
     @State private var stripScrollGeometry = StripScrollGeometry.zero
     /// 辅助功能权限（托盘顶部非阻断 banner）
     @State private var accessibilityTrusted = true
@@ -376,9 +377,8 @@ struct OverlayView: View {
             .onReceive(NotificationCenter.default.publisher(for: .overlayRequestDismiss)) { _ in
                 dismiss()
             }
-            .onReceive(NotificationCenter.default.publisher(for: .overlayCloseSearch)) { note in
-                let clear = (note.userInfo?["clearFilter"] as? Bool) ?? true
-                closeSearch(clearFilter: clear)
+            .onReceive(NotificationCenter.default.publisher(for: .overlayCloseSearch)) { _ in
+                closeSearch()
             }
             .onReceive(NotificationCenter.default.publisher(for: .overlayCloseFilter)) { _ in
                 showFilterPopover = false
@@ -495,7 +495,7 @@ struct OverlayView: View {
             isSearchFocused = false
             showFilterPopover = false
             OverlayPanelManager.shared.keyboardOwner = .overlayNavigation
-            // clearFilters 由 closeSearch(clearFilter:) 控制；列表 ID 变化时会再选中第一张
+            // 搜索关键字由 closeSearch() 清除；结构化筛选保持不变。
             selectFirstVisibleCard()
         }
     }
@@ -705,6 +705,7 @@ struct OverlayView: View {
         withTransaction(transaction) {
             selection.selectFirst(visibleItems: items)
             stripScrollPosition.scrollTo(edge: .leading)
+            sideScrollPosition.scrollTo(edge: .top)
             commandShortcutIds = items.prefix(9).map(\.id)
         }
     }
@@ -730,9 +731,9 @@ struct OverlayView: View {
         }
     }
 
-    private func closeSearch(clearFilter: Bool) {
+    private func closeSearch() {
         guard showSearch else { return }
-        if clearFilter { store.clearFilters() }
+        store.searchQuery = ""
         withAnimation(searchExpansionAnimation) {
             showSearch = false
         }
@@ -894,7 +895,7 @@ struct OverlayView: View {
                         .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.searchField)
                         .background(SearchFieldAutofillSuppressor())
                         .onExitCommand {
-                            closeSearch(clearFilter: true)
+                            closeSearch()
                         }
                 }
                 .frame(maxWidth: .infinity)
@@ -1499,6 +1500,7 @@ struct OverlayView: View {
             isHorizontalLayout = useHorizontal
             OverlayPanelManager.shared.isHorizontalCardLayout = useHorizontal
             stripScrollPosition.scrollTo(edge: .leading)
+            sideScrollPosition.scrollTo(edge: .top)
         }
     }
 
@@ -1629,47 +1631,46 @@ struct OverlayView: View {
                 }
             }
         } else {
-            ScrollViewReader { proxy in
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: UIConstants.Overlay.cardSpacing) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
-                            cardView(item, index: idx)
-                                .frame(
-                                    maxWidth: compactSideTrayEnabled
-                                        ? .infinity
-                                        : Local.Overlay.compactCardMaxWidth
-                                )
-                                .clipped()
-                        }
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(spacing: UIConstants.Overlay.cardSpacing) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
+                        cardView(item, index: idx)
+                            .frame(
+                                maxWidth: compactSideTrayEnabled
+                                    ? .infinity
+                                    : Local.Overlay.compactCardMaxWidth
+                            )
+                            .clipped()
                     }
-                    .padding(.vertical, 3)
-                    .padding(.horizontal, 8)
-                    .scrollTargetLayout()
                 }
-                .frame(maxWidth: Local.Overlay.compactListMaxWidth)
-                .onScrollTargetVisibilityChange(idType: UUID.self) { ids in
-                    commandShortcutIds = OverlayInteractionModel.commandShortcutItemIDs(
-                        orderedItemIDs: items.map(\.id),
-                        viewportItemIDs: ids
-                    )
-                }
-                .animation(nil, value: items.count)
-                .onAppear {
-                    OverlayPanelManager.shared.isHorizontalCardLayout = false
-                }
-                .onChange(of: selection.cursorIndex) { oldIdx, newIdx in
-                    guard let idx = newIdx, idx < items.count else { return }
-                    let rendered = renderedIds.contains(items[idx].id)
-                    let downward = (oldIdx ?? 0) < idx
-                    let neighborIdx = downward ? idx + 1 : idx - 1
-                    let neighborMissing = neighborIdx >= 0 && neighborIdx < items.count
-                        && !renderedIds.contains(items[neighborIdx].id)
-                    guard !rendered || neighborMissing else { return }
-                    let scrollId = neighborMissing ? items[neighborIdx].id : items[idx].id
-                    let anchor: UnitPoint = downward ? .bottom : .top
-                    withAnimation(.easeInOut(duration: UIConstants.Motion.fast)) {
-                        proxy.scrollTo(scrollId, anchor: anchor)
-                    }
+                .padding(.vertical, 3)
+                .padding(.horizontal, 8)
+                .scrollTargetLayout()
+            }
+            .scrollPosition($sideScrollPosition)
+            .frame(maxWidth: Local.Overlay.compactListMaxWidth)
+            .onScrollTargetVisibilityChange(idType: UUID.self) { ids in
+                commandShortcutIds = OverlayInteractionModel.commandShortcutItemIDs(
+                    orderedItemIDs: items.map(\.id),
+                    viewportItemIDs: ids
+                )
+            }
+            .animation(nil, value: items.count)
+            .onAppear {
+                OverlayPanelManager.shared.isHorizontalCardLayout = false
+            }
+            .onChange(of: selection.cursorIndex) { oldIdx, newIdx in
+                guard let idx = newIdx, idx < items.count else { return }
+                let rendered = renderedIds.contains(items[idx].id)
+                let downward = (oldIdx ?? 0) < idx
+                let neighborIdx = downward ? idx + 1 : idx - 1
+                let neighborMissing = neighborIdx >= 0 && neighborIdx < items.count
+                    && !renderedIds.contains(items[neighborIdx].id)
+                guard !rendered || neighborMissing else { return }
+                let scrollId = neighborMissing ? items[neighborIdx].id : items[idx].id
+                let anchor: UnitPoint = downward ? .bottom : .top
+                withAnimation(.easeInOut(duration: UIConstants.Motion.fast)) {
+                    sideScrollPosition.scrollTo(id: scrollId, anchor: anchor)
                 }
             }
         }

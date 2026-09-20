@@ -604,7 +604,6 @@ final class OverlayPanelManager: @unchecked Sendable {
     private func commitPendingDocking() {
         guard let panel, let target = pendingDockingTarget else { return }
         currentPlacement = target.placement
-        TrayPlacementPreferences.remember(target.placement)
         panel.setFrame(
             TrayPanelLayout.panelFrame(
                 for: target.placement,
