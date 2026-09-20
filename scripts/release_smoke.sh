@@ -54,7 +54,7 @@ codesign --force --sign "$identity" --identifier com.nekutai.pastry.release-smok
 
 open -n -F "$app_dir" --args --diagnostics-context release_smoke
 for _ in {1..100}; do
-  app_pid="$(pgrep -f "^$app_executable$" | head -1 || true)"
+  app_pid="$(pgrep -f "^$app_executable --diagnostics-context release_smoke$" | head -1 || true)"
   [[ -n "$app_pid" ]] && break
   sleep 0.1
 done
