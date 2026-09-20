@@ -36,7 +36,7 @@ final class DatabaseManager {
         LegacyEncryptedDatabaseMigrator(dbPath: dbPath, log: log).migrateIfNeeded()
         openDatabase()
         createTables()
-        runMigrations()
+        reconcileSchema()
         // 启动时立即执行一次保留策略清理，避免闲置期间旧数据越过保留期而不清理
         enforceHistoryRetention()
         diagnosticsLog.info(
@@ -52,7 +52,7 @@ final class DatabaseManager {
         self.dbPath = dbPath
         openDatabase()
         createTables()
-        runMigrations()
+        reconcileSchema()
     }
 
     /// 测试专用：控制插入时保留策略清理频率。
@@ -92,6 +92,21 @@ final class DatabaseManager {
         }
     }
 
+    private static let clipColumnAdditions: [(name: String, definition: String)] = [
+        ("text_annotation", "TEXT"),
+        ("image_urls", "TEXT"),
+        ("segments", "TEXT"),
+        ("is_handoff", "INTEGER DEFAULT 0"),
+        ("raw_format_data", "BLOB"),
+        ("raw_format_type", "TEXT"),
+        ("is_url", "INTEGER DEFAULT 0"),
+        ("dedup_key", "TEXT"),
+        ("link_title", "TEXT"),
+        ("favorite_note", "TEXT"),
+        ("favorite_note_updated_at", "REAL"),
+        ("file_bookmarks", "BLOB")
+    ]
+
     private func createTables() {
         let clipsSQL = """
         CREATE TABLE IF NOT EXISTS clips (
@@ -101,7 +116,19 @@ final class DatabaseManager {
             content_type TEXT NOT NULL,
             app_name TEXT,
             is_favorite INTEGER DEFAULT 0,
-            display_count INTEGER DEFAULT 0
+            display_count INTEGER DEFAULT 0,
+            text_annotation TEXT,
+            image_urls TEXT,
+            segments TEXT,
+            is_handoff INTEGER DEFAULT 0,
+            raw_format_data BLOB,
+            raw_format_type TEXT,
+            is_url INTEGER DEFAULT 0,
+            dedup_key TEXT,
+            link_title TEXT,
+            favorite_note TEXT,
+            favorite_note_updated_at REAL,
+            file_bookmarks BLOB
         );
         """
 
@@ -109,17 +136,6 @@ final class DatabaseManager {
         CREATE INDEX IF NOT EXISTS idx_clips_timestamp ON clips(timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_clips_favorite ON clips(is_favorite) WHERE is_favorite = 1;
         CREATE INDEX IF NOT EXISTS idx_clips_type ON clips(content_type);
-        """
-
-        let ftsSQL = """
-        CREATE VIRTUAL TABLE IF NOT EXISTS clips_fts USING fts5(
-            content,
-            link_title,
-            favorite_note,
-            content='clips',
-            content_rowid='rowid',
-            tokenize='porter unicode61'
-        );
         """
 
         // 安全网触发器：超过 50000 条时强制裁剪（仅非收藏，收藏项永远保留）
@@ -137,36 +153,31 @@ final class DatabaseManager {
 
         _ = execute(clipsSQL)
         _ = execute(idxSQL)
-        _ = execute(ftsSQL)
         _ = execute(cleanupTrigger)
-        _ = execute(Self.ftsDeleteTriggerSQL)
-        // INSERT/UPDATE 触发器在 runMigrations() 末尾统一创建，
-        // 因为这里 base clips 表还没有 link_title/favorite_note 等列。
-
         log.info("数据库表初始化完成")
     }
 
-    /// 在事务中执行一段迁移：任意语句失败 → 回滚并返回 false，且不递增 userVersion。
+    /// 在事务中协调旧数据库结构：任意语句失败 → 回滚并返回 false。
     /// 不复用 autocommit 的 `execute`；用 sqlite3_exec 直接走 BEGIN/ROLLBACK/COMMIT。
     @discardableResult
-    private func runMigrationInTransaction(_ label: String, _ block: () -> Bool) -> Bool {
+    private func runSchemaTransaction(_ label: String, _ block: () -> Bool) -> Bool {
         guard execute("BEGIN IMMEDIATE;") else {
-            log.error("迁移 [\(label, privacy: .public)] 开启事务失败: \(self.lastError)")
+            log.error("结构协调 [\(label, privacy: .public)] 开启事务失败: \(self.lastError)")
             diagnosticsLog.error(
-                "数据库迁移事务启动失败",
-                event: "database.migration_transaction.begin_failed",
-                metadata: ["migration": label, "error": lastError]
+                "数据库结构协调事务启动失败",
+                event: "database.schema_transaction.begin_failed",
+                metadata: ["operation": label, "error": lastError]
             )
             return false
         }
         let ok = block()
         if ok {
             guard execute("COMMIT;") else {
-                log.error("迁移 [\(label, privacy: .public)] 提交失败: \(self.lastError)")
+                log.error("结构协调 [\(label, privacy: .public)] 提交失败: \(self.lastError)")
                 diagnosticsLog.error(
-                    "数据库迁移事务提交失败",
-                    event: "database.migration_transaction.commit_failed",
-                    metadata: ["migration": label, "error": lastError]
+                    "数据库结构协调事务提交失败",
+                    event: "database.schema_transaction.commit_failed",
+                    metadata: ["operation": label, "error": lastError]
                 )
                 _ = execute("ROLLBACK;")
                 return false
@@ -174,149 +185,77 @@ final class DatabaseManager {
             return true
         } else {
             _ = execute("ROLLBACK;")
-            log.error("迁移 [\(label, privacy: .public)] 失败已回滚")
+            log.error("结构协调 [\(label, privacy: .public)] 失败已回滚")
             diagnosticsLog.error(
-                "数据库迁移失败并已回滚",
-                event: "database.migration_transaction.rolled_back",
-                metadata: ["migration": label]
+                "数据库结构协调失败并已回滚",
+                event: "database.schema_transaction.rolled_back",
+                metadata: ["operation": label]
             )
             return false
         }
     }
 
-    /// 迁移块内执行的语句；失败返回 false（事务会被外层回滚）。
+    /// 结构事务内执行的语句；失败返回 false（事务会被外层回滚）。
     @discardableResult
-    private func migrateExec(_ sql: String) -> Bool {
+    private func schemaExec(_ sql: String) -> Bool {
         execute(sql)
     }
 
-    private func runMigrations() {
-        let version = userVersion
-        if version < 1 {
-            userVersion = 1
-        }
-        if version < 2, runMigrationInTransaction("v2", { migrateExec("ALTER TABLE clips ADD COLUMN text_annotation TEXT;") }) {
-            userVersion = 2
-        }
-        if version < 3, runMigrationInTransaction("v3", { migrateExec("ALTER TABLE clips ADD COLUMN image_urls TEXT;") }) {
-            userVersion = 3
-        }
-        if version < 4, runMigrationInTransaction("v4", { migrateExec("ALTER TABLE clips ADD COLUMN segments TEXT;") }) {
-            userVersion = 4
-        }
-        if version < 5, runMigrationInTransaction("v5", { migrateExec("ALTER TABLE clips ADD COLUMN is_handoff INTEGER DEFAULT 0;") }) {
-            userVersion = 5
-        }
-        if version < 6, runMigrationInTransaction("v6", {
-            guard migrateExec("ALTER TABLE clips ADD COLUMN raw_format_data BLOB;") else { return false }
-            return migrateExec("ALTER TABLE clips ADD COLUMN raw_format_type TEXT;")
-        }) {
-            userVersion = 6
-        }
-        if version < 7, runMigrationInTransaction("v7", {
-            guard migrateExec("ALTER TABLE clips ADD COLUMN is_url INTEGER DEFAULT 0;") else { return false }
-            return migrateExec("UPDATE clips SET content_type = 'text', is_url = 1 WHERE content_type = 'url';")
-        }) {
-            userVersion = 7
-        }
-        if version < 8, runMigrationInTransaction("v8", {
-            guard migrateExec("ALTER TABLE clips ADD COLUMN dedup_key TEXT;") else { return false }
-            return migrateExec("CREATE INDEX IF NOT EXISTS idx_clips_dedup ON clips(dedup_key);")
-        }) {
-            userVersion = 8
-        }
-        if version < 9, runMigrationInTransaction("v9", { migrateExec("ALTER TABLE clips ADD COLUMN link_title TEXT;") }) {
-            userVersion = 9
-        }
-        if version < 10, runMigrationInTransaction("v10", {
-            guard migrateExec("DROP TABLE IF EXISTS clips_fts;") else { return false }
-            let ftsSQL = """
-            CREATE VIRTUAL TABLE clips_fts USING fts5(
-                content,
-                link_title,
-                content='clips',
-                content_rowid='rowid',
-                tokenize='porter unicode61'
-            );
-            """
-            guard migrateExec(ftsSQL) else { return false }
-            guard migrateExec("INSERT INTO clips_fts(rowid, content, link_title) SELECT rowid, content, link_title FROM clips;") else { return false }
-            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_delete;") else { return false }
-            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_insert;") else { return false }
-            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_update;") else { return false }
-            guard migrateExec(Self.ftsDeleteTriggerSQL) else { return false }
-            guard migrateExec(Self.ftsInsertTriggerSQL) else { return false }
-            return migrateExec(Self.ftsUpdateTriggerSQL)
-        }) {
-            userVersion = 10
-        }
-        if version < 11, runMigrationInTransaction("v11", {
-            guard migrateExec("ALTER TABLE clips ADD COLUMN favorite_note TEXT;") else { return false }
-            guard migrateExec("ALTER TABLE clips ADD COLUMN favorite_note_updated_at REAL;") else { return false }
-            guard migrateExec("DROP TABLE IF EXISTS clips_fts;") else { return false }
-            let ftsSQL = """
-            CREATE VIRTUAL TABLE clips_fts USING fts5(
-                content,
-                link_title,
-                favorite_note,
-                content='clips',
-                content_rowid='rowid',
-                tokenize='porter unicode61'
-            );
-            """
-            guard migrateExec(ftsSQL) else { return false }
-            guard migrateExec("INSERT INTO clips_fts(rowid, content, link_title, favorite_note) SELECT rowid, content, link_title, favorite_note FROM clips;") else { return false }
-            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_delete;") else { return false }
-            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_insert;") else { return false }
-            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_update;") else { return false }
-            guard migrateExec(Self.ftsDeleteTriggerSQL) else { return false }
-            guard migrateExec(Self.ftsInsertTriggerSQL) else { return false }
-            return migrateExec(Self.ftsUpdateTriggerSQL)
-        }) {
-            userVersion = 11
-        }
-        if version < 12, runMigrationInTransaction("v12-semantic-index", {
-            guard migrateExec(Self.semanticIndexTableSQL) else { return false }
-            return migrateExec(Self.semanticDeleteTriggerSQL)
-        }) {
-            userVersion = 12
-        }
-        if version < 13, runMigrationInTransaction("v13-file-bookmarks", {
-            migrateExec("ALTER TABLE clips ADD COLUMN file_bookmarks BLOB;")
-        }) {
-            userVersion = 13
+    /// 以实际表结构为事实来源补齐旧数据库，不再依赖会漂移的 `PRAGMA user_version`。
+    ///
+    /// 新增列只需加入 `clipColumnAdditions`；已有列会跳过，部分完成的旧迁移也可安全恢复。
+    private func reconcileSchema() {
+        let existingColumns = Set(columnNames(in: "clips"))
+        let missingColumns = Self.clipColumnAdditions.filter { !existingColumns.contains($0.name) }
+
+        if !missingColumns.isEmpty {
+            let reconciled = runSchemaTransaction("schema-reconciliation") {
+                for column in missingColumns {
+                    guard schemaExec(
+                        "ALTER TABLE clips ADD COLUMN \(column.name) \(column.definition);"
+                    ) else {
+                        return false
+                    }
+                }
+                return schemaExec("CREATE INDEX IF NOT EXISTS idx_clips_dedup ON clips(dedup_key);")
+            }
+            guard reconciled else { return }
+            diagnosticsLog.notice(
+                "旧数据库结构已协调到当前定义",
+                event: "database.schema.reconciled",
+                metadata: ["column_count": String(missingColumns.count)]
+            )
+        } else {
+            _ = execute("CREATE INDEX IF NOT EXISTS idx_clips_dedup ON clips(dedup_key);")
         }
 
+        _ = execute(Self.semanticIndexTableSQL)
+        _ = execute(Self.semanticDeleteTriggerSQL)
         repairFTSSchemaIfNeeded()
 
-        // 迁移完成后统一重建 FTS 触发器。
-        // createTables 和早期迁移创建触发器时，clips 可能还没有全部 FTS 列
-        // （如 favorite_note 在 v11 才加入），触发器会因列不存在而静默创建失败。
-        // 这里所有列已就绪，统一重建一次保证触发器始终存在。
+        // 所有列和 FTS 表就绪后统一重建同步触发器。
         _ = execute("DROP TRIGGER IF EXISTS trg_clips_fts_delete;")
         _ = execute("DROP TRIGGER IF EXISTS trg_clips_fts_insert;")
         _ = execute("DROP TRIGGER IF EXISTS trg_clips_fts_update;")
         _ = execute(Self.ftsDeleteTriggerSQL)
         _ = execute(Self.ftsInsertTriggerSQL)
         _ = execute(Self.ftsUpdateTriggerSQL)
-        _ = execute(Self.semanticIndexTableSQL)
-        _ = execute(Self.semanticDeleteTriggerSQL)
     }
 
-    /// 修复 user_version 已前进、但 FTS 虚拟表仍停留在旧结构的数据库。
+    /// 修复 FTS 虚拟表仍停留在旧结构的数据库。
     ///
     /// SQLite 创建触发器时不会验证触发器正文引用的 FTS 列；这种不一致会一直潜伏到
     /// 下一次 INSERT / DELETE 才报错，导致主表写入被整个语句回滚。
     private func repairFTSSchemaIfNeeded() {
         guard ftsColumnNames() != ["content", "link_title", "favorite_note"] else { return }
 
-        let repaired = runMigrationInTransaction("fts-schema-repair") {
-            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_delete;") else { return false }
-            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_insert;") else { return false }
-            guard migrateExec("DROP TRIGGER IF EXISTS trg_clips_fts_update;") else { return false }
-            guard migrateExec("DROP TABLE IF EXISTS clips_fts;") else { return false }
-            guard migrateExec(Self.latestFTSTableSQL) else { return false }
-            return migrateExec(
+        let repaired = runSchemaTransaction("fts-schema-repair") {
+            guard schemaExec("DROP TRIGGER IF EXISTS trg_clips_fts_delete;") else { return false }
+            guard schemaExec("DROP TRIGGER IF EXISTS trg_clips_fts_insert;") else { return false }
+            guard schemaExec("DROP TRIGGER IF EXISTS trg_clips_fts_update;") else { return false }
+            guard schemaExec("DROP TABLE IF EXISTS clips_fts;") else { return false }
+            guard schemaExec(Self.latestFTSTableSQL) else { return false }
+            return schemaExec(
                 "INSERT INTO clips_fts(rowid, content, link_title, favorite_note) "
                     + "SELECT rowid, content, link_title, favorite_note FROM clips;"
             )
@@ -331,8 +270,13 @@ final class DatabaseManager {
     }
 
     private func ftsColumnNames() -> [String] {
+        columnNames(in: "clips_fts")
+    }
+
+    private func columnNames(in table: String) -> [String] {
+        precondition(table == "clips" || table == "clips_fts")
         var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(db, "PRAGMA table_info(clips_fts);", -1, &statement, nil) == SQLITE_OK else {
+        guard sqlite3_prepare_v2(db, "PRAGMA table_info(\(table));", -1, &statement, nil) == SQLITE_OK else {
             return []
         }
         defer { sqlite3_finalize(statement) }
@@ -1422,8 +1366,4 @@ final class DatabaseManager {
         return String(cString: sqlite3_errmsg(db))
     }
 
-    private var userVersion: Int {
-        get { scalarInt("PRAGMA user_version;") }
-        set { execute("PRAGMA user_version = \(newValue);") }
-    }
 }

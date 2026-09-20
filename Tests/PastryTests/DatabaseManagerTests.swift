@@ -147,7 +147,7 @@ final class DatabaseManagerTests: XCTestCase {
         sqlite3_close(plaintext)
     }
 
-    func testStartupRepairsLegacyFTSSchemaWhoseVersionAlreadyAdvanced() throws {
+    func testStartupRepairsLegacyFTSSchemaWithoutVersionGate() throws {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("pastry-legacy-fts-\(UUID().uuidString).db").path
         defer {
@@ -172,7 +172,6 @@ final class DatabaseManagerTests: XCTestCase {
                 + "content='clips', content_rowid='rowid');",
             on: rawDatabase
         )
-        executeRaw("PRAGMA user_version = 11;", on: rawDatabase)
         sqlite3_close(rawDatabase)
         rawDatabase = nil
 
@@ -182,6 +181,55 @@ final class DatabaseManagerTests: XCTestCase {
         XCTAssertEqual(manager?.search(query: "repaired").map(\.id), [inserted.id])
         XCTAssertEqual(manager?.delete(id: existing.id.uuidString), true)
         XCTAssertFalse(manager?.recent().contains(where: { $0.id == existing.id }) ?? true)
+    }
+
+    func testStartupReconcilesPartiallyMigratedSchemaWithExistingFavoriteNote() throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pastry-partial-schema-\(UUID().uuidString).db").path
+        defer {
+            for suffix in ["", "-wal", "-shm"] {
+                try? FileManager.default.removeItem(atPath: path + suffix)
+            }
+        }
+
+        var rawDatabase: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(path, &rawDatabase), SQLITE_OK)
+        executeRaw(
+            """
+            CREATE TABLE clips (
+                id TEXT PRIMARY KEY,
+                timestamp REAL NOT NULL,
+                content TEXT NOT NULL,
+                content_type TEXT NOT NULL,
+                app_name TEXT,
+                is_favorite INTEGER DEFAULT 0,
+                display_count INTEGER DEFAULT 0,
+                favorite_note TEXT
+            );
+            """,
+            on: rawDatabase
+        )
+        executeRaw(
+            """
+            INSERT INTO clips (
+                id, timestamp, content, content_type, app_name,
+                is_favorite, display_count, favorite_note
+            ) VALUES (
+                '00000000-0000-0000-0000-000000000001',
+                1, 'legacy searchable text', 'text', 'Legacy',
+                0, 0, 'legacy note'
+            );
+            """,
+            on: rawDatabase
+        )
+        sqlite3_close(rawDatabase)
+        rawDatabase = nil
+
+        let manager = DatabaseManager(dbPath: path)
+        let inserted = makeItem(content: "new searchable text", favoriteNote: "current note")
+        XCTAssertEqual(manager.insert(inserted), .inserted)
+        XCTAssertEqual(manager.search(query: "current").map(\.id), [inserted.id])
+        XCTAssertTrue(manager.recent().contains { $0.content == "legacy searchable text" })
     }
 
     /// 插入一条 → recent() 应包含它
