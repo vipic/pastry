@@ -34,7 +34,136 @@ private enum Local {
         static let toolbarButtonSize: CGFloat = 32
         static let trayContentMinHeight: CGFloat = 262  // 240 card + paddings
         static let trayCornerRadius: CGFloat = UIConstants.Radius.tray
+        static let sideInset: CGFloat = 12
+        static let sideTrayWidth = TrayPanelLayout.sideTrayWidth
+        static let sideSearchExpandedWidth: CGFloat = 200
         static var cardInsertPushDistance: CGFloat { 240 + UIConstants.Overlay.cardSpacing }
+    }
+}
+enum TrayPlacement: String, CaseIterable, Identifiable {
+    case bottom
+    case left
+    case right
+
+    var id: String { rawValue }
+
+    static let `default` = TrayPlacement.bottom
+
+    static func resolved(stored: String?) -> TrayPlacement {
+        guard let stored, let placement = TrayPlacement(rawValue: stored) else {
+            return .default
+        }
+        return placement
+    }
+
+    var isSide: Bool {
+        self != .bottom
+    }
+
+    func usesHorizontalCards(screenWidth: CGFloat) -> Bool {
+        self == .bottom && screenWidth > 1_200
+    }
+}
+
+enum TrayPlacementMode: String, CaseIterable, Identifiable {
+    case fixedBottom
+    case followMemory
+
+    var id: String { rawValue }
+
+    static let `default` = TrayPlacementMode.fixedBottom
+
+    static func resolved(stored: String?) -> TrayPlacementMode {
+        guard let stored, let mode = TrayPlacementMode(rawValue: stored) else {
+            return .default
+        }
+        return mode
+    }
+}
+
+enum TrayPlacementPreferences {
+    private static let legacyPlacementKey = "tray_placement"
+
+    static func migrateLegacyPreference(defaults: UserDefaults = .standard) {
+        guard defaults.object(forKey: UserDefaultsKeys.trayPlacementMode) == nil,
+              let legacyRaw = defaults.string(forKey: legacyPlacementKey)
+        else { return }
+
+        let placement = TrayPlacement.resolved(stored: legacyRaw)
+        defaults.set(placement.rawValue, forKey: UserDefaultsKeys.trayRememberedPlacement)
+        defaults.set(
+            placement == .bottom
+                ? TrayPlacementMode.fixedBottom.rawValue
+                : TrayPlacementMode.followMemory.rawValue,
+            forKey: UserDefaultsKeys.trayPlacementMode
+        )
+        defaults.removeObject(forKey: legacyPlacementKey)
+    }
+
+    static func mode(defaults: UserDefaults = .standard) -> TrayPlacementMode {
+        TrayPlacementMode.resolved(
+            stored: defaults.string(forKey: UserDefaultsKeys.trayPlacementMode)
+        )
+    }
+
+    static func rememberedPlacement(defaults: UserDefaults = .standard) -> TrayPlacement {
+        TrayPlacement.resolved(
+            stored: defaults.string(forKey: UserDefaultsKeys.trayRememberedPlacement)
+        )
+    }
+
+    static func effectivePlacement(defaults: UserDefaults = .standard) -> TrayPlacement {
+        mode(defaults: defaults) == .fixedBottom
+            ? .bottom
+            : rememberedPlacement(defaults: defaults)
+    }
+
+    static func remember(_ placement: TrayPlacement, defaults: UserDefaults = .standard) {
+        defaults.set(placement.rawValue, forKey: UserDefaultsKeys.trayRememberedPlacement)
+    }
+}
+
+enum TrayPanelLayout {
+    static let sideTrayWidth: CGFloat = 320
+    static let sideInset: CGFloat = 12
+    static let bottomHeight: CGFloat = 336
+
+    static func panelFrame(for placement: TrayPlacement, in screenFrame: NSRect) -> NSRect {
+        switch placement {
+        case .bottom:
+            return NSRect(
+                x: screenFrame.minX,
+                y: screenFrame.minY,
+                width: screenFrame.width,
+                height: min(bottomHeight, screenFrame.height)
+            )
+        case .left:
+            return NSRect(
+                x: screenFrame.minX,
+                y: screenFrame.minY,
+                width: min(sideTrayWidth + sideInset * 2, screenFrame.width),
+                height: screenFrame.height
+            )
+        case .right:
+            let width = min(sideTrayWidth + sideInset * 2, screenFrame.width)
+            return NSRect(
+                x: screenFrame.maxX - width,
+                y: screenFrame.minY,
+                width: width,
+                height: screenFrame.height
+            )
+        }
+    }
+
+    static func dockingPlacement(at point: NSPoint, in screenFrame: NSRect) -> TrayPlacement? {
+        let candidates: [(placement: TrayPlacement, distance: CGFloat)] = [
+            (.left, abs(point.x - screenFrame.minX)),
+            (.right, abs(screenFrame.maxX - point.x)),
+            (.bottom, abs(point.y - screenFrame.minY))
+        ].filter {
+            panelFrame(for: $0.placement, in: screenFrame).contains(point)
+        }
+        return candidates.min(by: { $0.distance < $1.distance })?.placement
     }
 }
 
@@ -76,6 +205,7 @@ extension Notification.Name {
     static let overlayAccessibilityDenied = Notification.Name("overlayAccessibilityDenied")
     /// userInfo["delta"]: CGFloat — 横向卡带滚动位移（侧轮微调；普通滚轮快速浏览）
     static let overlayCardStripScroll = Notification.Name("overlayCardStripScroll")
+    static let overlayPlacementChanged = Notification.Name("overlayPlacementChanged")
 }
 
 // MARK: - 覆盖层主视图
@@ -89,6 +219,8 @@ struct OverlayView: View {
     @AppStorage(UserDefaultsKeys.semanticSearchEnabled)
     private var semanticSearchEnabled = false
 
+    @State private var trayPlacement = TrayPlacementPreferences.effectivePlacement()
+    @State private var isTrayPinned = false
     @State private var cardVisible = false
     @State private var selection = SelectionState()
     @State private var renderedIds: Set<UUID> = []    // 当前已渲染（可见）的卡片 ID
@@ -103,6 +235,7 @@ struct OverlayView: View {
     @State private var hoverClearSearch = false
     @State private var hoverFilter = false
     @State private var hoverGear = false
+    @State private var hoverPin = false
     @State private var hoverMultiAction: MultiSelectToolbarAction? = nil
     @State private var hoverTab: StoreManager.PinTab? = nil
     @State private var cmdDown = false
@@ -154,15 +287,8 @@ struct OverlayView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { dismiss() }
 
-            VStack(spacing: 0) {
-                Spacer()
-
-                cardContainer
-                    .padding(.horizontal, Local.Overlay.horizontalPadding)
-                    .padding(.bottom, Local.Overlay.bottomInset)
-                    .offset(y: cardVisible ? 0 : 200)
-                    .opacity(cardVisible ? 1 : 0)
-            }
+            positionedCardContainer
+                .opacity(cardVisible ? 1 : 0)
             .animation(reduceMotion ? nil : .easeInOut(duration: UIConstants.Motion.medium), value: showSearch)
 
             if showDeleteConfirm {
@@ -174,6 +300,35 @@ struct OverlayView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.root)
     }
+
+    @ViewBuilder
+    private var positionedCardContainer: some View {
+        switch trayPlacement {
+        case .bottom:
+            VStack(spacing: 0) {
+                Spacer()
+                cardContainer
+                    .padding(.horizontal, Local.Overlay.horizontalPadding)
+                    .padding(.bottom, Local.Overlay.bottomInset)
+            }
+            .offset(y: cardVisible ? 0 : 200)
+        case .left:
+            cardContainer
+                .frame(width: Local.Overlay.sideTrayWidth)
+                .padding(.vertical, Local.Overlay.sideInset)
+                .padding(.leading, Local.Overlay.sideInset)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .offset(x: cardVisible ? 0 : -200)
+        case .right:
+            cardContainer
+                .frame(width: Local.Overlay.sideTrayWidth)
+                .padding(.vertical, Local.Overlay.sideInset)
+                .padding(.trailing, Local.Overlay.sideInset)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+                .offset(x: cardVisible ? 0 : 200)
+        }
+    }
+
 
     private func attachCoreLifecycle<Content: View>(_ content: Content) -> some View {
         content
@@ -188,6 +343,13 @@ struct OverlayView: View {
             .onReceive(NotificationCenter.default.publisher(for: .overlayWillShow)) { _ in
                 guard !isPipelineWarmup else { return }
                 prepareForPresentation()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .overlayPlacementChanged)) { note in
+                guard let rawValue = note.userInfo?["placement"] as? String,
+                      let placement = TrayPlacement(rawValue: rawValue)
+                else { return }
+                trayPlacement = placement
+                updateLayoutForCurrentScreen()
             }
             .onReceive(NotificationCenter.default.publisher(for: .overlayDidHide)) { _ in
                 guard !isPipelineWarmup else { return }
@@ -495,7 +657,10 @@ struct OverlayView: View {
 
     private func prepareForPresentation() {
         resetAllState()
+        trayPlacement = OverlayPanelManager.shared.currentPlacement
+        isTrayPinned = OverlayPanelManager.shared.isPinned
         refreshAccessibilityPermission()
+        updateLayoutForCurrentScreen()
         OverlayPanelManager.shared.isHorizontalCardLayout = isHorizontalLayout
         keyHandler.installMouseMonitor()
         prefetchAvailableAppIcons()
@@ -661,7 +826,10 @@ struct OverlayView: View {
     }
 
     private var searchControlWidth: CGFloat {
-        showSearch ? Local.Overlay.searchExpandedWidth : searchControlHeight
+        guard showSearch else { return searchControlHeight }
+        return trayPlacement.isSide
+            ? Local.Overlay.sideSearchExpandedWidth
+            : Local.Overlay.searchExpandedWidth
     }
 
     private var searchControl: some View {
@@ -995,11 +1163,15 @@ struct OverlayView: View {
                 }
             }
             .padding(.top, 10)
-            .frame(maxWidth: .infinity, minHeight: Local.Overlay.trayContentMinHeight)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: Local.Overlay.trayContentMinHeight,
+                maxHeight: trayPlacement.isSide ? .infinity : nil
+            )
             .clipped()
         }
-        .frame(maxWidth: .infinity)
-        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, maxHeight: trayPlacement.isSide ? .infinity : nil)
+        .fixedSize(horizontal: false, vertical: !trayPlacement.isSide)
         .padding(.top, 10)
         .padding(.horizontal, 12)
         .padding(.bottom, 10)
@@ -1037,53 +1209,114 @@ struct OverlayView: View {
 
     // MARK: - Header
 
+    @ViewBuilder
     private var headerRow: some View {
-        HStack(spacing: 0) {
-            HStack(spacing: UIConstants.Overlay.cardSpacing) {
-                if selection.selectedIds.count > 1 {
-                    multiSelectToolbarLeading
+        if trayPlacement.isSide {
+            VStack(spacing: 8) {
+                if selection.selectedIds.count > 1 || !accessibilityTrusted {
+                    headerStatusContent
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .clipped()
                 }
-                if !accessibilityTrusted {
-                    accessibilityPermissionBanner
+
+                HStack(spacing: 0) {
+                    searchControl
+
+                    if !showSearch {
+                        filterAndTabControls
+                    }
+
+                    Spacer(minLength: 0)
+                    trayUtilityControls
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .clipped()
-
+            .padding(.horizontal, 8)
+            .background(TrayDragHandle())
+        } else {
             HStack(spacing: 0) {
-                searchControl
+                headerStatusContent
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .clipped()
 
-                filterButton
-                    .padding(.trailing, 6)
-
-                tabButton(tab: .all, icon: "tray.full", label: L10n["tab.all"], isSelected: store.pinTab == .all)
-                    .padding(.trailing, 6)
-                tabButton(tab: .pinned, icon: "pin.fill", label: L10n["tab.pinned"], isSelected: store.pinTab == .pinned)
-            }
-            .fixedSize(horizontal: true, vertical: false)
-            .layoutPriority(2)
-
-            HStack {
-                Spacer()
-                Button {
-                    openSettingsFromOverlay()
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: UIConstants.TypeSize.title, weight: .semibold))
-                        .foregroundColor(toolbarForeground(isActive: false, isHovered: hoverGear))
-                        .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
-                        .background(toolbarButtonBackground(isActive: false, isHovered: hoverGear))
+                HStack(spacing: 0) {
+                    searchControl
+                    filterAndTabControls
                 }
-                .buttonStyle(.plain)
-                .scaleEffect(toolbarHoverScale(isHovered: hoverGear))
-                .animation(.easeOut(duration: UIConstants.Motion.instant), value: hoverGear)
-                .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.settingsButton)
-                .onHover { hoverGear = $0 }
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(2)
+
+                HStack {
+                    Spacer()
+                    trayUtilityControls
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.horizontal, 8)
+            .background(TrayDragHandle())
         }
-        .padding(.horizontal, 8)
-        .animation(searchExpansionAnimation, value: showSearch)
+    }
+
+    private var headerStatusContent: some View {
+        HStack(spacing: UIConstants.Overlay.cardSpacing) {
+            if selection.selectedIds.count > 1 {
+                multiSelectToolbarLeading
+            }
+            if !accessibilityTrusted {
+                accessibilityPermissionBanner
+            }
+        }
+    }
+
+    private var filterAndTabControls: some View {
+        HStack(spacing: 0) {
+            filterButton
+                .padding(.trailing, 6)
+
+            tabButton(tab: .all, icon: "tray.full", label: L10n["tab.all"], isSelected: store.pinTab == .all)
+                .padding(.trailing, 6)
+            tabButton(tab: .pinned, icon: "bookmark.fill", label: L10n["tab.pinned"], isSelected: store.pinTab == .pinned)
+        }
+    }
+
+    private var trayUtilityControls: some View {
+        HStack(spacing: 4) {
+            pinTrayButton
+            settingsButton
+        }
+    }
+
+    private var pinTrayButton: some View {
+        Button {
+            isTrayPinned = OverlayPanelManager.shared.togglePinned()
+        } label: {
+            Image(systemName: isTrayPinned ? "pin.fill" : "pin")
+                .font(.system(size: UIConstants.TypeSize.title, weight: .semibold))
+                .foregroundColor(toolbarForeground(isActive: isTrayPinned, isHovered: hoverPin))
+                .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
+                .background(toolbarButtonBackground(isActive: isTrayPinned, isHovered: hoverPin))
+        }
+        .buttonStyle(.plain)
+        .help(L10n[isTrayPinned ? "toolbar.unpin_tray" : "toolbar.pin_tray"])
+        .accessibilityLabel(L10n[isTrayPinned ? "toolbar.unpin_tray" : "toolbar.pin_tray"])
+        .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.pinTrayButton)
+        .onHover { hoverPin = $0 }
+    }
+
+    private var settingsButton: some View {
+        Button {
+            openSettingsFromOverlay()
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: UIConstants.TypeSize.title, weight: .semibold))
+                .foregroundColor(toolbarForeground(isActive: false, isHovered: hoverGear))
+                .frame(width: Local.Overlay.toolbarButtonSize, height: Local.Overlay.toolbarButtonSize)
+                .background(toolbarButtonBackground(isActive: false, isHovered: hoverGear))
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(toolbarHoverScale(isHovered: hoverGear))
+        .animation(.easeOut(duration: UIConstants.Motion.instant), value: hoverGear)
+        .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.settingsButton)
+        .onHover { hoverGear = $0 }
     }
 
     private var multiSelectToolbarLeading: some View {
@@ -1153,7 +1386,8 @@ struct OverlayView: View {
     }
 
     private func tabButton(tab: StoreManager.PinTab, icon: String, label: String, isSelected: Bool) -> some View {
-        Button {
+        let showsLabel = !showSearch && !trayPlacement.isSide
+        return Button {
             store.pinTab = tab
             selectFirstVisibleCard()
         } label: {
@@ -1162,19 +1396,19 @@ struct OverlayView: View {
                 Image(systemName: icon)
                     .font(.system(size: UIConstants.TypeSize.body, weight: .semibold))
                     .frame(
-                        width: showSearch
-                            ? Local.Overlay.toolbarButtonSize
-                            : UIConstants.TypeSize.body + 2,
+                        width: showsLabel
+                            ? UIConstants.TypeSize.body + 2
+                            : Local.Overlay.toolbarButtonSize,
                         alignment: .center
                     )
-                if !showSearch {
+                if showsLabel {
                     Text(label)
                         .font(.system(size: UIConstants.TypeSize.label))
                         .lineLimit(1)
                 }
             }
-            .padding(.horizontal, showSearch ? 0 : 10)
-            .padding(.vertical, showSearch ? 0 : 4)
+            .padding(.horizontal, showsLabel ? 10 : 0)
+            .padding(.vertical, showsLabel ? 4 : 0)
             .frame(height: Local.Overlay.toolbarButtonSize)
             .foregroundColor(toolbarForeground(isActive: isSelected, isHovered: isHover))
             .background(toolbarButtonBackground(isActive: isSelected, isHovered: isHover))
@@ -1238,20 +1472,22 @@ struct OverlayView: View {
 
     // MARK: - 卡片列表
 
-    /// 横向/纵向布局切换，根据屏幕宽 > 1200 决定。
+    /// 底部托盘在宽屏使用横向卡带；左右托盘固定为纵向卡片列表。
     /// 初始化时同步读取 NSEvent/NSScreen（SwiftUI body 在主线程，安全）。
     /// 若将来在此处引入后台调用，需改为主线程异步赋值。
     @State private var isHorizontalLayout: Bool = {
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
-        return (screen?.frame.width ?? NSScreen.main?.frame.width ?? 1440) > 1200
+        let width = screen?.frame.width ?? NSScreen.main?.frame.width ?? 1_440
+        return TrayPlacementPreferences.effectivePlacement().usesHorizontalCards(screenWidth: width)
     }()
 
     /// 屏幕配置变化时重新评估布局方向（用户拖面板到不同分辨率屏幕）
     private func updateLayoutForCurrentScreen() {
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
-        let useHorizontal = (screen?.frame.width ?? NSScreen.main?.frame.width ?? 1440) > 1200
+        let width = screen?.frame.width ?? NSScreen.main?.frame.width ?? 1_440
+        let useHorizontal = trayPlacement.usesHorizontalCards(screenWidth: width)
         if useHorizontal != isHorizontalLayout {
             isHorizontalLayout = useHorizontal
             OverlayPanelManager.shared.isHorizontalCardLayout = useHorizontal
@@ -1741,6 +1977,20 @@ struct OverlayView: View {
         .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.emptyCopyHint)
     }
 }
+private struct TrayDragHandle: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        TrayDragHandleView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+private final class TrayDragHandleView: NSView {
+    override func mouseDown(with event: NSEvent) {
+        OverlayPanelManager.shared.beginPanelDockingDrag()
+    }
+}
+
 
 // MARK: - 相关卡入场位移（置顶项之前的卡让位；之后的卡不动）
 
@@ -1835,7 +2085,7 @@ final class KeyboardEventHandler: ObservableObject {
         )
     }
 
-    /// 全屏 NSPanel 上 SwiftUI 横向 ScrollView 常收不到侧滚轮；在 AppKit 层桥接。
+    /// 托盘面板上的 SwiftUI 横向 ScrollView 常收不到侧滚轮；在 AppKit 层桥接。
     static func handleScrollWheel(_ event: NSEvent) -> NSEvent? {
         guard OverlayPanelManager.shared.isVisible else { return event }
         guard OverlayPanelManager.shared.isHorizontalCardLayout else { return event }

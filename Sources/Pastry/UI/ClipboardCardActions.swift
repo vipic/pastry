@@ -173,7 +173,7 @@ extension ClipboardCardView {
         let pinItem = NSMenuItem(title: pinTitle, action: #selector(_MenuHandler.invoke(_:)), keyEquivalent: "")
         pinItem.target = handler
         pinItem.representedObject = "pin" as NSString
-        pinItem.image = NSImage(systemSymbolName: item.isPinned ? "pin.slash" : "pin", accessibilityDescription: pinTitle)
+        pinItem.image = NSImage(systemSymbolName: item.isPinned ? "bookmark.slash" : "bookmark", accessibilityDescription: pinTitle)
         menu.addItem(pinItem)
 
         let noteLabel = L10n["context.edit_favorite_note"]

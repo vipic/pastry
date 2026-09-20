@@ -20,11 +20,13 @@
 源码入口：[OverlayPanelManager](../../Sources/Pastry/UI/OverlayPanelManager.swift)、[OverlayView](../../Sources/Pastry/UI/OverlayView.swift)、[键盘路由](../../Sources/Pastry/UI/OverlayKeyboardRouter.swift)、[选择状态机](../../Sources/Pastry/UI/SelectionState.swift)。面板回归见 [OverlayPanelManagerTests](../../Tests/PastryTests/OverlayPanelManagerTests.swift)。
 
 1. 全局快捷键或菜单栏入口调用 `OverlayPanelManager.show()` / `toggle()`。
-2. 管理器记录当前前台应用，并在鼠标所在屏幕创建或复用全屏 `ClipboardOverlayPanel`。
+2. 管理器记录当前前台应用，并在鼠标所在屏幕创建或复用与托盘实际范围相同的 `ClipboardOverlayPanel`；面板外区域不会拦截其他应用的鼠标交互。
 3. 面板使用 `.borderless`、`.fullSizeContentView` 和 `.nonactivatingPanel`，层级为 `.popUpMenu`，并加入所有 Space 和全屏辅助窗口。
-4. `OverlayView` 接收 `overlayWillShow`，恢复默认选择、预取图标并执行入场状态。
-5. 点击背景、Esc 或失焦最终请求 dismiss；视图先完成退出状态，再由管理器清理 monitor、预览和面板状态。
-6. 粘贴路径先确认辅助功能权限、挂起剪贴板监听、激活原目标应用并隐藏面板，再写回剪贴板和投递粘贴快捷键。
+4. 托盘顶部非按钮区域提供停靠拖拽；窗口本身不跟随指针平移。指针进入与目标托盘同尺寸的左、右或底部投放区域后，会显示半透明虚线目标框；只有在框内松手才切换布局、贴到对应边缘并记录最近位置，离开目标框则取消预览。
+5. `OverlayView` 接收 `overlayWillShow`，恢复默认选择、预取图标并执行入场状态。
+6. 未固定时，Esc 或失焦最终请求 dismiss；视图先完成退出状态，再由管理器清理 monitor、预览和面板状态。
+7. 工具栏“固定”只维持当前显示会话：面板失焦后留在屏幕上，且不重新抢占 key window；显式关闭会解除固定。
+8. 粘贴路径先确认辅助功能权限、挂起剪贴板监听、激活当前目标应用并暂时隐藏面板，再写回剪贴板和投递粘贴快捷键；固定状态下操作完成后在原停靠位置恢复。
 
 启动后会使用一个不可交互、近乎透明的临时面板预热 `NSHostingView`、材质和卡片首帧布局。预热面板不能进入正常事件和诊断生命周期。
 
@@ -34,7 +36,7 @@
 
 Esc 按当前 UI 层级逐层处理：确认层、备注编辑、筛选、Quick Look、搜索，最后才关闭面板。同一次 Esc 关闭 Quick Look 或备注编辑后可能级联触发第二次 cancel，管理器用短暂的吞键窗口阻止面板被一并关闭。
 
-面板通过 `NSWindow.didResignKeyNotification` 自动收起。Quick Look 正在显示或刚关闭时会暂时保留面板并重新取得 key；粘贴、确认层和拖拽穿透期间不会走普通失焦收起路径。
+面板通过 `NSWindow.didResignKeyNotification` 自动收起。固定时失焦不会收起或抢回焦点，用户可以直接操作其他应用；Quick Look 正在显示或刚关闭时会暂时保留面板并重新取得 key；粘贴、确认层和拖拽穿透期间不会走普通失焦收起路径。
 
 搜索框保留输入即执行的普通关键词搜索。只有用户在通用设置中开启实验性的智能找回后，才显示单独的智能找回按钮；按钮仅在用户点击后请求设备端模型解析描述、执行本地语义召回并重排候选。运行中、已应用、模型不可用和失败状态由按钮图标及辅助说明反馈。编辑查询或清除筛选会使旧结果失效，避免迟到的异步结果覆盖新输入。
 
@@ -44,7 +46,7 @@ Esc 按当前 UI 层级逐层处理：确认层、备注编辑、筛选、Quick 
 
 单选和多选拖拽都使用 SwiftUI `.onDrag`。多选时由 `DragPayloadBuilder.providerForSelection` 生成一个多行文本 `NSItemProvider`；不要在卡片上重新引入 AppKit 事件覆盖层，因为覆盖层会截获 mouseDown，破坏 Command/Shift 选择。
 
-拖拽开始后，`beginDragThrough()` 让面板忽略鼠标事件并立即 `orderOut`，持续检查鼠标按键释放后再完成清理，使目标应用能够接收拖拽。
+卡片拖拽开始后，`beginDragThrough()` 让面板忽略鼠标事件并立即 `orderOut`，持续检查鼠标按键释放：普通状态完成清理，固定状态则恢复原停靠位置，使用户可以连续向目标应用拖入多个素材。
 
 ## 渲染不变量与已知限制
 
@@ -53,6 +55,7 @@ Esc 按当前 UI 层级逐层处理：确认层、备注编辑、筛选、Quick 
 - 材质 view 必须启用 layer、裁剪圆角并关闭 layer 阴影，避免圆角外残留暗边。
 - 受最大高度约束的内容需要显式 `.clipped()`，否则 SwiftUI 子视图仍可能绘制到 frame 之外。
 - 横向卡片带使用 SwiftUI `ScrollPosition` 坐标连续滚动，并用 `onScrollGeometryChange` 限制内容边界；侧滚轮限制单次位移用于微调，普通滚轮映射到横向并保留设备加速，传统滚轮只做一次行距换算；实现不遍历或直接修改 SwiftUI 私有的 `NSScrollView` 层级。
+- 底部托盘在宽屏使用横向卡带；左右托盘固定使用纵向卡片列表并占用屏幕可见高度。设置模式决定下次打开固定回到底部还是沿用最近吸附位置，不限制当前显示会话的拖拽。
 - 侧边栏选择不依赖 `NavigationSplitView` 中的 `List(selection:)`，当前设置导航使用显式按钮状态。
 - 面板相关状态和 AppKit 调用保持在主线程；不要从后台线程读写键盘所有者或布局状态。
 

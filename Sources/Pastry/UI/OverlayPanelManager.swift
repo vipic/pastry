@@ -8,6 +8,9 @@ final class ClipboardOverlayPanel: NSPanel {
     override var canBecomeMain: Bool { true }
 
     override func sendEvent(_ event: NSEvent) {
+        if event.type == .leftMouseDown || event.type == .rightMouseDown {
+            OverlayPanelManager.shared.notePanelInteractionTarget()
+        }
         if event.type == .keyDown,
            event.keyCode == 53,
            OverlayPanelManager.shared.keyboardOwner == .searchField,
@@ -258,7 +261,34 @@ final class ClipboardOverlayPanel: NSPanel {
     }
 }
 
-// MARK: - 全屏覆盖层面板管理器
+private struct TrayDockingPreviewView: View {
+    private enum Local {
+        static let inset: CGFloat = 10
+        static let dash: CGFloat = 10
+        static let gap: CGFloat = 7
+        static let fillOpacity = 0.12
+        static let strokeOpacity = 0.92
+    }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: UIConstants.Radius.panel, style: .continuous)
+            .fill(PastryPalette.warmAccent.opacity(Local.fillOpacity))
+            .overlay(
+                RoundedRectangle(cornerRadius: UIConstants.Radius.panel, style: .continuous)
+                    .strokeBorder(
+                        PastryPalette.warmAccent.opacity(Local.strokeOpacity),
+                        style: StrokeStyle(
+                            lineWidth: UIConstants.Stroke.emphasis,
+                            dash: [Local.dash, Local.gap]
+                        )
+                    )
+            )
+            .padding(Local.inset)
+    }
+}
+
+
+// MARK: - 托盘面板管理器
 final class OverlayPanelManager: @unchecked Sendable {
 
     private struct PasteShortcutResult {
@@ -266,6 +296,11 @@ final class OverlayPanelManager: @unchecked Sendable {
         let sourceCreationMilliseconds: Int
         let eventCreationMilliseconds: Int
         let eventPostMilliseconds: Int
+    }
+
+    private struct DockingTarget {
+        let placement: TrayPlacement
+        let screenFrame: NSRect
     }
 
     static let shared = OverlayPanelManager()
@@ -287,7 +322,12 @@ final class OverlayPanelManager: @unchecked Sendable {
     private var alertActive = false
     private var isPasting = false
     private var isDragThrough = false
+    private(set) var currentPlacement = TrayPlacementPreferences.effectivePlacement()
+    private(set) var isPinned = false
     private var panelResignKeyObserver: NSObjectProtocol?
+    private var dockingDragMonitor: Any?
+    private var dockingPreviewPanel: NSPanel?
+    private var pendingDockingTarget: DockingTarget?
     /// 关掉预览后 popover.close() 会让面板失焦；短暂忽略 resignKey→hide，避免 Esc 连带关托盘。
     private var suppressResignKeyHideUntil: CFAbsoluteTime = 0
     /// 同一按键可能同时走 monitor / cancelOperation / keyEquivalent；预览关掉后极短吞掉重复 cancel。
@@ -345,9 +385,13 @@ final class OverlayPanelManager: @unchecked Sendable {
                 ?? NSScreen.screens.first
         else { return }
 
-        let screenFrame = screen.visibleFrame
+        currentPlacement = TrayPlacementPreferences.effectivePlacement()
+        let panelFrame = TrayPanelLayout.panelFrame(
+            for: currentPlacement,
+            in: screen.visibleFrame
+        )
         let warmPanel = ClipboardOverlayPanel(
-            contentRect: screenFrame,
+            contentRect: panelFrame,
             styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -366,7 +410,7 @@ final class OverlayPanelManager: @unchecked Sendable {
             rootView: OverlayView(isPipelineWarmup: true)
                 .environmentObject(StoreManager.shared)
         )
-        hostingView.frame = screenFrame
+        hostingView.frame = NSRect(origin: .zero, size: panelFrame.size)
         hostingView.autoresizingMask = [.width, .height]
         warmPanel.contentView = hostingView
         hostingView.layoutSubtreeIfNeeded()
@@ -392,6 +436,7 @@ final class OverlayPanelManager: @unchecked Sendable {
     @MainActor
     func hide() {
         guard isVisible || isDragThrough else { return }
+        isPinned = false
         cleanup()
         NotificationCenter.default.post(name: .overlayDidHide, object: nil)
         DeveloperDiagnostics.record(DiagnosticsEvent.overlayDismiss)
@@ -426,13 +471,15 @@ final class OverlayPanelManager: @unchecked Sendable {
         makePanelKey()
     }
 
-    /// 失焦是否应保留托盘（预览显示中，或刚关掉预览的宽限期内且 App 仍活跃）。
+    /// 失焦是否应保留托盘（固定、预览显示中，或刚关掉预览的宽限期内）。
     static func shouldKeepOverlayAfterResignKey(
+        isPinned: Bool = false,
         isPreviewShowing: Bool,
         suppressUntil: CFAbsoluteTime,
         now: CFAbsoluteTime,
         appIsActive: Bool
     ) -> Bool {
+        if isPinned { return true }
         guard appIsActive else { return false }
         return isPreviewShowing || now < suppressUntil
     }
@@ -451,6 +498,121 @@ final class OverlayPanelManager: @unchecked Sendable {
         }
     }
 
+    @MainActor
+    @discardableResult
+    func togglePinned() -> Bool {
+        isPinned.toggle()
+        return isPinned
+    }
+
+    @MainActor
+    func notePanelInteractionTarget() {
+        guard let frontmost = NSWorkspace.shared.frontmostApplication,
+              frontmost.processIdentifier != ProcessInfo.processInfo.processIdentifier
+        else { return }
+        previousFrontApp = frontmost
+    }
+
+    @MainActor
+    func beginPanelDockingDrag() {
+        endPanelDockingDrag()
+        dockingDragMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDragged, .leftMouseUp]
+        ) { [weak self] event in
+            guard let self else { return event }
+            let mouseLocation = NSEvent.mouseLocation
+            self.updateDockingPreview(at: mouseLocation)
+            if event.type == .leftMouseUp {
+                self.commitPendingDocking()
+                self.endPanelDockingDrag()
+            }
+            return event
+        }
+    }
+
+    @MainActor
+    private func updateDockingPreview(at mouseLocation: NSPoint) {
+        guard let panel,
+              let screen = NSScreen.screens.first(where: {
+                  NSMouseInRect(mouseLocation, $0.frame, false)
+              }) ?? panel.screen,
+              let placement = TrayPanelLayout.dockingPlacement(
+                  at: mouseLocation,
+                  in: screen.visibleFrame
+              ),
+              placement != currentPlacement
+        else {
+            pendingDockingTarget = nil
+            dockingPreviewPanel?.orderOut(nil)
+            return
+        }
+
+        let target = DockingTarget(placement: placement, screenFrame: screen.visibleFrame)
+        pendingDockingTarget = target
+        showDockingPreview(for: target)
+    }
+
+    @MainActor
+    private func showDockingPreview(for target: DockingTarget) {
+        let frame = TrayPanelLayout.panelFrame(for: target.placement, in: target.screenFrame)
+        let previewPanel: NSPanel
+        if let dockingPreviewPanel {
+            previewPanel = dockingPreviewPanel
+            previewPanel.setFrame(frame, display: true)
+            previewPanel.contentView?.frame = NSRect(origin: .zero, size: frame.size)
+        } else {
+            previewPanel = NSPanel(
+                contentRect: frame,
+                styleMask: [.borderless, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            previewPanel.isOpaque = false
+            previewPanel.backgroundColor = .clear
+            previewPanel.hasShadow = false
+            previewPanel.level = .popUpMenu
+            previewPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            previewPanel.isReleasedWhenClosed = false
+            previewPanel.ignoresMouseEvents = true
+            previewPanel.hidesOnDeactivate = false
+            previewPanel.animationBehavior = .none
+
+            let hostingView = NSHostingView(rootView: TrayDockingPreviewView())
+            hostingView.frame = NSRect(origin: .zero, size: frame.size)
+            hostingView.autoresizingMask = [.width, .height]
+            previewPanel.contentView = hostingView
+            dockingPreviewPanel = previewPanel
+        }
+        previewPanel.orderFrontRegardless()
+    }
+
+    @MainActor
+    private func commitPendingDocking() {
+        guard let panel, let target = pendingDockingTarget else { return }
+        currentPlacement = target.placement
+        TrayPlacementPreferences.remember(target.placement)
+        panel.setFrame(
+            TrayPanelLayout.panelFrame(for: target.placement, in: target.screenFrame),
+            display: true,
+            animate: false
+        )
+        NotificationCenter.default.post(
+            name: .overlayPlacementChanged,
+            object: nil,
+            userInfo: ["placement": target.placement.rawValue]
+        )
+    }
+
+    @MainActor
+    private func endPanelDockingDrag() {
+        if let dockingDragMonitor {
+            NSEvent.removeMonitor(dockingDragMonitor)
+            self.dockingDragMonitor = nil
+        }
+        pendingDockingTarget = nil
+        dockingPreviewPanel?.orderOut(nil)
+    }
+
     /// 隐藏 + 粘贴到之前的前台应用（点击卡片使用）
     /// 先写剪贴板 + ⌘V，面板隐藏/DB/音效后台收尾，不阻塞粘贴
     @MainActor
@@ -466,6 +628,7 @@ final class OverlayPanelManager: @unchecked Sendable {
         let fmt = item.sourceFormat
 
         isPasting = true
+        let keepPinned = isPinned
         let targetApp = previousFrontApp
         previousFrontApp = nil
 
@@ -489,6 +652,7 @@ final class OverlayPanelManager: @unchecked Sendable {
             )
             ClipboardMonitor.shared.resume()
             isPasting = false
+            restorePinnedPanelIfNeeded(keepPinned)
             return
         }
 
@@ -506,6 +670,7 @@ final class OverlayPanelManager: @unchecked Sendable {
         ClipboardMonitor.shared.resume()
         StoreManager.shared.refresh()
         isPasting = false
+        restorePinnedPanelIfNeeded(keepPinned)
         DeveloperDiagnostics.record(DiagnosticsEvent.pasteSingle)
         diagnosticsLog.info(
             "单条粘贴完成",
@@ -537,6 +702,7 @@ final class OverlayPanelManager: @unchecked Sendable {
         let t0 = permissionCheckedAt
 
         isPasting = true
+        let keepPinned = isPinned
         let targetApp = previousFrontApp
         previousFrontApp = nil
 
@@ -578,6 +744,7 @@ final class OverlayPanelManager: @unchecked Sendable {
         ClipboardMonitor.shared.resume()
         StoreManager.shared.refresh()
         isPasting = false
+        restorePinnedPanelIfNeeded(keepPinned)
         DeveloperDiagnostics.record(DiagnosticsEvent.pasteMulti)
         diagnosticsLog.info(
             "多选粘贴完成",
@@ -610,13 +777,18 @@ final class OverlayPanelManager: @unchecked Sendable {
         }
     }
 
-    /// 轮询鼠标按键状态，释放时关闭面板
+    /// 轮询鼠标按键状态；固定时恢复托盘，否则完成普通关闭。
     @MainActor
     private func pollDragEnd() {
         guard isDragThrough else { return }
         if NSEvent.pressedMouseButtons == 0 {
-            // 鼠标已释放 → 拖拽完成，直接关闭
-            hide()
+            if isPinned {
+                isDragThrough = false
+                panel?.ignoresMouseEvents = false
+                panel?.orderFrontRegardless()
+            } else {
+                hide()
+            }
         } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.pollDragEnd()
@@ -629,6 +801,12 @@ final class OverlayPanelManager: @unchecked Sendable {
         targetApp?.activate()
         cleanup()
         NotificationCenter.default.post(name: .overlayDidHide, object: nil)
+    }
+
+    @MainActor
+    private func restorePinnedPanelIfNeeded(_ wasPinned: Bool) {
+        guard wasPinned else { return }
+        showPanel(preservePlacement: true)
     }
 
     var isVisible: Bool { panel?.isVisible == true }
@@ -653,7 +831,7 @@ final class OverlayPanelManager: @unchecked Sendable {
     // MARK: - 私有
 
     @MainActor
-    private func showPanel() {
+    private func showPanel(preservePlacement: Bool = false) {
         let t0 = CFAbsoluteTimeGetCurrent()
 
         // 若有快捷键触发时刻，预取并计算调用链延迟
@@ -663,15 +841,25 @@ final class OverlayPanelManager: @unchecked Sendable {
         }
 
         let mouseLocation = NSEvent.mouseLocation
-        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) }) ?? NSScreen.main ?? NSScreen.screens.first else {
+        let screen = (preservePlacement ? panel?.screen : nil)
+            ?? NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) })
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+        guard let screen else {
             diagnosticsLog.error("无法获取显示器", event: "overlay.show.no_screen")
             log.error("无法获取屏幕")
             return
         }
 
+        if !preservePlacement {
+            currentPlacement = TrayPlacementPreferences.effectivePlacement()
+        }
         previousFrontApp = NSWorkspace.shared.frontmostApplication
 
-        let screenFrame = screen.visibleFrame  // 不含菜单栏，保留菜单栏交互
+        let panelFrame = TrayPanelLayout.panelFrame(
+            for: currentPlacement,
+            in: screen.visibleFrame
+        )
 
         let activePanel: ClipboardOverlayPanel
         let reusedPanel: Bool
@@ -683,19 +871,24 @@ final class OverlayPanelManager: @unchecked Sendable {
         if let existingPanel = panel {
             reusedPanel = true
             activePanel = existingPanel
-            existingPanel.setFrame(screenFrame, display: false)
-            existingPanel.contentView?.frame = NSRect(origin: .zero, size: screenFrame.size)
+            existingPanel.setFrame(panelFrame, display: false)
+            existingPanel.contentView?.frame = NSRect(origin: .zero, size: panelFrame.size)
             existingPanel.ignoresMouseEvents = false
             t1 = CFAbsoluteTimeGetCurrent()
             t2 = t1
             t2a = t1
+            NotificationCenter.default.post(
+                name: .overlayPlacementChanged,
+                object: nil,
+                userInfo: ["placement": currentPlacement.rawValue]
+            )
             NotificationCenter.default.post(name: .overlayWillShow, object: nil)
             existingPanel.contentView?.layoutSubtreeIfNeeded()
             t3 = CFAbsoluteTimeGetCurrent()
         } else {
             reusedPanel = false
             let newPanel = ClipboardOverlayPanel(
-                contentRect: screenFrame,
+                contentRect: panelFrame,
                 styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false
@@ -710,6 +903,8 @@ final class OverlayPanelManager: @unchecked Sendable {
             newPanel.ignoresMouseEvents = false
             newPanel.acceptsMouseMovedEvents = true
             newPanel.hidesOnDeactivate = false
+            newPanel.isMovable = false
+            newPanel.isMovableByWindowBackground = false
             newPanel.animationBehavior = .none
             t1 = CFAbsoluteTimeGetCurrent()
 
@@ -720,7 +915,7 @@ final class OverlayPanelManager: @unchecked Sendable {
             let hostingView = NSHostingView(rootView: overlayView)
             t2a = CFAbsoluteTimeGetCurrent()
 
-            hostingView.frame = NSRect(origin: .zero, size: screenFrame.size)
+            hostingView.frame = NSRect(origin: .zero, size: panelFrame.size)
             hostingView.autoresizingMask = [.width, .height]
             newPanel.contentView = hostingView
             panel = newPanel
@@ -756,6 +951,7 @@ final class OverlayPanelManager: @unchecked Sendable {
             forName: NSWindow.didResignKeyNotification, object: activePanel, queue: .main
         ) { [weak self] _ in
             guard let self, !self.isPasting, !self.alertActive, !self.isDragThrough else { return }
+            guard !self.isPinned else { return }
             DispatchQueue.main.async {
                 if Self.shouldKeepOverlayAfterResignKey(
                     isPreviewShowing: QLPreviewHelper.shared.isShowing,
@@ -794,11 +990,13 @@ final class OverlayPanelManager: @unchecked Sendable {
         log.info("覆盖层已显示")
     }
 
+    @MainActor
     private func cleanup() {
         if let observer = panelResignKeyObserver {
             NotificationCenter.default.removeObserver(observer)
             panelResignKeyObserver = nil
         }
+        endPanelDockingDrag()
         removeKeyboardMonitor()
         QLPreviewHelper.shared.dismiss()
         suppressResignKeyHideUntil = 0

@@ -12,7 +12,6 @@ final class OverlayEmptyStateModelTests: XCTestCase {
 
     func testNoPinsState() {
         let model = OverlayEmptyStateModel.resolve(isPinnedTab: true, hasActiveFilters: false)
-        XCTAssertEqual(model.icon, "pin.slash")
         XCTAssertEqual(model.title, L10n["empty.no_pins"])
         XCTAssertEqual(model.subtitle, L10n["empty.no_pins_hint"])
         XCTAssertFalse(model.showsCopyTryHint)

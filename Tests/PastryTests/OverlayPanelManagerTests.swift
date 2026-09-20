@@ -625,6 +625,18 @@ final class OverlayPanelManagerTests: XCTestCase {
         )
     }
 
+    func testPinnedOverlaySurvivesResignEvenWhenAppInactive() {
+        XCTAssertTrue(
+            OverlayPanelManager.shouldKeepOverlayAfterResignKey(
+                isPinned: true,
+                isPreviewShowing: false,
+                suppressUntil: 0,
+                now: 100,
+                appIsActive: false
+            )
+        )
+    }
+
     func testOverlayPanelConsumesSpaceForPreviewWhenSearchInactive() {
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(

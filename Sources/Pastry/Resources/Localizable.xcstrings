@@ -86,19 +86,121 @@
         }
       }
     },
+    "settings.tray_placement_mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "托盘打开位置"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tray Opening Position"
+          }
+        }
+      }
+    },
+    "settings.tray_placement_mode.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定在底部会让托盘每次打开时回到底部；跟随记忆会使用最近一次拖拽吸附的位置。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixed at Bottom reopens the tray at the bottom; Follow Memory reuses its last snapped position."
+          }
+        }
+      }
+    },
+    "settings.tray_placement_mode.fixed_bottom": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定在底部"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixed at Bottom"
+          }
+        }
+      }
+    },
+    "settings.tray_placement_mode.follow_memory": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跟随记忆"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Follow Memory"
+          }
+        }
+      }
+    },
+    "toolbar.pin_tray": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep Open"
+          }
+        }
+      }
+    },
+    "toolbar.unpin_tray": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消固定"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop Keeping Open"
+          }
+        }
+      }
+    },
     "settings.general.subtitle": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "调整日常行为：语言、启动、提示音、左键点击操作、删除确认、历史保留和数据清理。"
+            "value": "调整日常行为：语言、启动、提示音、托盘打开位置、左键点击操作、删除确认、历史保留和数据清理。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tune the everyday behavior: language, launch, sounds, left-click action, delete confirmation, history retention, and data cleanup."
+            "value": "Tune the everyday behavior: language, launch, sounds, tray opening position, left-click action, delete confirmation, history retention, and data cleanup."
           }
         }
       }
@@ -4870,7 +4972,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "按下当前快捷键。引导期间只会确认按键，不会打开全屏面板。"
+            "value": "按下当前快捷键。引导期间只会确认按键，不会打开剪贴板托盘。"
           }
         },
         "en": {

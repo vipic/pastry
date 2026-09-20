@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import Pastry
 
@@ -25,6 +26,53 @@ final class ConstantsTests: XCTestCase {
         XCTAssertEqual(UserDefaultsKeys.soundEnabled, "sound_enabled")
         XCTAssertEqual(UserDefaultsKeys.cardClickMode, "card_click_mode")
         XCTAssertEqual(UserDefaultsKeys.deleteRequiresConfirmation, "delete_requires_confirmation")
+    }
+
+    func testTrayPlacementPreferencesAndCardAxis() {
+        XCTAssertEqual(UserDefaultsKeys.trayPlacementMode, "tray_placement_mode")
+        XCTAssertEqual(UserDefaultsKeys.trayRememberedPlacement, "tray_remembered_placement")
+        XCTAssertEqual(TrayPlacementMode.resolved(stored: nil), .fixedBottom)
+        XCTAssertEqual(TrayPlacementMode.resolved(stored: "unknown"), .fixedBottom)
+
+        let defaults = UserDefaults(suiteName: #function)!
+        defer { defaults.removePersistentDomain(forName: #function) }
+
+        TrayPlacementPreferences.remember(.right, defaults: defaults)
+        defaults.set(TrayPlacementMode.fixedBottom.rawValue, forKey: UserDefaultsKeys.trayPlacementMode)
+        XCTAssertEqual(TrayPlacementPreferences.effectivePlacement(defaults: defaults), .bottom)
+
+        defaults.set(TrayPlacementMode.followMemory.rawValue, forKey: UserDefaultsKeys.trayPlacementMode)
+        XCTAssertEqual(TrayPlacementPreferences.effectivePlacement(defaults: defaults), .right)
+
+        XCTAssertTrue(TrayPlacement.bottom.usesHorizontalCards(screenWidth: 1_440))
+        XCTAssertFalse(TrayPlacement.bottom.usesHorizontalCards(screenWidth: 1_200))
+        XCTAssertFalse(TrayPlacement.left.usesHorizontalCards(screenWidth: 1_440))
+        XCTAssertFalse(TrayPlacement.right.usesHorizontalCards(screenWidth: 1_440))
+    }
+
+    func testTrayPlacementMigratesLegacySidePreferenceToFollowMemory() {
+        let defaults = UserDefaults(suiteName: #function)!
+        defer { defaults.removePersistentDomain(forName: #function) }
+        defaults.set("left", forKey: "tray_placement")
+
+        TrayPlacementPreferences.migrateLegacyPreference(defaults: defaults)
+
+        XCTAssertEqual(TrayPlacementPreferences.mode(defaults: defaults), .followMemory)
+        XCTAssertEqual(TrayPlacementPreferences.rememberedPlacement(defaults: defaults), .left)
+        XCTAssertNil(defaults.object(forKey: "tray_placement"))
+    }
+
+    func testTrayPanelFramesAndEdgeDockingRegions() {
+        let screen = NSRect(x: 0, y: 0, width: 1_440, height: 900)
+        XCTAssertEqual(TrayPanelLayout.panelFrame(for: .bottom, in: screen), NSRect(x: 0, y: 0, width: 1_440, height: 336))
+        XCTAssertEqual(TrayPanelLayout.panelFrame(for: .left, in: screen), NSRect(x: 0, y: 0, width: 344, height: 900))
+        XCTAssertEqual(TrayPanelLayout.panelFrame(for: .right, in: screen), NSRect(x: 1_096, y: 0, width: 344, height: 900))
+        XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 300, y: 450), in: screen), .left)
+        XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 1_140, y: 450), in: screen), .right)
+        XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 720, y: 300), in: screen), .bottom)
+        XCTAssertNil(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 400, y: 450), in: screen))
+        XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 30, y: 80), in: screen), .left)
+        XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 80, y: 30), in: screen), .bottom)
     }
 
     func testDeleteRequiresConfirmationDefaultsToTrueWhenUnset() {

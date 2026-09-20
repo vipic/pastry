@@ -805,7 +805,7 @@ struct ClipboardCardView: View {
     private var footerBar: some View {
         HStack(spacing: 4) {
             if item.isPinned {
-                Image(systemName: "pin.fill")
+                Image(systemName: "bookmark.fill")
                     .font(.system(size: UIConstants.TypeSize.caption2, weight: .semibold))
                     .foregroundColor(themeColor)
                 Text("·").font(.caption2).foregroundColor(.secondary)
@@ -828,7 +828,7 @@ struct ClipboardCardView: View {
         HStack(spacing: Local.Card.hoverActionSpacing) {
             hoverActionButton(
                 action: .favorite,
-                icon: item.isPinned ? "pin.fill" : "pin",
+                icon: item.isPinned ? "bookmark.fill" : "bookmark",
                 label: item.isPinned ? L10n["context.unpin"] : L10n["context.pin"],
                 tint: item.isPinned ? themeColor : .secondary
             ) {

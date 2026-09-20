@@ -8,7 +8,7 @@ struct OverlayEmptyStateModel: Equatable {
     static func resolve(isPinnedTab: Bool, hasActiveFilters: Bool) -> OverlayEmptyStateModel {
         if isPinnedTab && !hasActiveFilters {
             return OverlayEmptyStateModel(
-                icon: "pin.slash",
+                icon: "bookmark.slash",
                 title: L10n["empty.no_pins"],
                 subtitle: L10n["empty.no_pins_hint"],
                 showsCopyTryHint: false

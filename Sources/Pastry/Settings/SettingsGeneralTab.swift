@@ -105,6 +105,23 @@ extension SettingsSceneView {
                         settingsDivider
 
                         settingsRow(
+                            title: L10n["settings.tray_placement_mode"],
+                            help: L10n["settings.tray_placement_mode.help"]
+                        ) {
+                            Picker("", selection: trayPlacementModeBinding) {
+                                ForEach(TrayPlacementMode.allCases) { mode in
+                                    Text(trayPlacementModeLabel(mode)).tag(mode)
+                                }
+                            }
+                            .settingsMenuPickerChrome()
+                            .frame(width: Local.Settings.controlColumnWidth)
+                            .accessibilityLabel(L10n["settings.tray_placement_mode"])
+                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.trayPlacementModePicker)
+                        }
+
+                        settingsDivider
+
+                        settingsRow(
                             title: L10n["settings.card_click_mode"],
                             help: L10n["settings.card_click_mode.help"]
                         ) {
@@ -386,7 +403,21 @@ extension SettingsSceneView {
         )
     }
 
-    var generalSectionHeight: CGFloat { 330 }
+    var trayPlacementModeBinding: Binding<TrayPlacementMode> {
+        Binding(
+            get: { TrayPlacementMode.resolved(stored: trayPlacementModeRaw) },
+            set: { trayPlacementModeRaw = $0.rawValue }
+        )
+    }
+
+    func trayPlacementModeLabel(_ mode: TrayPlacementMode) -> String {
+        switch mode {
+        case .fixedBottom: return L10n["settings.tray_placement_mode.fixed_bottom"]
+        case .followMemory: return L10n["settings.tray_placement_mode.follow_memory"]
+        }
+    }
+
+    var generalSectionHeight: CGFloat { 390 }
 }
 
 private struct CardClickModePicker: View {

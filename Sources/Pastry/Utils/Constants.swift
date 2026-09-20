@@ -26,7 +26,7 @@ enum AppIcons {
     static let paste = "arrow.right.doc.on.clipboard"
     static let copy = "doc.on.doc"
     static let delete = "trash"
-    static let pin = "pin.fill"
+    static let pin = "bookmark.fill"
     static let settings = "gearshape"
     static let clear = "clear"
     static let quit = "power"
@@ -40,6 +40,9 @@ enum UserDefaultsKeys {
     static let soundEnabled = "sound_enabled"
     /// 卡片左键：enhanced = 单击选中 / 再点已选粘贴；speed = 单击粘贴
     static let cardClickMode = "card_click_mode"
+    /// 托盘重开策略：固定回到底部，或跟随最近一次拖拽停靠位置
+    static let trayPlacementMode = "tray_placement_mode"
+    static let trayRememberedPlacement = "tray_remembered_placement"
     /// 删除历史记录前是否弹出确认（默认 true）
     static let deleteRequiresConfirmation = "delete_requires_confirmation"
     static let hotkeyKeyCode = "hotkey_keycode"

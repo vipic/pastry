@@ -620,6 +620,7 @@ struct PastryApp: App {
 
     init() {
         let initializationStart = CFAbsoluteTimeGetCurrent()
+        TrayPlacementPreferences.migrateLegacyPreference()
 
         store.start()
 
