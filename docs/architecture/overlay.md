@@ -51,7 +51,7 @@ Esc 按当前 UI 层级逐层处理：确认层、备注编辑、筛选、Quick 
 ## 渲染不变量与已知限制
 
 - 面板层级保持 `.popUpMenu`；`.screenSaver` 会破坏 `NSMenu` 右键事件链。
-- 透明面板中的托盘背景使用 `NSVisualEffectView(.hudWindow)`。当前实现没有采用 `NSGlassEffectView`；如需重新评估，必须先验证透明面板、浅深桌面和阴影边界。
+- 透明面板中的托盘背景使用 `NSVisualEffectView(.hudWindow)`，托盘本身不绘制投影，使底部和左右停靠保持一致。当前实现没有采用 `NSGlassEffectView`。
 - 材质 view 必须启用 layer、裁剪圆角并关闭 layer 阴影，避免圆角外残留暗边。
 - 受最大高度约束的内容需要显式 `.clipped()`，否则 SwiftUI 子视图仍可能绘制到 frame 之外。
 - 横向卡片带使用 SwiftUI `ScrollPosition` 坐标连续滚动，并用 `onScrollGeometryChange` 限制内容边界；侧滚轮限制单次位移用于微调，普通滚轮映射到横向并保留设备加速，传统滚轮只做一次行距换算；实现不遍历或直接修改 SwiftUI 私有的 `NSScrollView` 层级。

@@ -139,14 +139,16 @@ actor LocalSemanticSearchEngine {
         for start in stride(from: 0, to: inputs.count, by: 8) {
             guard !Task.isCancelled,
                   operationGeneration == generation,
-                  SemanticSearchPreference.isEnabled
+                  SemanticSearchPreference.isEnabled,
+                  isAvailable
             else { return }
             do {
                 let records = try await generateIndexRecords(
                     Array(inputs[start ..< min(start + 8, inputs.count)])
                 )
                 guard operationGeneration == generation,
-                      SemanticSearchPreference.isEnabled
+                      SemanticSearchPreference.isEnabled,
+                      isAvailable
                 else { return }
                 for record in records where DatabaseManager.shared.upsertSemanticIndex(record) {
                     completed += 1

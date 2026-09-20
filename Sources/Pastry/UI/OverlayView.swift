@@ -1178,18 +1178,6 @@ struct OverlayView: View {
         .background(panelTrayBackground)
         // One outer clip for the tray; GlassBackground uses radius 0 (parent clips).
         .clipShape(RoundedRectangle(cornerRadius: Local.Overlay.trayCornerRadius, style: .continuous))
-        .shadow(
-            color: .black.opacity(UIConstants.Shadow.Floating.primaryOpacity),
-            radius: UIConstants.Shadow.Floating.primaryRadius,
-            x: 0,
-            y: UIConstants.Shadow.Floating.primaryY
-        )
-        .shadow(
-            color: .black.opacity(UIConstants.Shadow.Floating.secondaryOpacity),
-            radius: UIConstants.Shadow.Floating.secondaryRadius,
-            x: 0,
-            y: UIConstants.Shadow.Floating.secondaryY
-        )
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.cardContainer)
