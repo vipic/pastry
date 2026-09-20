@@ -55,8 +55,8 @@
     "settings.compact_side_tray.section": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "侧边托盘（实验性）" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Side Tray (Experimental)" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "侧边托盘" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Side Tray" } }
       }
     },
     "settings.compact_side_tray.title": {
@@ -141,7 +141,7 @@
         }
       }
     },
-    "settings.tray_placement_mode": {
+    "settings.tray_placement": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
@@ -158,53 +158,70 @@
         }
       }
     },
-    "settings.tray_placement_mode.help": {
+    "settings.tray_placement.help": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "固定在底部会让托盘每次打开时回到底部；跟随记忆会使用最近一次拖拽吸附的位置。"
+            "value": "选择托盘打开时所在的屏幕边缘；拖动托盘后会使用新的位置。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fixed at Bottom reopens the tray at the bottom; Follow Memory reuses its last snapped position."
+            "value": "Choose the screen edge where the tray opens. Dragging the tray updates this position."
           }
         }
       }
     },
-    "settings.tray_placement_mode.fixed_bottom": {
+    "settings.tray_placement.bottom": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "固定在底部"
+            "value": "位于屏幕底侧"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fixed at Bottom"
+            "value": "Bottom of Screen"
           }
         }
       }
     },
-    "settings.tray_placement_mode.follow_memory": {
+    "settings.tray_placement.left": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "跟随记忆"
+            "value": "位于屏幕左侧"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Follow Memory"
+            "value": "Left Side of Screen"
+          }
+        }
+      }
+    },
+    "settings.tray_placement.right": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位于屏幕右侧"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Right Side of Screen"
           }
         }
       }
@@ -263,8 +280,8 @@
     "settings.semantic.section": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "智能找回（实验性）" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Smart Retrieval (Experimental)" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "智能找回" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Smart Retrieval" } }
       }
     },
     "settings.semantic.feature_title": {

@@ -29,19 +29,13 @@ final class ConstantsTests: XCTestCase {
     }
 
     func testTrayPlacementPreferencesAndCardAxis() {
-        XCTAssertEqual(UserDefaultsKeys.trayPlacementMode, "tray_placement_mode")
         XCTAssertEqual(UserDefaultsKeys.trayRememberedPlacement, "tray_remembered_placement")
-        XCTAssertEqual(TrayPlacementMode.resolved(stored: nil), .fixedBottom)
-        XCTAssertEqual(TrayPlacementMode.resolved(stored: "unknown"), .fixedBottom)
 
         let defaults = UserDefaults(suiteName: #function)!
         defer { defaults.removePersistentDomain(forName: #function) }
 
-        TrayPlacementPreferences.remember(.right, defaults: defaults)
-        defaults.set(TrayPlacementMode.fixedBottom.rawValue, forKey: UserDefaultsKeys.trayPlacementMode)
         XCTAssertEqual(TrayPlacementPreferences.effectivePlacement(defaults: defaults), .bottom)
-
-        defaults.set(TrayPlacementMode.followMemory.rawValue, forKey: UserDefaultsKeys.trayPlacementMode)
+        TrayPlacementPreferences.remember(.right, defaults: defaults)
         XCTAssertEqual(TrayPlacementPreferences.effectivePlacement(defaults: defaults), .right)
 
         XCTAssertTrue(TrayPlacement.bottom.usesHorizontalCards(screenWidth: 1_440))
@@ -50,16 +44,27 @@ final class ConstantsTests: XCTestCase {
         XCTAssertFalse(TrayPlacement.right.usesHorizontalCards(screenWidth: 1_440))
     }
 
-    func testTrayPlacementMigratesLegacySidePreferenceToFollowMemory() {
+    func testTrayPlacementMigratesLegacySidePreference() {
         let defaults = UserDefaults(suiteName: #function)!
         defer { defaults.removePersistentDomain(forName: #function) }
         defaults.set("left", forKey: "tray_placement")
 
         TrayPlacementPreferences.migrateLegacyPreference(defaults: defaults)
 
-        XCTAssertEqual(TrayPlacementPreferences.mode(defaults: defaults), .followMemory)
         XCTAssertEqual(TrayPlacementPreferences.rememberedPlacement(defaults: defaults), .left)
         XCTAssertNil(defaults.object(forKey: "tray_placement"))
+    }
+
+    func testTrayPlacementMigratesFixedBottomModeOverRememberedSide() {
+        let defaults = UserDefaults(suiteName: #function)!
+        defer { defaults.removePersistentDomain(forName: #function) }
+        defaults.set("right", forKey: UserDefaultsKeys.trayRememberedPlacement)
+        defaults.set("fixedBottom", forKey: "tray_placement_mode")
+
+        TrayPlacementPreferences.migrateLegacyPreference(defaults: defaults)
+
+        XCTAssertEqual(TrayPlacementPreferences.rememberedPlacement(defaults: defaults), .bottom)
+        XCTAssertNil(defaults.object(forKey: "tray_placement_mode"))
     }
 
     func testTrayPanelFramesAndEdgeDockingRegions() {

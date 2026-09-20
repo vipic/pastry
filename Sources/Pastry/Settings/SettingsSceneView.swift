@@ -46,8 +46,8 @@ struct SettingsSceneView: View {
     @AppStorage(UserDefaultsKeys.cardClickMode)
     var cardClickModeRaw = CardClickMode.default.rawValue
 
-    @AppStorage(UserDefaultsKeys.trayPlacementMode)
-    var trayPlacementModeRaw = TrayPlacementMode.default.rawValue
+    @AppStorage(UserDefaultsKeys.trayRememberedPlacement)
+    var trayRememberedPlacementRaw = TrayPlacement.default.rawValue
 
     @AppStorage(UserDefaultsKeys.deleteRequiresConfirmation)
     var deleteRequiresConfirmation = true

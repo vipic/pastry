@@ -75,45 +75,21 @@ enum TrayPlacement: String, CaseIterable, Identifiable {
     }
 }
 
-enum TrayPlacementMode: String, CaseIterable, Identifiable {
-    case fixedBottom
-    case followMemory
-
-    var id: String { rawValue }
-
-    static let `default` = TrayPlacementMode.fixedBottom
-
-    static func resolved(stored: String?) -> TrayPlacementMode {
-        guard let stored, let mode = TrayPlacementMode(rawValue: stored) else {
-            return .default
-        }
-        return mode
-    }
-}
-
 enum TrayPlacementPreferences {
     private static let legacyPlacementKey = "tray_placement"
+    private static let legacyPlacementModeKey = "tray_placement_mode"
 
     static func migrateLegacyPreference(defaults: UserDefaults = .standard) {
-        guard defaults.object(forKey: UserDefaultsKeys.trayPlacementMode) == nil,
-              let legacyRaw = defaults.string(forKey: legacyPlacementKey)
-        else { return }
+        let legacyMode = defaults.string(forKey: legacyPlacementModeKey)
+        if legacyMode == "fixedBottom" {
+            remember(.bottom, defaults: defaults)
+        } else if defaults.object(forKey: UserDefaultsKeys.trayRememberedPlacement) == nil,
+                  let legacyRaw = defaults.string(forKey: legacyPlacementKey) {
+            remember(TrayPlacement.resolved(stored: legacyRaw), defaults: defaults)
+        }
 
-        let placement = TrayPlacement.resolved(stored: legacyRaw)
-        defaults.set(placement.rawValue, forKey: UserDefaultsKeys.trayRememberedPlacement)
-        defaults.set(
-            placement == .bottom
-                ? TrayPlacementMode.fixedBottom.rawValue
-                : TrayPlacementMode.followMemory.rawValue,
-            forKey: UserDefaultsKeys.trayPlacementMode
-        )
         defaults.removeObject(forKey: legacyPlacementKey)
-    }
-
-    static func mode(defaults: UserDefaults = .standard) -> TrayPlacementMode {
-        TrayPlacementMode.resolved(
-            stored: defaults.string(forKey: UserDefaultsKeys.trayPlacementMode)
-        )
+        defaults.removeObject(forKey: legacyPlacementModeKey)
     }
 
     static func rememberedPlacement(defaults: UserDefaults = .standard) -> TrayPlacement {
@@ -123,9 +99,7 @@ enum TrayPlacementPreferences {
     }
 
     static func effectivePlacement(defaults: UserDefaults = .standard) -> TrayPlacement {
-        mode(defaults: defaults) == .fixedBottom
-            ? .bottom
-            : rememberedPlacement(defaults: defaults)
+        rememberedPlacement(defaults: defaults)
     }
 
     static func remember(_ placement: TrayPlacement, defaults: UserDefaults = .standard) {

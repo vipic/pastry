@@ -103,18 +103,18 @@ extension SettingsSceneView {
                         settingsDivider
 
                         settingsRow(
-                            title: L10n["settings.tray_placement_mode"],
-                            help: L10n["settings.tray_placement_mode.help"]
+                            title: L10n["settings.tray_placement"],
+                            help: L10n["settings.tray_placement.help"]
                         ) {
-                            Picker("", selection: trayPlacementModeBinding) {
-                                ForEach(TrayPlacementMode.allCases) { mode in
-                                    Text(trayPlacementModeLabel(mode)).tag(mode)
+                            Picker("", selection: trayPlacementBinding) {
+                                ForEach(TrayPlacement.allCases) { placement in
+                                    Text(trayPlacementLabel(placement)).tag(placement)
                                 }
                             }
                             .settingsMenuPickerChrome()
                             .frame(width: Local.Settings.controlColumnWidth)
-                            .accessibilityLabel(L10n["settings.tray_placement_mode"])
-                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.trayPlacementModePicker)
+                            .accessibilityLabel(L10n["settings.tray_placement"])
+                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.trayPlacementPicker)
                         }
 
                         settingsDivider
@@ -246,17 +246,18 @@ extension SettingsSceneView {
         )
     }
 
-    var trayPlacementModeBinding: Binding<TrayPlacementMode> {
+    var trayPlacementBinding: Binding<TrayPlacement> {
         Binding(
-            get: { TrayPlacementMode.resolved(stored: trayPlacementModeRaw) },
-            set: { trayPlacementModeRaw = $0.rawValue }
+            get: { TrayPlacement.resolved(stored: trayRememberedPlacementRaw) },
+            set: { trayRememberedPlacementRaw = $0.rawValue }
         )
     }
 
-    func trayPlacementModeLabel(_ mode: TrayPlacementMode) -> String {
-        switch mode {
-        case .fixedBottom: return L10n["settings.tray_placement_mode.fixed_bottom"]
-        case .followMemory: return L10n["settings.tray_placement_mode.follow_memory"]
+    func trayPlacementLabel(_ placement: TrayPlacement) -> String {
+        switch placement {
+        case .bottom: return L10n["settings.tray_placement.bottom"]
+        case .left: return L10n["settings.tray_placement.left"]
+        case .right: return L10n["settings.tray_placement.right"]
         }
     }
 

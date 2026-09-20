@@ -1078,6 +1078,23 @@ struct ClipboardCardView: View {
     // MARK: - Hover 轻操作
 
     private var hoverActionBar: some View {
+        Group {
+            if presentation == .compactSide {
+                hoverActionButtons
+                    .padding(Local.Card.hoverActionGroupPadding)
+                    .glassEffect(
+                        .regular,
+                        in: RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
+                    )
+            } else {
+                hoverActionButtons
+            }
+        }
+        .padding(.trailing, Local.Card.contentHorizontalPadding)
+        .padding(.bottom, UIConstants.Card.footerBottomPadding)
+    }
+
+    private var hoverActionButtons: some View {
         HStack(spacing: Local.Card.hoverActionSpacing) {
             hoverActionButton(
                 action: .favorite,
@@ -1104,22 +1121,6 @@ struct ClipboardCardView: View {
                 onDelete(item)
             }
         }
-        .padding(compactHoverActionsNeedBackdrop ? Local.Card.hoverActionGroupPadding : 0)
-        .background {
-            if compactHoverActionsNeedBackdrop {
-                RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
-                    .fill(.regularMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
-                            .strokeBorder(
-                                Color.white.opacity(UIConstants.OnDark.stroke),
-                                lineWidth: UIConstants.Stroke.hairline
-                            )
-                    )
-            }
-        }
-        .padding(.trailing, Local.Card.contentHorizontalPadding)
-        .padding(.bottom, UIConstants.Card.footerBottomPadding)
     }
 
     private var infoHoverActionReserveWidth: CGFloat {
@@ -1130,9 +1131,6 @@ struct ClipboardCardView: View {
         return Local.Card.hoverActionReserveWidth
     }
 
-    private var compactHoverActionsNeedBackdrop: Bool {
-        presentation == .compactSide && hasCompactTrailingPreview
-    }
 
     private func hoverActionButton(
         action: CardHoverAction,

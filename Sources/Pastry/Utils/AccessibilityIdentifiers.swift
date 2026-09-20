@@ -31,7 +31,7 @@ enum AccessibilityIdentifiers {
         static let launchAtLoginToggle = "settings.launch-at-login-toggle"
         static let soundToggle = "settings.sound-toggle"
         static let cardClickModeToggle = "settings.card-click-mode-toggle"
-        static let trayPlacementModePicker = "settings.tray-placement-mode-picker"
+        static let trayPlacementPicker = "settings.tray-placement-picker"
         static let deleteRequiresConfirmationToggle = "settings.delete-requires-confirmation-toggle"
         static let linkPreviewNetworkToggle = "settings.link-preview-network-toggle"
         static let performanceLoggingToggle = "settings.performance-logging-toggle"
