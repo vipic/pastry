@@ -85,9 +85,6 @@ struct OnboardingView: View {
             .animation(reduceMotion ? nil : .easeInOut(duration: UIConstants.Motion.medium), value: step)
 
             footer
-                .opacity(hidesFooterNavigation ? 0 : 1)
-                .allowsHitTesting(!hidesFooterNavigation)
-                .accessibilityHidden(hidesFooterNavigation)
         }
         .frame(width: UIConstants.Onboarding.windowWidth)
         .ignoresSafeArea(.container, edges: .top)
@@ -183,6 +180,14 @@ struct OnboardingView: View {
 
             Spacer()
 
+            if step == .copy && !copyDetection.isComplete {
+                Button(L10n["onboarding.copy.skip"]) {
+                    advance()
+                }
+                .buttonStyle(SettingsPillButtonStyle(kind: .ghost))
+                .accessibilityIdentifier(AccessibilityIdentifiers.Onboarding.skipCopyButton)
+            }
+
             if let previous = step.previous {
                 Button(L10n["onboarding.back"]) {
                     withAnimation(reduceMotion ? nil : .default) { step = previous }
@@ -213,9 +218,6 @@ struct OnboardingView: View {
         }
     }
 
-    private var hidesFooterNavigation: Bool {
-        step == .copy && !copyDetection.isComplete
-    }
 
     private var primaryButtonTitle: String {
         switch step {
@@ -294,8 +296,7 @@ struct OnboardingView: View {
         let sampleWasUsed = sampleTextCopied || copyDetection.outcome == .sampleText
         let usedOtherContent = copyDetection.outcome == .otherContent
         let actionFeedback = OnboardingCopyActionFeedback(isComplete: sampleWasUsed)
-        return ZStack(alignment: .bottomTrailing) {
-            stepLayout(
+        return stepLayout(
                 icon: copyDetection.isComplete ? "checkmark.circle.fill" : "doc.on.doc",
                 title: copyDetection.isComplete
                     ? L10n["onboarding.copy.detected_title"]
@@ -360,20 +361,6 @@ struct OnboardingView: View {
                         .foregroundStyle(PastryPalette.muted)
                 }
             }
-
-            if !copyDetection.isComplete {
-                Button(L10n["onboarding.skip_step"]) {
-                    advance()
-                }
-                .buttonStyle(.plain)
-                .font(.system(size: UIConstants.TypeSize.callout, weight: .medium))
-                .foregroundStyle(PastryPalette.muted)
-                .padding(.trailing, Local.Onboarding.chromeOuterPadding)
-                .padding(.bottom, Local.Onboarding.shakeDistance)
-                .accessibilityIdentifier(AccessibilityIdentifiers.Onboarding.skipStepButton)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var permissionStep: some View {

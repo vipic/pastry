@@ -53,6 +53,6 @@ enum AccessibilityIdentifiers {
         static let primaryButton = "onboarding.primary-button"
         static let permissionButton = "onboarding.permission-button"
         static let copySampleButton = "onboarding.copy-sample-button"
-        static let skipStepButton = "onboarding.skip-step-button"
+        static let skipCopyButton = "onboarding.skip-copy-button"
     }
 }

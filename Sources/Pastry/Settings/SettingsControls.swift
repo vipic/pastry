@@ -21,6 +21,7 @@ private enum Local {
 enum SettingsButtonKind {
     case primary
     case secondary
+    case ghost
     case danger
 }
 
@@ -47,6 +48,8 @@ struct SettingsPillButtonStyle: ButtonStyle {
             return .white
         case .secondary:
             return PastryPalette.ink
+        case .ghost:
+            return PastryPalette.muted
         }
     }
 
@@ -66,6 +69,8 @@ struct SettingsPillButtonStyle: ButtonStyle {
             return PastryPalette.warmAccent
         case .secondary:
             return Color.white.opacity(UIConstants.Settings.secondaryFillOpacity)
+        case .ghost:
+            return .clear
         case .danger:
             return PastryPalette.danger
         }
@@ -77,6 +82,8 @@ struct SettingsPillButtonStyle: ButtonStyle {
             return PastryPalette.warmBorder.opacity(Local.Settings.borderStrongOpacity)
         case .secondary:
             return PastryPalette.ink.opacity(UIConstants.Settings.borderOpacity)
+        case .ghost:
+            return .clear
         case .danger:
             return PastryPalette.dangerBorder.opacity(Local.Settings.borderStrongOpacity)
         }

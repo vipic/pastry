@@ -24,7 +24,7 @@ final class L10nTests: XCTestCase {
     func testOnboardingKeysExist() {
         let keys = [
             "onboarding.window_title", "onboarding.later", "onboarding.back",
-            "onboarding.skip_step", "onboarding.start", "onboarding.continue",
+            "onboarding.copy.skip", "onboarding.start", "onboarding.continue",
             "onboarding.finish_open",
             "onboarding.welcome.title", "onboarding.welcome.subtitle",
             "onboarding.welcome.local_title", "onboarding.welcome.local_subtitle",

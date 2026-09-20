@@ -13,7 +13,7 @@
 - `PastryApp` 启动存储层、清理孤儿图片、预热图标、注册 Carbon 热键与菜单栏，并安排下一轮 RunLoop 预热浮层。
 - `AppDelegate` 管理设置、帮助、更新和引导窗口；应用启动时初始化默认排除应用、读取更新错误并按引导版本决定是否展示 onboarding。
 - `SettingsSceneView` 以 `@AppStorage` / UserDefaults 保存配置，按 general、shortcut、security、experimental、version、about 六个页签组合视图。窗口复用时用 `settingsSelectTab` 通知切换目标页签。
-- General 的托盘打开位置直接保存并显示“位于屏幕左侧”“位于屏幕右侧”和“位于屏幕底侧”；用户拖动吸附后会同步到新的位置。旧版“固定在底部”迁移为底侧，旧版“跟随记忆”迁移为当时保存的位置，迁移后移除旧模式键。
+- General 的托盘打开位置直接保存并显示“位于屏幕左侧”“位于屏幕右侧”和“位于屏幕底侧”；拖动吸附只改变当前显示会话，关闭后再次打开时恢复设置位置。旧版“固定在底部”迁移为底侧，旧版“跟随记忆”迁移为当时保存的位置，迁移后移除旧模式键。
 - “智能找回”位于独立的 Experimental 页签，因此区块标题不再重复标注“实验性”。Apple 设备端模型状态排在开关之前；只有模型可用时才能开启智能找回。开关控制设备端模型分析、语义索引回填和浮层智能找回入口；设置区展示语义索引进度，重建只删除可再生成的 `clip_semantics` 派生数据，不删除历史正文。
 - Experimental 页签还提供“侧边托盘”区块及“使用紧凑列表”开关，缺省关闭。开启后左右停靠使用窄列表，关闭时继续使用既有完整卡片；切换会立即调整当前可见侧边托盘的窗口宽度。
 - 侧边栏使用显式按钮修改选择状态，避免把导航建立在旧版曾失效的 `List(selection:)` 行为上。
@@ -22,7 +22,7 @@
 
 `GlobalHotkeyManager` 使用 Carbon `RegisterEventHotKey`，默认 Command + Shift + V；未设置与 keyCode 0 必须区分，负值表示禁用。配置变化才重新注册；录制快捷键时注销旧键，结束时强制恢复。热键回调先让引导流程确认操作，再决定是否切换浮层。
 
-引导分 welcome、shortcut、copy、permission 四步。`OnboardingPreferences` 保存完成版本；复制检测以进入步骤时的记录 ID 集合作为基线。`OnboardingOverlayHandoff` 等应用失去 active 后再打开浮层，避免把引导窗口当成后续粘贴目标。
+引导分 welcome、shortcut、copy、permission 四步。`OnboardingPreferences` 保存完成版本；复制步骤不会自动改写系统剪贴板，用户可主动复制示例或自己的内容，也可选择“暂不复制”继续到权限步骤。复制检测以进入步骤时的记录 ID 集合作为基线，底部导航在整个流程中保持可见。`OnboardingOverlayHandoff` 等应用失去 active 后再打开浮层，避免把引导窗口当成后续粘贴目标。
 
 登录启动通过 `SMAppService.mainApp` 注册或注销。设置页在失败时恢复展示值并显示错误，不能仅写 UserDefaults 后假定系统状态已改变。
 

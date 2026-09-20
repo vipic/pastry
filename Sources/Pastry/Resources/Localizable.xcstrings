@@ -4817,19 +4817,19 @@
         }
       }
     },
-    "onboarding.skip_step": {
+    "onboarding.copy.skip": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "跳过此步"
+            "value": "暂不复制"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Skip this step"
+            "value": "Not Now"
           }
         }
       }
@@ -5129,13 +5129,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "建立第一条剪贴板历史"
+            "value": "创建第一条剪贴板历史"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create your first clipboard item"
+            "value": "Create your first clipboard history item"
           }
         }
       }
@@ -5146,13 +5146,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "复制下面的示例文字，Pastry 会像记录普通复制一样检测并保存它。"
+            "value": "Pastry 不会自动修改你的剪贴板。你可以复制下面的示例，也可以在任意 App 中复制自己的内容。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copy the sample below. Pastry will detect and save it like any normal copy."
+            "value": "Pastry never changes your clipboard automatically. Copy the sample below, or copy something of your own in any app."
           }
         }
       }
