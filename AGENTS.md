@@ -23,6 +23,7 @@ macOS 26+ 剪贴板管理器；SwiftPM + SwiftUI，SQLite 兼容引擎随仓库�
 - 剪贴板单元测试使用独立 pasteboard，不能读写 `NSPasteboard.general`；真实剪贴板只供明确的人工/smoke 验收。
 - 新增数据库公开方法保持完整加锁边界；旧库迁移必须保留失败恢复路径。
 - 诊断日志不得写入剪贴板正文、搜索词、完整 URL 或密钥，具体边界见[诊断说明](docs/DIAGNOSTICS.md)。
+- 可以执行仓库已经存在并通过 `mise` 等标准入口声明的端到端测试或烟测脚本。除非用户在当次对话明确要求，不得为当前任务临时编写、拼接或手动执行自定义 E2E，包括 AppleScript / 辅助功能 UI 自动化、自行打开应用后截图比较及临时截图脚本；也不得新增或扩写 E2E 测试与脚本。
 
 <!-- workspace-policy:start hash=b9875361a4a3 -->
 ## 跨项目统一规则
