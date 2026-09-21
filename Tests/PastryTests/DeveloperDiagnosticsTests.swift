@@ -26,11 +26,20 @@ final class DeveloperDiagnosticsTests: XCTestCase {
         DeveloperDiagnostics.contextOverrideForTesting = nil
         DeveloperDiagnostics.dateOverrideForTesting = nil
         DeveloperDiagnostics.logsDirectoryOverrideForTesting = nil
+
         UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.performanceLoggingEnabled)
         if let tempLogsDir {
             try? FileManager.default.removeItem(at: tempLogsDir)
         }
         super.tearDown()
+    }
+
+    func testReleaseSmokeDoesNotPresentLaunchWindows() {
+        DeveloperDiagnostics.contextOverrideForTesting = .normal
+        XCTAssertTrue(DeveloperDiagnostics.shouldPresentLaunchWindows)
+
+        DeveloperDiagnostics.contextOverrideForTesting = .releaseSmoke
+        XCTAssertFalse(DeveloperDiagnostics.shouldPresentLaunchWindows)
     }
 
     func testRecordIsNoOpWhenDisabled() {

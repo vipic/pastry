@@ -80,8 +80,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 初次启动：写入常见密码管理器的默认排除名单
         seedDefaultExcludedApps()
-        showPendingUpdateErrorIfNeeded()
-        showOnboardingIfNeeded()
+        if DeveloperDiagnostics.shouldPresentLaunchWindows {
+            showPendingUpdateErrorIfNeeded()
+            showOnboardingIfNeeded()
+        }
         diagnosticsLog.info(
             "应用完成启动",
             event: "app.did_finish_launching",

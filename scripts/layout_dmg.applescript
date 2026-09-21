@@ -4,8 +4,8 @@ on run arguments
     set appName to item 2 of arguments
 
     tell application "Finder"
-        open volumeFolder
-        set volumeWindow to container window of volumeFolder
+        -- 直接创建后台窗口，避免 open 命令把 Finder 或挂载卷切到当前全屏空间。
+        set volumeWindow to make new Finder window to volumeFolder with properties {bounds:{200, 200, 740, 550}}
         tell volumeWindow
             set current view to icon view
             set toolbar visible to false

@@ -52,7 +52,7 @@ mounted=0
 swift build --package-path "$project_dir" --product PastryReleaseSmoke >/dev/null
 codesign --force --sign "$identity" --identifier com.nekutai.pastry.release-smoke "$runner"
 
-open -n -F "$app_dir" --args --diagnostics-context release_smoke
+open -g -n -F "$app_dir" --args --diagnostics-context release_smoke
 for _ in {1..100}; do
   app_pid="$(pgrep -f "^$app_executable --diagnostics-context release_smoke$" | head -1 || true)"
   [[ -n "$app_pid" ]] && break

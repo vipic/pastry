@@ -21,7 +21,7 @@
 ## 发布链与不变量
 
 - `mise run release -- <版本>` 经参数包装进入 `release.sh`；`publish` 在相同链路上增加远端操作。
-- 正式制品生成前运行 `mise run check`，然后注入版本、编译、组装、签名、打包，并挂载最终 DMG 执行首次启动冒烟。
+- 正式制品生成前运行 `mise run check`，然后注入版本、编译、组装、签名、打包，并挂载最终 DMG 执行首次启动冒烟。Finder 布局窗口不激活，正式 bundle 通过 `open -g` 在后台启动；`release_smoke` 上下文禁止自动展示引导和更新错误窗口，避免发布链切换当前工作空间。
 - 开发 bundle ID 为 `com.nekutai.pastry.dev`，正式版为 `com.nekutai.pastry`；证书默认 `Nekutai`，可显式配置自己的稳定证书。密钥不属于仓库内容。
 - 发布要求 main 和干净工作区，版本 tag / Release 不静默覆盖。main 与 tag 使用原子推送；后续 Release 创建另有失败处理，不等于整个远端发布是单一事务。
 - CI 运行统一检查，不持有正式签名私钥，不生成正式签名 DMG。

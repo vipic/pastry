@@ -149,6 +149,10 @@ enum DeveloperDiagnostics {
             || ProcessInfo.processInfo.environment["PASTRY_PERF_LOG"] == "1"
     }
 
+    static var shouldPresentLaunchWindows: Bool {
+        currentContext != .releaseSmoke
+    }
+
     /// 功能使用计数 +1（开关关闭时 no-op）。
     static func record(_ event: String) {
         guard isEnabled, !event.isEmpty else { return }
