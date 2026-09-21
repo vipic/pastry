@@ -324,6 +324,7 @@ final class OverlayPanelManager: @unchecked Sendable {
     private(set) var isPinned = false
     private var panelResignKeyObserver: NSObjectProtocol?
     private var dockingDragMonitor: Any?
+    private var dockingDragActive = false
     private var dockingPreviewPanel: NSPanel?
     private var pendingDockingTarget: DockingTarget?
     private var compactSideTrayEnabled: Bool {
@@ -525,6 +526,7 @@ final class OverlayPanelManager: @unchecked Sendable {
     @MainActor
     func beginPanelDockingDrag() {
         endPanelDockingDrag()
+        setDockingDragActive(true)
         dockingDragMonitor = NSEvent.addLocalMonitorForEvents(
             matching: [.leftMouseDragged, .leftMouseUp]
         ) { [weak self] event in
@@ -621,11 +623,23 @@ final class OverlayPanelManager: @unchecked Sendable {
     }
 
     @MainActor
+    private func setDockingDragActive(_ active: Bool) {
+        guard dockingDragActive != active else { return }
+        dockingDragActive = active
+        NotificationCenter.default.post(
+            name: .overlayDockingDragChanged,
+            object: nil,
+            userInfo: ["active": active]
+        )
+    }
+
+    @MainActor
     private func endPanelDockingDrag() {
         if let dockingDragMonitor {
             NSEvent.removeMonitor(dockingDragMonitor)
             self.dockingDragMonitor = nil
         }
+        setDockingDragActive(false)
         pendingDockingTarget = nil
         dockingPreviewPanel?.orderOut(nil)
     }

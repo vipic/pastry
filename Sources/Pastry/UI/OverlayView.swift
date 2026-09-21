@@ -19,6 +19,7 @@ private enum Local {
     }
     enum Overlay {
         static let animationDuration = UIConstants.Motion.medium
+        static let dockingDragScale: CGFloat = 0.985
         static let bottomInset: CGFloat = 12
         static let compactCardMaxWidth: CGFloat = 400
         static let compactListMaxWidth: CGFloat = 520
@@ -225,6 +226,7 @@ extension Notification.Name {
     /// userInfo["delta"]: CGFloat — 横向卡带滚动位移（侧轮微调；普通滚轮快速浏览）
     static let overlayCardStripScroll = Notification.Name("overlayCardStripScroll")
     static let overlayPlacementChanged = Notification.Name("overlayPlacementChanged")
+    static let overlayDockingDragChanged = Notification.Name("overlayDockingDragChanged")
 }
 
 // MARK: - 覆盖层主视图
@@ -243,6 +245,7 @@ struct OverlayView: View {
     @State private var trayPlacement = TrayPlacementPreferences.effectivePlacement()
     @State private var isTrayPinned = false
     @State private var cardVisible = false
+    @State private var isDockingDragActive = false
     @State private var selection = SelectionState()
     @State private var renderedIds: Set<UUID> = []    // 当前已渲染（可见）的卡片 ID
     @State private var commandShortcutIds: [UUID] = []
@@ -331,6 +334,8 @@ struct OverlayView: View {
             VStack(spacing: 0) {
                 Spacer()
                 cardContainer
+                    .scaleEffect(isDockingDragActive ? Local.Overlay.dockingDragScale : 1, anchor: .bottom)
+                    .animation(dockingDragAnimation, value: isDockingDragActive)
                     .padding(.horizontal, Local.Overlay.horizontalPadding)
                     .padding(.bottom, Local.Overlay.bottomInset)
             }
@@ -338,6 +343,8 @@ struct OverlayView: View {
         case .left:
             cardContainer
                 .frame(width: TrayPanelLayout.sideTrayWidth(compact: compactSideTrayEnabled))
+                .scaleEffect(isDockingDragActive ? Local.Overlay.dockingDragScale : 1, anchor: .leading)
+                .animation(dockingDragAnimation, value: isDockingDragActive)
                 .padding(.vertical, Local.Overlay.sideInset)
                 .padding(.leading, Local.Overlay.sideInset)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -345,11 +352,19 @@ struct OverlayView: View {
         case .right:
             cardContainer
                 .frame(width: TrayPanelLayout.sideTrayWidth(compact: compactSideTrayEnabled))
+                .scaleEffect(isDockingDragActive ? Local.Overlay.dockingDragScale : 1, anchor: .trailing)
+                .animation(dockingDragAnimation, value: isDockingDragActive)
                 .padding(.vertical, Local.Overlay.sideInset)
                 .padding(.trailing, Local.Overlay.sideInset)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
                 .offset(x: cardVisible ? 0 : 200)
         }
+    }
+
+    private var dockingDragAnimation: Animation? {
+        reduceMotion
+            ? nil
+            : .spring(response: UIConstants.Motion.fast, dampingFraction: UIConstants.Motion.damping)
     }
 
 
@@ -373,6 +388,9 @@ struct OverlayView: View {
                 else { return }
                 trayPlacement = placement
                 updateLayoutForCurrentScreen()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .overlayDockingDragChanged)) { note in
+                isDockingDragActive = (note.userInfo?["active"] as? Bool) ?? false
             }
             .onReceive(NotificationCenter.default.publisher(for: .overlayDidHide)) { _ in
                 guard !isPipelineWarmup else { return }
@@ -670,6 +688,7 @@ struct OverlayView: View {
 
     private func resetAllState() {
         showSearch = false
+        isDockingDragActive = false
         showFilterPopover = false
         isSearchFocused = false
         OverlayPanelManager.shared.isSearchActive = false
