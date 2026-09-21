@@ -46,6 +46,12 @@ enum AccessibilityIdentifiers {
         static func sidebarTab(_ rawValue: String) -> String { "settings.tab.\(rawValue)" }
     }
 
+    enum SmartAction {
+        static let customInstruction = "smart-action.custom-instruction"
+        static let error = "smart-action.error"
+        static let generatedText = "smart-action.generated-text"
+    }
+
     enum Onboarding {
         static let root = "onboarding.root"
         static let laterButton = "onboarding.later-button"

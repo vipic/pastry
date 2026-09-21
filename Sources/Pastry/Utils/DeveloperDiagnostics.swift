@@ -524,6 +524,7 @@ enum DiagnosticsEvent {
     static let share = "share"
     static let open = "open"
     static let showInFinder = "show_in_finder"
+    static let smartActionOpen = "smart_action.open"
 
     static let favoritePin = "favorite.pin"
     static let favoriteUnpin = "favorite.unpin"

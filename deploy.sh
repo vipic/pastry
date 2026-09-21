@@ -97,6 +97,8 @@ if [ ! -f "$CONTENTS/Info.plist" ]; then
     <true/>
     <key>NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac</key>
     <true/>
+    <key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+    <string>Pastry 仅在你确认后将选中的剪贴板内容添加到日历。</string>
 </dict>
 </plist>
 PLIST
@@ -109,6 +111,8 @@ else
     # 已有 Info.plist：补上验证码 AutoFill 收口（不改 inode 的 Add/Set）
     /usr/libexec/PlistBuddy -c "Add :NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac bool true" "$CONTENTS/Info.plist" 2>/dev/null \
         || /usr/libexec/PlistBuddy -c "Set :NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac true" "$CONTENTS/Info.plist" 2>/dev/null
+    /usr/libexec/PlistBuddy -c "Add :NSCalendarsWriteOnlyAccessUsageDescription string 'Pastry 仅在你确认后将选中的剪贴板内容添加到日历。'" "$CONTENTS/Info.plist" 2>/dev/null \
+        || /usr/libexec/PlistBuddy -c "Set :NSCalendarsWriteOnlyAccessUsageDescription 'Pastry 仅在你确认后将选中的剪贴板内容添加到日历。'" "$CONTENTS/Info.plist" 2>/dev/null
 fi
 echo "✅ 版本号已注入: $DEV_VERSION"
 

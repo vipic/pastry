@@ -71,6 +71,7 @@ Pastry/
 │       │   ├── ClipboardCardView.swift       # 完整卡片与紧凑条目、手势、备注和拖拽入口
 │       │   ├── ClipboardCardContentViews.swift # 不同格式的卡片内容视图
 │       │   ├── ClipboardCardActions.swift    # 右键菜单、复制、打开、分享和删除
+│       │   ├── SmartActionPanel.swift        # 智能操作选择、草稿编辑及日历/邮件执行
 │       │   ├── ClipboardDisplayMode.swift    # 卡片展示类型判定
 │       │   ├── ClipboardItemPreviewBuilder.swift # Quick Look/文本预览内容构建
 │       │   ├── FilePreviewContent.swift      # 单文件、多文件和缺失文件预览
@@ -116,6 +117,8 @@ Pastry/
 │           ├── UpdateInstallScriptBuilder.swift # 更新安装 helper 脚本生成
 │           ├── LocalNaturalLanguageSearch.swift # Foundation Models 设备端搜索意图解析
 │           ├── LocalSemanticSearch.swift        # 语义标签、句向量召回与候选重排
+│           ├── LocalSmartActions.swift          # 设备端总结、改写、翻译、日历和邮件草稿生成
+│           ├── ImageSmartAnalyzer.swift         # Vision OCR/条码识别与设备端图片描述
 │           └── Watchdog.swift                # 主线程卡死检测、采样和恢复
 │   └── PastryReleaseSmoke/
 │       └── main.swift                         # 正式 DMG 首次启动验收器

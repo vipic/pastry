@@ -41,6 +41,7 @@ let package = Package(
             resources: [.process("Resources")],
             linkerSettings: [
                 .linkedFramework("Security"),
+                .linkedFramework("EventKit"),
             ]
         ),
         .testTarget(

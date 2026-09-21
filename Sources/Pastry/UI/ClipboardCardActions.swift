@@ -157,6 +157,7 @@ extension ClipboardCardView {
                 case "open":       openItem()
                 case "show_in_finder": showInFinder()
                 case "copy":       copyItem()
+                case "smart_action": SmartActionPanelManager.shared.show(for: item)
                 case "preview":    previewItem(from: view)
                 case "share":      shareItem(from: view)
                 case "delete":     onDelete(item)
@@ -199,6 +200,24 @@ extension ClipboardCardView {
         copyMenuItem.representedObject = "copy" as NSString
         copyMenuItem.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: L10n["context.copy"])
         menu.addItem(copyMenuItem)
+
+        menu.addItem(.separator())
+        let smartActionEnabled = (isTextType || item.sourceFormat == .image)
+            && !(selectedIds.count > 1 && selectedIds.contains(item.id))
+        let smartActionTitle = L10n["context.smart_action"]
+        let smartActionItem = NSMenuItem(
+            title: smartActionTitle,
+            action: smartActionEnabled ? #selector(_MenuHandler.invoke(_:)) : nil,
+            keyEquivalent: ""
+        )
+        smartActionItem.target = smartActionEnabled ? handler : nil
+        smartActionItem.representedObject = smartActionEnabled ? "smart_action" as NSString : nil
+        smartActionItem.image = NSImage(
+            systemSymbolName: "sparkles",
+            accessibilityDescription: smartActionTitle
+        )
+        smartActionItem.isEnabled = smartActionEnabled
+        menu.addItem(smartActionItem)
 
         let isFileBased = item.sourceFormat == .fileURL || item.sourceFormat == .image
         let hasAnyFile = isFileBased && !FileLocationResolver.existingURLs(for: item).isEmpty

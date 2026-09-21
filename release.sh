@@ -217,6 +217,8 @@ cat > "$STAGING/$APP_NAME.app/Contents/Info.plist" << PLIST
     <true/>
     <key>NSAppleEventsUsageDescription</key>
     <string>Pastry 需要辅助功能权限以监听全局快捷键。</string>
+    <key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+    <string>Pastry 仅在你确认后将选中的剪贴板内容添加到日历。</string>
 </dict>
 </plist>
 PLIST

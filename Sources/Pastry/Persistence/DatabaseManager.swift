@@ -1282,6 +1282,23 @@ final class DatabaseManager {
         return result
     }
 
+    /// 按需读取有限长度的 content，避免智能操作把超长正文整体载入内存。
+    func loadContentPrefix(id: UUID, characterLimit: Int) -> String? {
+        guard characterLimit > 0 else { return nil }
+        lock.lock()
+        defer { lock.unlock() }
+        let sql = "SELECT substr(content, 1, ?) FROM clips WHERE id = ? LIMIT 1;"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int64(stmt, 1, Int64(characterLimit))
+        sqlite3_bind_text(stmt, 2, (id.uuidString as NSString).utf8String, -1, nil)
+        guard sqlite3_step(stmt) == SQLITE_ROW,
+              let content = sqlite3_column_text(stmt, 0)
+        else { return nil }
+        return String(cString: content)
+    }
+
     /// 按需加载 raw_format_data / raw_format_type（列表查询不含此 BLOB，粘贴时按需获取）
     func loadRawFormatData(id: UUID) -> (data: Data?, type: String?) {
         lock.lock()
