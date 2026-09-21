@@ -61,12 +61,6 @@ extension SettingsSceneView {
         Label(semanticModelStatusText, systemImage: semanticModelStatusIcon)
             .font(.system(size: UIConstants.TypeSize.body, weight: .bold))
             .foregroundStyle(semanticModelStatusColor)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .settingsCardChrome(
-                cornerRadius: UIConstants.Radius.control,
-                fill: semanticModelStatusColor.opacity(UIConstants.Settings.washOpacity)
-            )
     }
 
     var appleIntelligenceSection: some View {
