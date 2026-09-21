@@ -31,16 +31,26 @@ private enum Local {
         static let insertIndicatorWidth: CGFloat = 2.5
         static let searchExpandedWidth: CGFloat = 430
         static let searchFieldWellOpacity: Double = 0.28
+        static let searchTrailingPadding: CGFloat = 6
         static let toolbarButtonSize: CGFloat = 32
         static let trayContentMinHeight: CGFloat = 262  // 240 card + paddings
         static let trayCornerRadius: CGFloat = UIConstants.Radius.tray
+        static let trayHorizontalPadding: CGFloat = 12
         static let sideInset: CGFloat = 12
         static let sideSearchExpandedWidth: CGFloat = 200
-        static let compactSideSearchExpandedWidth: CGFloat = 184
+        static let sideUtilityControlsSpacing: CGFloat = 4
         /// 24 pt 托盘圆角与 10 pt 工具按钮圆角同心所需的边缘 inset。
         static let sideHeaderControlInset: CGFloat = 14
         static var sideHeaderHorizontalPadding: CGFloat {
             sideHeaderControlInset - sideInset
+        }
+        static var compactSideSearchExpandedWidth: CGFloat {
+            TrayPanelLayout.compactSideTrayWidth
+                - trayHorizontalPadding * 2
+                - sideHeaderHorizontalPadding * 2
+                - toolbarButtonSize * 2
+                - sideUtilityControlsSpacing
+                - searchTrailingPadding
         }
         static var regularCardInsertPushDistance: CGFloat {
             UIConstants.Card.size + UIConstants.Overlay.cardSpacing
@@ -488,7 +498,7 @@ struct OverlayView: View {
     private func onShowSearchChanged() {
         OverlayPanelManager.shared.isSearchActive = showSearch
         if showSearch {
-            selectFirstVisibleCard()
+            // 展开空搜索只切换输入状态；保持当前选择与卡片滚动位置。
             OverlayPanelManager.shared.keyboardOwner = .searchField
             focusSearchFieldAfterExpansion()
         } else {
@@ -496,7 +506,7 @@ struct OverlayView: View {
             showFilterPopover = false
             OverlayPanelManager.shared.keyboardOwner = .overlayNavigation
             // 搜索关键字由 closeSearch() 清除；结构化筛选保持不变。
-            selectFirstVisibleCard()
+            // 查询导致的结果变化会由 filteredItems 监听统一重置选择与滚动。
         }
     }
 
@@ -865,7 +875,7 @@ struct OverlayView: View {
                 .accessibilityIdentifier(AccessibilityIdentifiers.Overlay.searchButton)
             }
         }
-        .padding(.trailing, 6)
+        .padding(.trailing, Local.Overlay.searchTrailingPadding)
     }
 
     private var searchControlContent: some View {
@@ -1193,7 +1203,7 @@ struct OverlayView: View {
         .frame(maxWidth: .infinity, maxHeight: trayPlacement.isSide ? .infinity : nil)
         .fixedSize(horizontal: false, vertical: !trayPlacement.isSide)
         .padding(.top, trayPlacement.isSide ? Local.Overlay.sideHeaderControlInset : 10)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, Local.Overlay.trayHorizontalPadding)
         .padding(.bottom, 10)
         .background(panelTrayBackground)
         // One outer clip for the tray; GlassBackground uses radius 0 (parent clips).
@@ -1287,7 +1297,7 @@ struct OverlayView: View {
     }
 
     private var trayUtilityControls: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Local.Overlay.sideUtilityControlsSpacing) {
             pinTrayButton
             settingsButton
         }
