@@ -282,15 +282,20 @@ private struct CardClickModePicker: View {
         } label: {
             Text(title)
                 .font(.system(size: UIConstants.TypeSize.label, weight: .semibold))
-                .foregroundStyle(isSelected ? PastryPalette.warmInk : PastryPalette.ink)
+                .foregroundStyle(isSelected ? .white : PastryPalette.ink)
                 .frame(maxWidth: .infinity)
                 .frame(height: UIConstants.Control.iconButtonSize)
                 .background(
                     RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
-                        .fill(isSelected ? PastryPalette.warmAccent : Color.white.opacity(UIConstants.Settings.secondaryFillOpacity))
+                        .fill(isSelected ? PastryPalette.primaryActionFill : Color.white.opacity(UIConstants.Settings.secondaryFillOpacity))
                         .overlay(
                             RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
-                                .stroke(PastryPalette.ink.opacity(UIConstants.Settings.borderOpacity), lineWidth: UIConstants.Stroke.hairline)
+                                .stroke(
+                                    isSelected
+                                        ? PastryPalette.primaryActionFill
+                                        : PastryPalette.ink.opacity(UIConstants.Settings.borderOpacity),
+                                    lineWidth: UIConstants.Stroke.hairline
+                                )
                         )
                 )
         }

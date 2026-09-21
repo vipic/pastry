@@ -46,7 +46,7 @@ private enum Local {
             sideHeaderControlInset - sideInset
         }
         static var compactSideSearchExpandedWidth: CGFloat {
-            TrayPanelLayout.compactSideTrayWidth
+            TrayPanelLayout.sideTrayWidth
                 - trayHorizontalPadding * 2
                 - sideHeaderHorizontalPadding * 2
                 - toolbarButtonSize * 2
@@ -119,15 +119,13 @@ enum TrayPlacementPreferences {
 }
 
 enum TrayPanelLayout {
-    static let regularSideTrayWidth: CGFloat = 320
-    static let compactSideTrayWidth: CGFloat = 272
+    static let sideTrayWidth: CGFloat = 272
     static let sideInset: CGFloat = 12
     static let bottomHeight: CGFloat = 336
 
     static func panelFrame(
         for placement: TrayPlacement,
-        in screenFrame: NSRect,
-        compactSideTray: Bool = false
+        in screenFrame: NSRect
     ) -> NSRect {
         switch placement {
         case .bottom:
@@ -141,11 +139,11 @@ enum TrayPanelLayout {
             return NSRect(
                 x: screenFrame.minX,
                 y: screenFrame.minY,
-                width: min(sideTrayWidth(compact: compactSideTray) + sideInset * 2, screenFrame.width),
+                width: min(sideTrayWidth + sideInset * 2, screenFrame.width),
                 height: screenFrame.height
             )
         case .right:
-            let width = min(sideTrayWidth(compact: compactSideTray) + sideInset * 2, screenFrame.width)
+            let width = min(sideTrayWidth + sideInset * 2, screenFrame.width)
             return NSRect(
                 x: screenFrame.maxX - width,
                 y: screenFrame.minY,
@@ -155,14 +153,9 @@ enum TrayPanelLayout {
         }
     }
 
-    static func sideTrayWidth(compact: Bool) -> CGFloat {
-        compact ? compactSideTrayWidth : regularSideTrayWidth
-    }
-
     static func dockingPlacement(
         at point: NSPoint,
-        in screenFrame: NSRect,
-        compactSideTray: Bool = false
+        in screenFrame: NSRect
     ) -> TrayPlacement? {
         // The Dock can reserve space below visibleFrame. Treat that physical
         // screen strip as the bottom edge instead of dropping the drag target.
@@ -177,11 +170,7 @@ enum TrayPanelLayout {
             (.right, abs(screenFrame.maxX - point.x)),
             (.bottom, abs(point.y - screenFrame.minY))
         ].filter {
-            panelFrame(
-                for: $0.placement,
-                in: screenFrame,
-                compactSideTray: compactSideTray
-            ).contains(point)
+            panelFrame(for: $0.placement, in: screenFrame).contains(point)
         }
         return candidates.min(by: { $0.distance < $1.distance })?.placement
     }
@@ -237,10 +226,8 @@ struct OverlayView: View {
 
     @EnvironmentObject private var store: StoreManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @AppStorage(UserDefaultsKeys.semanticSearchEnabled)
-    private var semanticSearchEnabled = false
-    @AppStorage(UserDefaultsKeys.compactSideTrayEnabled)
-    private var compactSideTrayEnabled = false
+    @AppStorage(UserDefaultsKeys.appleIntelligenceEnabled)
+    private var appleIntelligenceEnabled = false
 
     @State private var trayPlacement = TrayPlacementPreferences.effectivePlacement()
     @State private var isTrayPinned = false
@@ -342,7 +329,7 @@ struct OverlayView: View {
             .offset(y: cardVisible ? 0 : 200)
         case .left:
             cardContainer
-                .frame(width: TrayPanelLayout.sideTrayWidth(compact: compactSideTrayEnabled))
+                .frame(width: TrayPanelLayout.sideTrayWidth)
                 .scaleEffect(isDockingDragActive ? Local.Overlay.dockingDragScale : 1, anchor: .leading)
                 .animation(dockingDragAnimation, value: isDockingDragActive)
                 .padding(.vertical, Local.Overlay.sideInset)
@@ -351,7 +338,7 @@ struct OverlayView: View {
                 .offset(x: cardVisible ? 0 : -200)
         case .right:
             cardContainer
-                .frame(width: TrayPanelLayout.sideTrayWidth(compact: compactSideTrayEnabled))
+                .frame(width: TrayPanelLayout.sideTrayWidth)
                 .scaleEffect(isDockingDragActive ? Local.Overlay.dockingDragScale : 1, anchor: .trailing)
                 .animation(dockingDragAnimation, value: isDockingDragActive)
                 .padding(.vertical, Local.Overlay.sideInset)
@@ -875,9 +862,7 @@ struct OverlayView: View {
     private var searchControlWidth: CGFloat {
         guard showSearch else { return searchControlHeight }
         return trayPlacement.isSide
-            ? (compactSideTrayEnabled
-                ? Local.Overlay.compactSideSearchExpandedWidth
-                : Local.Overlay.sideSearchExpandedWidth)
+            ? Local.Overlay.compactSideSearchExpandedWidth
             : Local.Overlay.searchExpandedWidth
     }
 
@@ -953,7 +938,7 @@ struct OverlayView: View {
                 }
                 .animation(.easeOut(duration: UIConstants.Motion.instant), value: hoverClearSearch)
 
-                if semanticSearchEnabled {
+                if appleIntelligenceEnabled {
                     naturalLanguageSearchButton
                 }
 
@@ -1120,7 +1105,7 @@ struct OverlayView: View {
 
                 if hasActiveTimeOrTypeFilter {
                     Circle()
-                        .fill(PastryPalette.warmAccent)
+                        .fill(PastryPalette.primaryActionFill)
                         .frame(
                             width: Local.Badge.indicatorDotSize,
                             height: Local.Badge.indicatorDotSize
@@ -1472,7 +1457,7 @@ struct OverlayView: View {
 
     private func toolbarForeground(isActive: Bool, isHovered: Bool) -> Color {
         if isActive {
-            return PastryPalette.warmInk
+            return .white
         }
         return .white.opacity(isHovered ? UIConstants.OnDark.textPrimary : UIConstants.OnDark.textIdle)
     }
@@ -1494,14 +1479,14 @@ struct OverlayView: View {
 
     private func toolbarButtonFill(isActive: Bool, isHovered: Bool) -> Color {
         if isActive {
-            return PastryPalette.warmAccent
+            return PastryPalette.primaryActionFill
         }
         return .white.opacity(isHovered ? UIConstants.OnDark.fillHover : UIConstants.OnDark.fillSubtle)
     }
 
     private func toolbarButtonBorder(isActive: Bool, isHovered: Bool) -> Color {
         if isActive {
-            return PastryPalette.warmAccent.opacity(UIConstants.Overlay.accentSoftOpacity)
+            return PastryPalette.primaryActionFill.opacity(UIConstants.Overlay.accentSoftOpacity)
         }
         // Idle: no visible border — fill alone defines the control.
         return .white.opacity(isHovered ? UIConstants.OnDark.fillSubtle : 0)
@@ -1664,11 +1649,7 @@ struct OverlayView: View {
                 LazyVStack(spacing: UIConstants.Overlay.cardSpacing) {
                     ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
                         cardView(item, index: idx)
-                            .frame(
-                                maxWidth: compactSideTrayEnabled
-                                    ? .infinity
-                                    : Local.Overlay.compactCardMaxWidth
-                            )
+                            .frame(maxWidth: .infinity)
                             .clipped()
                     }
                 }
@@ -1717,9 +1698,7 @@ struct OverlayView: View {
                 itemID: item.id,
                 shortcutItemIDs: commandShortcutIds
             ),
-            presentation: compactSideTrayEnabled && trayPlacement.isSide
-                ? .compactSide
-                : .card,
+            presentation: trayPlacement.isSide ? .compactSide : .card,
             selectedIds: Binding(
                 get: { selection.selectedIds },
                 set: { selection.selectedIds = $0 }
@@ -1748,7 +1727,7 @@ struct OverlayView: View {
         .modifier(CardInsertAppearance(
             role: insertRole,
             axis: isHorizontalLayout ? .horizontal : .vertical,
-            step: compactSideTrayEnabled && trayPlacement.isSide
+            step: trayPlacement.isSide
                 ? Local.Overlay.compactRowInsertPushDistance
                 : Local.Overlay.regularCardInsertPushDistance
         ))

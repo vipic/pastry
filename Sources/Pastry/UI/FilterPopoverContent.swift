@@ -310,16 +310,16 @@ struct FilterPopoverContent: View {
 /// Shared chip fill/border/foreground for text chips and app chips.
 enum FilterChipChrome {
     static func foreground(isSelected: Bool) -> Color {
-        isSelected ? PastryPalette.warmInk : .white.opacity(UIConstants.OnDark.textSecondary)
+        isSelected ? .white : .white.opacity(UIConstants.OnDark.textSecondary)
     }
 
     static func background(isSelected: Bool) -> some View {
         RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
-            .fill(isSelected ? PastryPalette.warmAccent : Color.white.opacity(UIConstants.OnDark.fillSubtle))
+            .fill(isSelected ? PastryPalette.primaryActionFill : Color.white.opacity(UIConstants.OnDark.fillSubtle))
             .overlay(
                 RoundedRectangle(cornerRadius: UIConstants.Radius.button, style: .continuous)
                     .stroke(
-                        isSelected ? PastryPalette.warmAccent.opacity(UIConstants.Overlay.accentSoftOpacity) : Color.clear,
+                        isSelected ? PastryPalette.primaryActionFill.opacity(UIConstants.Overlay.accentSoftOpacity) : Color.clear,
                         lineWidth: UIConstants.Stroke.hairline
                     )
             )

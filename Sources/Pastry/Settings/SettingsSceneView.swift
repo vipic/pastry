@@ -56,10 +56,8 @@ struct SettingsSceneView: View {
     var linkPreviewNetworkEnabled = false
     @AppStorage(UserDefaultsKeys.performanceLoggingEnabled)
     var performanceLoggingEnabled = false
-    @AppStorage(UserDefaultsKeys.semanticSearchEnabled)
-    var semanticSearchEnabled = false
-    @AppStorage(UserDefaultsKeys.compactSideTrayEnabled)
-    var compactSideTrayEnabled = false
+    @AppStorage(UserDefaultsKeys.appleIntelligenceEnabled)
+    var appleIntelligenceEnabled = false
     @AppStorage(UserDefaultsKeys.historyMaxItems)
     var historyMaxItems = HistoryRetentionPolicy.defaultMaxItems
     @AppStorage(UserDefaultsKeys.historyMaxAgeDays)
@@ -116,14 +114,14 @@ struct SettingsSceneView: View {
     }
 
     enum SettingsTab: String, CaseIterable, Identifiable {
-        case general, shortcut, security, experimental, version, about
+        case general, shortcut, security, appleIntelligence, version, about
         var id: String { rawValue }
         var label: String {
             switch self {
             case .general:      return L10n["settings.tab.general"]
             case .shortcut:     return L10n["settings.tab.shortcut"]
             case .security:     return L10n["settings.tab.security"]
-            case .experimental: return L10n["settings.tab.experimental"]
+            case .appleIntelligence: return L10n["settings.tab.apple_intelligence"]
             case .version:      return L10n["settings.tab.version"]
             case .about:        return L10n["settings.tab.about"]
             }
@@ -133,7 +131,7 @@ struct SettingsSceneView: View {
             case .general:      return "gearshape"
             case .shortcut:     return "command"
             case .security:     return "shield"
-            case .experimental: return "flask"
+            case .appleIntelligence: return "apple.intelligence"
             case .version:      return "arrow.triangle.2.circlepath"
             case .about:        return "info.circle"
             }
@@ -337,7 +335,7 @@ struct SettingsSceneView: View {
         case .general:      generalTab
         case .shortcut:     shortcutTab
         case .security:     securityTab
-        case .experimental: experimentalTab
+        case .appleIntelligence: appleIntelligenceTab
         case .version:      versionTab
         case .about:        aboutTab
         }

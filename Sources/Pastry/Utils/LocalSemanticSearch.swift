@@ -103,7 +103,7 @@ actor LocalSemanticSearchEngine {
         let progress = DatabaseManager.shared.semanticIndexProgress()
         await SemanticSearchStatus.shared.updateAvailability(currentAvailability)
         let phase: SemanticIndexPhase
-        if !SemanticSearchPreference.isEnabled {
+        if !AppleIntelligencePreference.isEnabled {
             phase = .disabled
         } else if progress.indexed >= progress.total {
             phase = .ready
@@ -129,7 +129,7 @@ actor LocalSemanticSearchEngine {
     }
 
     func backfill(limit: Int = 80) async {
-        guard SemanticSearchPreference.isEnabled else {
+        guard AppleIntelligencePreference.isEnabled else {
             await refreshStatus()
             return
         }
@@ -166,7 +166,7 @@ actor LocalSemanticSearchEngine {
         for start in stride(from: 0, to: inputs.count, by: 8) {
             guard !Task.isCancelled,
                   operationGeneration == generation,
-                  SemanticSearchPreference.isEnabled,
+                  AppleIntelligencePreference.isEnabled,
                   isAvailable
             else { return }
             do {
@@ -174,7 +174,7 @@ actor LocalSemanticSearchEngine {
                     Array(inputs[start ..< min(start + 8, inputs.count)])
                 )
                 guard operationGeneration == generation,
-                      SemanticSearchPreference.isEnabled,
+                      AppleIntelligencePreference.isEnabled,
                       isAvailable
                 else { return }
                 for record in records where DatabaseManager.shared.upsertSemanticIndex(record) {
@@ -216,7 +216,7 @@ actor LocalSemanticSearchEngine {
     }
 
     func rebuild(limit: Int = HistoryRetentionPolicy.current.maxItems) async {
-        guard SemanticSearchPreference.isEnabled else {
+        guard AppleIntelligencePreference.isEnabled else {
             await refreshStatus()
             return
         }
@@ -235,7 +235,7 @@ actor LocalSemanticSearchEngine {
     }
 
     func index(_ item: ClipboardItem) async {
-        guard SemanticSearchPreference.isEnabled, isAvailable else { return }
+        guard AppleIntelligencePreference.isEnabled, isAvailable else { return }
         do {
             let input = SemanticIndexInput(
                 id: item.id,
@@ -271,7 +271,7 @@ actor LocalSemanticSearchEngine {
         intent: NaturalLanguageSearchIntent,
         limit: Int = 80
     ) async -> [ClipboardItem]? {
-        guard SemanticSearchPreference.isEnabled, isAvailable else { return nil }
+        guard AppleIntelligencePreference.isEnabled, isAvailable else { return nil }
         await backfill(limit: 80)
 
         do {

@@ -202,7 +202,8 @@ extension ClipboardCardView {
         menu.addItem(copyMenuItem)
 
         menu.addItem(.separator())
-        let smartActionEnabled = (isTextType || item.sourceFormat == .image)
+        let smartActionEnabled = AppleIntelligencePreference.isEnabled
+            && (isTextType || item.sourceFormat == .image)
             && !(selectedIds.count > 1 && selectedIds.contains(item.id))
         let smartActionTitle = L10n["context.smart_action"]
         let smartActionItem = NSMenuItem(

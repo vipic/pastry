@@ -17,6 +17,7 @@ enum PastryPalette {
 
     // Brand / warm
     static let warmAccent = Color.pastryWarmAccent
+    static let primaryActionFill = Color(red: 0.630, green: 0.394, blue: 0.156)
     /// AppKit twin of `warmAccent` for NSView drawing.
     static let warmAccentNS = NSColor.pastryWarmAccent
     static let warmInk = Color(red: 0.23, green: 0.15, blue: 0.06)

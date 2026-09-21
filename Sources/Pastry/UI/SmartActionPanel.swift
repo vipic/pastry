@@ -12,6 +12,7 @@ private enum SmartActionPanelLayout {
     static let imagePlaceholderSymbolSize: CGFloat = 36
     static let fieldLabelWidth: CGFloat = 78
     static let modelInputLimit = 8_000
+    static let sourcePreviewHeight: CGFloat = 108
 }
 
 private struct SmartActionTileButtonStyle: ButtonStyle {
@@ -81,38 +82,33 @@ private struct SmartActionChoiceLabel: View {
     let symbolName: String
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
+        VStack(spacing: 7) {
             Image(systemName: symbolName)
                 .font(.system(size: UIConstants.TypeSize.callout, weight: .semibold))
-                .foregroundStyle(PastryPalette.warmInk)
+                .foregroundStyle(.white)
                 .frame(
                     width: SmartActionPanelLayout.actionIconSize,
                     height: SmartActionPanelLayout.actionIconSize
                 )
                 .background(
-                    PastryPalette.warmAccent,
+                    PastryPalette.primaryActionFill,
                     in: RoundedRectangle(
                         cornerRadius: UIConstants.Radius.button,
                         style: .continuous
                     )
                 )
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n[titleKey])
-                    .font(.system(size: UIConstants.TypeSize.body, weight: .semibold))
-                    .foregroundStyle(PastryPalette.ink)
-                Text(L10n[descriptionKey])
-                    .font(.system(size: UIConstants.TypeSize.label))
-                    .foregroundStyle(PastryPalette.muted)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.system(size: UIConstants.TypeSize.caption, weight: .bold))
-                .foregroundStyle(PastryPalette.muted)
+            Text(L10n[titleKey])
+                .font(.system(size: UIConstants.TypeSize.label, weight: .semibold))
+                .foregroundStyle(PastryPalette.ink)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 58)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(L10n[titleKey])
+        .accessibilityHint(L10n[descriptionKey])
+        .help(L10n[descriptionKey])
     }
 }
 
@@ -124,6 +120,7 @@ final class SmartActionPanelManager: NSObject, NSWindowDelegate {
     private var savedActivationPolicy: NSApplication.ActivationPolicy?
 
     func show(for item: ClipboardItem) {
+        guard AppleIntelligencePreference.isEnabled else { return }
         guard [.text, .rtf, .html, .image].contains(item.sourceFormat) else { return }
         OverlayPanelManager.shared.hide()
 
@@ -285,6 +282,8 @@ private struct SmartActionImagePanelView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .scrollIndicators(.hidden)
+
+            actionTray
         }
         .frame(minWidth: 600, minHeight: 500)
         .background(PastryPalette.cream)
@@ -334,7 +333,7 @@ private struct SmartActionImagePanelView: View {
     private var stageContent: some View {
         switch stage {
         case .choosing:
-            actionChooser
+            EmptyView()
         case .processing:
             processingView
         case .reviewing:
@@ -342,28 +341,29 @@ private struct SmartActionImagePanelView: View {
         }
     }
 
-    private var actionChooser: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeading(
-                title: L10n["smart_action.choose_image_action"],
-                subtitle: nil
-            )
-
-            VStack(spacing: 8) {
-                ForEach(availableActions) { action in
-                    Button {
-                        perform(action)
-                    } label: {
-                        SmartActionChoiceLabel(
-                            titleKey: action.titleKey,
-                            descriptionKey: action.descriptionKey,
-                            symbolName: action.symbolName
-                        )
-                    }
-                    .buttonStyle(SmartActionTileButtonStyle())
-                    .disabled(isDisabled(action))
+    private var actionTray: some View {
+        HStack(spacing: 8) {
+            ForEach(availableActions) { action in
+                Button {
+                    perform(action)
+                } label: {
+                    SmartActionChoiceLabel(
+                        titleKey: action.titleKey,
+                        descriptionKey: action.descriptionKey,
+                        symbolName: action.symbolName
+                    )
                 }
+                .buttonStyle(SmartActionTileButtonStyle())
+                .frame(maxWidth: .infinity)
+                .disabled(isDisabled(action))
             }
+        }
+        .padding(.horizontal, SmartActionPanelLayout.bodyPadding)
+        .padding(.vertical, 12)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(PastryPalette.hairline)
+                .frame(height: UIConstants.Stroke.hairline)
         }
     }
 
@@ -586,10 +586,13 @@ private struct SmartActionPanelView: View {
                 if let errorMessage {
                     errorBanner(errorMessage)
                 }
+                Spacer(minLength: 0)
             }
             .padding(.horizontal, SmartActionPanelLayout.bodyPadding)
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            actionTray
         }
         .frame(minWidth: 600, minHeight: 500)
         .background(PastryPalette.cream)
@@ -624,14 +627,16 @@ private struct SmartActionPanelView: View {
                 }
             }
 
-            Text(context.text)
-                .font(.system(size: UIConstants.TypeSize.body))
-                .foregroundStyle(PastryPalette.ink)
-                .lineSpacing(2)
-                .lineLimit(2)
-                .truncationMode(.tail)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView(.vertical) {
+                Text(context.text)
+                    .font(.system(size: UIConstants.TypeSize.body))
+                    .foregroundStyle(PastryPalette.ink)
+                    .lineSpacing(2)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+            .frame(height: SmartActionPanelLayout.sourcePreviewHeight)
         }
         .padding(12)
         .settingsCardChrome(fill: PastryPalette.cardFill)
@@ -641,8 +646,7 @@ private struct SmartActionPanelView: View {
     private var stageContent: some View {
         switch stage {
         case .choosing:
-            actionChooser
-                .transition(.opacity)
+            EmptyView()
         case .customInstruction:
             customInstructionEditor
                 .transition(.opacity)
@@ -655,29 +659,30 @@ private struct SmartActionPanelView: View {
         }
     }
 
-    private var actionChooser: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeading(
-                title: L10n["smart_action.choose"],
-                subtitle: generator.availability == .available ? nil : availabilityMessage
-            )
-
-            VStack(spacing: 8) {
-                ForEach(availableActionKinds) { kind in
-                    Button {
-                        choose(kind)
-                    } label: {
-                        SmartActionChoiceLabel(
-                            titleKey: kind.titleKey,
-                            descriptionKey: kind.descriptionKey,
-                            symbolName: kind.symbolName
-                        )
-                    }
-                    .buttonStyle(SmartActionTileButtonStyle())
-                    .disabled(generator.availability != .available)
-                    .accessibilityIdentifier("smartAction.kind.\(kind.rawValue)")
+    private var actionTray: some View {
+        HStack(spacing: 8) {
+            ForEach(availableActionKinds) { kind in
+                Button {
+                    choose(kind)
+                } label: {
+                    SmartActionChoiceLabel(
+                        titleKey: kind.titleKey,
+                        descriptionKey: kind.descriptionKey,
+                        symbolName: kind.symbolName
+                    )
                 }
+                .buttonStyle(SmartActionTileButtonStyle())
+                .frame(maxWidth: .infinity)
+                .disabled(generator.availability != .available)
+                .accessibilityIdentifier("smartAction.kind.\(kind.rawValue)")
             }
+        }
+        .padding(.horizontal, SmartActionPanelLayout.bodyPadding)
+        .padding(.vertical, 12)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(PastryPalette.hairline)
+                .frame(height: UIConstants.Stroke.hairline)
         }
     }
 

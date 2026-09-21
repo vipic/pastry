@@ -287,7 +287,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         refreshStats()
         Task {
             await LocalSemanticSearchEngine.shared.setEnabled(
-                SemanticSearchPreference.isEnabled,
+                AppleIntelligencePreference.isEnabled,
                 limit: HistoryRetentionPolicy.current.maxItems
             )
         }
@@ -574,7 +574,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     func performNaturalLanguageSearch() async {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
-        guard !usesDatabaseSearch || SemanticSearchPreference.isEnabled else { return }
+        guard !usesDatabaseSearch || AppleIntelligencePreference.isEnabled else { return }
 
         naturalLanguageSearchGeneration += 1
         let generation = naturalLanguageSearchGeneration

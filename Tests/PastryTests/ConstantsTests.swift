@@ -70,18 +70,10 @@ final class ConstantsTests: XCTestCase {
     func testTrayPanelFramesAndEdgeDockingRegions() {
         let screen = NSRect(x: 0, y: 0, width: 1_440, height: 900)
         XCTAssertEqual(TrayPanelLayout.panelFrame(for: .bottom, in: screen), NSRect(x: 0, y: 0, width: 1_440, height: 336))
-        XCTAssertEqual(TrayPanelLayout.panelFrame(for: .left, in: screen), NSRect(x: 0, y: 0, width: 344, height: 900))
-        XCTAssertEqual(TrayPanelLayout.panelFrame(for: .right, in: screen), NSRect(x: 1_096, y: 0, width: 344, height: 900))
-        XCTAssertEqual(
-            TrayPanelLayout.panelFrame(for: .left, in: screen, compactSideTray: true),
-            NSRect(x: 0, y: 0, width: 296, height: 900)
-        )
-        XCTAssertEqual(
-            TrayPanelLayout.panelFrame(for: .right, in: screen, compactSideTray: true),
-            NSRect(x: 1_144, y: 0, width: 296, height: 900)
-        )
-        XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 300, y: 450), in: screen), .left)
-        XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 1_140, y: 450), in: screen), .right)
+        XCTAssertEqual(TrayPanelLayout.panelFrame(for: .left, in: screen), NSRect(x: 0, y: 0, width: 296, height: 900))
+        XCTAssertEqual(TrayPanelLayout.panelFrame(for: .right, in: screen), NSRect(x: 1_144, y: 0, width: 296, height: 900))
+        XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 250, y: 450), in: screen), .left)
+        XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 1_190, y: 450), in: screen), .right)
         XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 720, y: 300), in: screen), .bottom)
         XCTAssertNil(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 400, y: 450), in: screen))
         XCTAssertEqual(TrayPanelLayout.dockingPlacement(at: NSPoint(x: 30, y: 80), in: screen), .left)
@@ -94,8 +86,7 @@ final class ConstantsTests: XCTestCase {
         XCTAssertNil(
             TrayPanelLayout.dockingPlacement(
                 at: NSPoint(x: 320, y: 450),
-                in: screen,
-                compactSideTray: true
+                in: screen
             )
         )
     }
@@ -151,8 +142,8 @@ final class ConstantsTests: XCTestCase {
         XCTAssertEqual(UserDefaultsKeys.performanceLoggingEnabled, "performance_logging_enabled")
     }
 
-    func testSemanticSearchDefaultsToDisabled() {
-        let key = UserDefaultsKeys.semanticSearchEnabled
+    func testAppleIntelligenceDefaultsToDisabled() {
+        let key = UserDefaultsKeys.appleIntelligenceEnabled
         let saved = UserDefaults.standard.object(forKey: key)
         defer {
             if let saved {
@@ -163,10 +154,10 @@ final class ConstantsTests: XCTestCase {
         }
 
         UserDefaults.standard.removeObject(forKey: key)
-        XCTAssertFalse(SemanticSearchPreference.isEnabled)
+        XCTAssertFalse(AppleIntelligencePreference.isEnabled)
 
         UserDefaults.standard.set(true, forKey: key)
-        XCTAssertTrue(SemanticSearchPreference.isEnabled)
+        XCTAssertTrue(AppleIntelligencePreference.isEnabled)
     }
 
     func testHistoryRetentionPolicySanitizesValues() {

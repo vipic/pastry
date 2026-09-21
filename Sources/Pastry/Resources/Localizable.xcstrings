@@ -18,7 +18,7 @@
     "smart_action.subtitle": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用设备端 Apple Intelligence 处理这条内容" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用设备端苹果智能处理这条内容" } },
         "en": { "stringUnit": { "state": "translated", "value": "Process this content with on-device Apple Intelligence" } }
       }
     },
@@ -39,7 +39,7 @@
     "smart_action.image_subtitle": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用 Vision 与 Apple Intelligence 按需处理图片" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用 Vision 与苹果智能按需处理图片" } },
         "en": { "stringUnit": { "state": "translated", "value": "Process this image on demand with Vision and Apple Intelligence" } }
       }
     },
@@ -389,21 +389,21 @@
     "smart_action.error.device_not_eligible": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "这台 Mac 不支持设备端 Apple Intelligence 模型。" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "这台 Mac 不支持设备端苹果智能模型。" } },
         "en": { "stringUnit": { "state": "translated", "value": "This Mac does not support the on-device Apple Intelligence model." } }
       }
     },
     "smart_action.error.apple_intelligence_off": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "请先在系统设置中开启 Apple Intelligence。" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "请先在系统设置中开启苹果智能。" } },
         "en": { "stringUnit": { "state": "translated", "value": "Turn on Apple Intelligence in System Settings first." } }
       }
     },
     "smart_action.error.model_not_ready": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple Intelligence 模型暂未就绪。" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "苹果智能模型暂未就绪。" } },
         "en": { "stringUnit": { "state": "translated", "value": "The Apple Intelligence model is not ready yet." } }
       }
     },
@@ -487,59 +487,38 @@
         }
       }
     },
-    "settings.tab.experimental": {
+    "settings.tab.apple_intelligence": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "实验功能"
+            "value": "苹果智能"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Experimental"
+            "value": "Apple Intelligence"
           }
         }
       }
     },
-    "settings.experimental.subtitle": {
+    "settings.apple_intelligence.subtitle": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "体验依赖系统能力、仍在持续完善中的功能。"
+            "value": "在本机使用苹果智能进行智能找回和卡片智能操作。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Try features that depend on system capabilities and are still evolving."
+            "value": "Use Apple Intelligence on this Mac for smart retrieval and per-card Smart Actions."
           }
         }
-      }
-    },
-    "settings.compact_side_tray.section": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "侧边托盘" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Side Tray" } }
-      }
-    },
-    "settings.compact_side_tray.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用紧凑列表" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Use Compact List" } }
-      }
-    },
-    "settings.compact_side_tray.help": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "托盘停靠在屏幕左右边缘时，以更窄的列表展示历史记录；关闭后继续使用完整卡片。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Show history in a narrower list when the tray is docked to either side of the screen. Turn this off to keep full cards." } }
       }
     },
     "settings.tab.shortcut": {
@@ -735,50 +714,36 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "调整日常行为：语言、启动、提示音、托盘打开位置、左键点击操作、删除确认、历史保留和数据清理。"
+            "value": "调整日常行为：语言、启动、提示音、托盘位置、左键点击操作、删除确认、历史保留和数据清理。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tune the everyday behavior: language, launch, sounds, tray opening position, left-click action, delete confirmation, history retention, and data cleanup."
+            "value": "Tune everyday behavior: language, launch, sounds, tray position, left-click action, delete confirmation, history retention, and data cleanup."
           }
         }
       }
     },
-    "settings.semantic.section": {
+    "settings.apple_intelligence.section": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "智能找回" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Smart Retrieval" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "智能功能" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Intelligent Features" } }
       }
     },
-    "settings.semantic.feature_title": {
+    "settings.apple_intelligence.feature_title": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "开启智能找回" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Enable Smart Retrieval" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "开启苹果智能" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Enable Apple Intelligence" } }
       }
     },
-    "settings.semantic.feature_help": {
+    "settings.apple_intelligence.feature_help": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple 设备端模型可用时才能开启。开启后会在本机分析历史并启用智能找回；关闭后使用关键词搜索。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Requires the Apple on-device model. When enabled, history is analyzed on this Mac for smart retrieval; when off, search uses keywords." } }
-      }
-    },
-    "settings.semantic.model_title": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple 设备端模型" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Apple On-Device Model" } }
-      }
-    },
-    "settings.semantic.model_help": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "由 macOS 和 Apple Intelligence 提供。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Provided by macOS and Apple Intelligence." } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "设备端苹果智能模型可用时才能开启。开启后可使用智能找回和每张卡片的智能操作；所有处理均在本机完成。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Requires the Apple on-device model. Enable this to use Smart Retrieval and Smart Actions on each card; all processing stays on this Mac." } }
       }
     },
     "settings.semantic.model_available": {
@@ -798,7 +763,7 @@
     "settings.semantic.model_disabled": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple Intelligence 未开启" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "苹果智能未开启" } },
         "en": { "stringUnit": { "state": "translated", "value": "Apple Intelligence is off" } }
       }
     },
@@ -814,20 +779,6 @@
       "localizations": {
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "语义索引" } },
         "en": { "stringUnit": { "state": "translated", "value": "Semantic Index" } }
-      }
-    },
-    "settings.semantic.index_count": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已处理 %lld / %lld 条" } },
-        "en": { "stringUnit": { "state": "translated", "value": "%lld of %lld processed" } }
-      }
-    },
-    "settings.semantic.index_disabled": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "功能已关闭，不会分析新内容；已有索引保留在本机但不会参与搜索。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "The feature is off. New content is not analyzed; existing local index data is retained but not used." } }
       }
     },
     "settings.semantic.index_waiting": {
@@ -2878,7 +2829,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这台 Mac 不支持设备端 Apple Intelligence 模型"
+            "value": "这台 Mac 不支持设备端苹果智能模型"
           }
         },
         "en": {
@@ -2895,7 +2846,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请先在系统设置中开启 Apple Intelligence"
+            "value": "请先在系统设置中开启苹果智能"
           }
         },
         "en": {

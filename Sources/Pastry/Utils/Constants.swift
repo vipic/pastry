@@ -52,17 +52,15 @@ enum UserDefaultsKeys {
     /// 上次完成失效文件记录清理的时间；v2 会把未挂载卷视为不可访问并触发一次重新检查。
     static let missingFileCleanupLastRun = "missing_file_cleanup_v2_last_run"
     static let performanceLoggingEnabled = "performance_logging_enabled"
-    /// 实验性的设备端智能找回。缺省关闭，确保升级后保持既有关键词搜索行为。
-    static let semanticSearchEnabled = "semantic_search_enabled"
-    /// 实验性的侧边紧凑列表。缺省关闭，升级后继续使用既有方形卡片。
-    static let compactSideTrayEnabled = "compact_side_tray_enabled"
+    /// Apple 智能总开关。沿用既有存储键，升级后保留用户对智能找回的选择。
+    static let appleIntelligenceEnabled = "semantic_search_enabled"
     /// 已完成的新手引导版本。使用版本号而非布尔值，便于未来只补充重大新增步骤。
     static let onboardingCompletedVersion = "onboarding_completed_version"
 }
 
-enum SemanticSearchPreference {
+enum AppleIntelligencePreference {
     static var isEnabled: Bool {
-        UserDefaults.standard.bool(forKey: UserDefaultsKeys.semanticSearchEnabled)
+        UserDefaults.standard.bool(forKey: UserDefaultsKeys.appleIntelligenceEnabled)
     }
 }
 

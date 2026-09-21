@@ -43,7 +43,7 @@ struct SettingsPillButtonStyle: ButtonStyle {
     private var foreground: Color {
         switch kind {
         case .primary:
-            return PastryPalette.warmInk
+            return .white
         case .danger:
             return .white
         case .secondary:
@@ -66,7 +66,7 @@ struct SettingsPillButtonStyle: ButtonStyle {
     private var fillColor: Color {
         switch kind {
         case .primary:
-            return PastryPalette.warmAccent
+            return PastryPalette.primaryActionFill
         case .secondary:
             return Color.white.opacity(UIConstants.Settings.secondaryFillOpacity)
         case .ghost:

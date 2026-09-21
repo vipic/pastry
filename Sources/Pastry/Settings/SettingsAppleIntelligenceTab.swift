@@ -3,23 +3,17 @@ import SwiftUI
 // MARK: - File-local layout (not shared design tokens)
 private enum Local {
     enum Settings {
-        static let semanticProgressWidth: CGFloat = 180
-        static let semanticStatusSpacing: CGFloat = 6
+        static let headerSubtitleMaxWidth: CGFloat = 460
     }
 }
 
 extension SettingsSceneView {
-    var experimentalTab: some View {
+    var appleIntelligenceTab: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                settingsPaneHeader(
-                    title: L10n["settings.tab.experimental"],
-                    subtitle: L10n["settings.experimental.subtitle"]
-                )
+                appleIntelligenceHeader
 
-
-                compactSideTraySection
-                semanticSearchSection
+                appleIntelligenceSection
             }
             .padding(.vertical, 24)
             .padding(.horizontal, 28)
@@ -28,59 +22,66 @@ extension SettingsSceneView {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .task {
             await LocalSemanticSearchEngine.shared.refreshStatus()
-            disableSemanticSearchWhenModelUnavailable()
+            disableAppleIntelligenceWhenModelUnavailable()
         }
         .onChange(of: semanticSearchStatus.modelAvailability) { _, availability in
             if availability != .available {
-                disableSemanticSearchWhenModelUnavailable()
+                disableAppleIntelligenceWhenModelUnavailable()
             }
         }
     }
 
-    var compactSideTraySection: some View {
-        settingsSection(title: L10n["settings.compact_side_tray.section"]) {
-            settingsRow(
-                title: L10n["settings.compact_side_tray.title"],
-                help: L10n["settings.compact_side_tray.help"]
-            ) {
-                Toggle(
-                    L10n["settings.compact_side_tray.title"],
-                    isOn: $compactSideTrayEnabled
-                )
-                .labelsHidden()
-                .toggleStyle(SettingsSwitchStyle())
-                .onChange(of: compactSideTrayEnabled) { _, enabled in
-                    OverlayPanelManager.shared.refreshSideTrayLayout(compact: enabled)
+    var appleIntelligenceHeader: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 10) {
+                    Text(L10n["settings.tab.apple_intelligence"])
+                        .font(.system(size: UIConstants.TypeSize.display, weight: .bold))
+                        .foregroundStyle(SettingsPalette.ink)
+
+                    semanticModelStatusBadge
                 }
-                .accessibilityIdentifier(AccessibilityIdentifiers.Settings.compactSideTrayToggle)
+
+                Text(L10n["settings.apple_intelligence.subtitle"])
+                    .font(.system(size: UIConstants.TypeSize.body))
+                    .foregroundStyle(SettingsPalette.muted)
+                    .lineSpacing(1)
+                    .frame(
+                        maxWidth: Local.Settings.headerSubtitleMaxWidth,
+                        alignment: .leading
+                    )
             }
+
+            Spacer()
         }
+        .padding(.bottom, 6)
     }
 
-    var semanticSearchSection: some View {
-        settingsSection(title: L10n["settings.semantic.section"]) {
-            settingsRow(
-                title: L10n["settings.semantic.model_title"],
-                help: L10n["settings.semantic.model_help"]
-            ) {
-                Label(semanticModelStatusText, systemImage: semanticModelStatusIcon)
-                    .font(.system(size: UIConstants.TypeSize.label, weight: .semibold))
-                    .foregroundStyle(semanticModelStatusColor)
-            }
+    var semanticModelStatusBadge: some View {
+        Label(semanticModelStatusText, systemImage: semanticModelStatusIcon)
+            .font(.system(size: UIConstants.TypeSize.body, weight: .bold))
+            .foregroundStyle(semanticModelStatusColor)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .settingsCardChrome(
+                cornerRadius: UIConstants.Radius.control,
+                fill: semanticModelStatusColor.opacity(UIConstants.Settings.washOpacity)
+            )
+    }
 
-            settingsDivider
-
+    var appleIntelligenceSection: some View {
+        settingsSection(title: L10n["settings.apple_intelligence.section"]) {
             settingsRow(
-                title: L10n["settings.semantic.feature_title"],
-                help: semanticFeatureHelp
+                title: L10n["settings.apple_intelligence.feature_title"],
+                help: appleIntelligenceFeatureHelp
             ) {
-                Toggle(L10n["settings.semantic.feature_title"], isOn: $semanticSearchEnabled)
+                Toggle(L10n["settings.apple_intelligence.feature_title"], isOn: $appleIntelligenceEnabled)
                     .labelsHidden()
                     .toggleStyle(SettingsSwitchStyle())
                     .disabled(semanticSearchStatus.modelAvailability != .available)
-                    .onChange(of: semanticSearchEnabled) { _, enabled in
+                    .onChange(of: appleIntelligenceEnabled) { _, enabled in
                         guard !enabled || semanticSearchStatus.modelAvailability == .available else {
-                            semanticSearchEnabled = false
+                            appleIntelligenceEnabled = false
                             return
                         }
                         Task {
@@ -91,48 +92,54 @@ extension SettingsSceneView {
                         }
                     }
                     .accessibilityRepresentation {
-                        Toggle(L10n["settings.semantic.feature_title"], isOn: $semanticSearchEnabled)
+                        Toggle(L10n["settings.apple_intelligence.feature_title"], isOn: $appleIntelligenceEnabled)
                             .disabled(semanticSearchStatus.modelAvailability != .available)
                     }
-                    .accessibilityIdentifier(AccessibilityIdentifiers.Settings.semanticSearchToggle)
+                    .accessibilityIdentifier(AccessibilityIdentifiers.Settings.appleIntelligenceToggle)
+            }
+
+            if showsSemanticIndexStatus {
+                settingsDivider
+                semanticIndexStatusRow
             }
 
             settingsDivider
-
-            settingsRow(
-                title: L10n["settings.semantic.index_title"],
-                help: semanticIndexStatusText
-            ) {
-                VStack(alignment: .trailing, spacing: Local.Settings.semanticStatusSpacing) {
-                    ProgressView(value: semanticSearchStatus.progressFraction)
-                        .frame(width: Local.Settings.semanticProgressWidth)
-                    Text(L10n[
-                        "settings.semantic.index_count",
-                        semanticSearchStatus.indexedCount,
-                        semanticSearchStatus.totalCount
-                    ])
-                    .font(.system(size: UIConstants.TypeSize.caption, weight: .medium))
-                    .foregroundStyle(SettingsPalette.muted)
-                }
-                .accessibilityIdentifier(AccessibilityIdentifiers.Settings.semanticIndexProgress)
-            }
-
-            settingsDivider
-
             semanticRebuildRow
         }
     }
 
-    var semanticFeatureHelp: String {
+    var showsSemanticIndexStatus: Bool {
+        appleIntelligenceEnabled && semanticSearchStatus.indexPhase != .disabled
+    }
+
+    var semanticIndexStatusRow: some View {
+        settingsRow(
+            title: L10n["settings.semantic.index_title"],
+            help: semanticIndexStatusText
+        ) {
+            HStack(spacing: 8) {
+                if semanticSearchStatus.isIndexing {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Label(semanticIndexStatusText, systemImage: semanticIndexStatusIcon)
+                    .font(.system(size: UIConstants.TypeSize.label, weight: .semibold))
+                    .foregroundStyle(SettingsPalette.muted)
+            }
+            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.semanticIndexProgress)
+        }
+    }
+
+    var appleIntelligenceFeatureHelp: String {
         semanticSearchStatus.modelAvailability == .available
-            ? L10n["settings.semantic.feature_help"]
+            ? L10n["settings.apple_intelligence.feature_help"]
             : semanticModelStatusText
     }
 
-    func disableSemanticSearchWhenModelUnavailable() {
+    func disableAppleIntelligenceWhenModelUnavailable() {
         guard semanticSearchStatus.modelAvailability != .available,
-              semanticSearchEnabled else { return }
-        semanticSearchEnabled = false
+              appleIntelligenceEnabled else { return }
+        appleIntelligenceEnabled = false
     }
 
     var semanticRebuildRow: some View {
@@ -163,7 +170,7 @@ extension SettingsSceneView {
             }
             .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
             .disabled(
-                !semanticSearchEnabled
+                !appleIntelligenceEnabled
                     || semanticSearchStatus.modelAvailability != .available
                     || semanticSearchStatus.isIndexing
             )
@@ -219,11 +226,20 @@ extension SettingsSceneView {
 
     var semanticIndexStatusText: String {
         switch semanticSearchStatus.indexPhase {
-        case .disabled: return L10n["settings.semantic.index_disabled"]
-        case .waiting: return L10n["settings.semantic.index_waiting"]
+        case .disabled, .waiting: return L10n["settings.semantic.index_waiting"]
         case .indexing: return L10n["settings.semantic.index_building"]
         case .ready: return L10n["settings.semantic.index_ready"]
         case .failed: return L10n["settings.semantic.index_failed"]
+        }
+    }
+
+    var semanticIndexStatusIcon: String {
+        switch semanticSearchStatus.indexPhase {
+        case .disabled: "pause.circle"
+        case .waiting: "clock"
+        case .indexing: "arrow.triangle.2.circlepath"
+        case .ready: "checkmark.circle.fill"
+        case .failed: "exclamationmark.triangle.fill"
         }
     }
 }
