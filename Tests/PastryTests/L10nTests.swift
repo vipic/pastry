@@ -127,6 +127,7 @@ final class L10nTests: XCTestCase {
             "settings.version.available_badge",
             "settings.tab.about",
             "settings.about.subtitle",
+            "settings.about.version_build",
             "settings.about.section_product",
             "settings.about.section_resources",
             "settings.about.created_by",

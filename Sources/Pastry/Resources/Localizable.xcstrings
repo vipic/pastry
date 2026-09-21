@@ -930,13 +930,30 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "查看 Pastry 的作者、版权和项目资源。"
+            "value": "查看 Pastry 的版本、作者、版权和项目资源。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "View Pastry author, copyright, and project resources."
+            "value": "View the Pastry version, author, copyright, and project resources."
+          }
+        }
+      }
+    },
+    "settings.about.version_build": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版本 %@（构建 %@）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version %@ (Build %@)"
           }
         }
       }

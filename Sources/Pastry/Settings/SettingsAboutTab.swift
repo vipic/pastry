@@ -87,6 +87,17 @@ extension SettingsSceneView {
                 Text(appDisplayName)
                     .font(.system(size: UIConstants.TypeSize.headline, weight: .bold))
                     .foregroundStyle(SettingsPalette.ink)
+                Text(
+                    String(
+                        format: L10n["settings.about.version_build"],
+                        AppVersion.displayCurrent,
+                        AppVersion.displayBuild
+                    )
+                )
+                .font(.system(size: UIConstants.TypeSize.label, weight: .medium))
+                .foregroundStyle(SettingsPalette.muted)
+                .monospacedDigit()
+                .textSelection(.enabled)
                 Text(L10n["about.description"])
                     .font(.system(size: UIConstants.TypeSize.callout))
                     .foregroundStyle(SettingsPalette.muted)
