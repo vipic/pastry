@@ -34,7 +34,6 @@ struct SmartActionContext: Sendable {
 }
 
 enum SmartActionKind: String, CaseIterable, Identifiable, Sendable {
-    case translate
     case summarize
     case rewrite
     case customText
@@ -43,10 +42,8 @@ enum SmartActionKind: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-
     var titleKey: String {
         switch self {
-        case .translate: "smart_action.translate"
         case .summarize: "smart_action.summarize"
         case .rewrite: "smart_action.rewrite"
         case .customText: "smart_action.custom"
@@ -57,7 +54,6 @@ enum SmartActionKind: String, CaseIterable, Identifiable, Sendable {
 
     var descriptionKey: String {
         switch self {
-        case .translate: "smart_action.translate.description"
         case .summarize: "smart_action.summarize.description"
         case .rewrite: "smart_action.rewrite.description"
         case .customText: "smart_action.custom.description"
@@ -66,9 +62,18 @@ enum SmartActionKind: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    var processingKey: String {
+        switch self {
+        case .summarize: "smart_action.processing.summarize"
+        case .rewrite: "smart_action.processing.rewrite"
+        case .customText: "smart_action.processing.custom"
+        case .calendarEvent: "smart_action.processing.calendar"
+        case .emailDraft: "smart_action.processing.email"
+        }
+    }
+
     var symbolName: String {
         switch self {
-        case .translate: "character.book.closed"
         case .summarize: "text.badge.checkmark"
         case .rewrite: "pencil.and.scribble"
         case .customText: "text.bubble"
@@ -163,11 +168,6 @@ final class LocalSmartActionGenerator: SmartActionGenerating, @unchecked Sendabl
         }
 
         switch kind {
-        case .translate:
-            return .generatedText(try await generateText(
-                context: context,
-                instruction: "翻译正文。正文主要为中文时翻译成自然英文；其他语言翻译成简体中文。保留段落、数字、专有名词和原意，只返回译文。"
-            ))
         case .summarize:
             return .generatedText(try await generateText(
                 context: context,

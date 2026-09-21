@@ -216,7 +216,6 @@ private struct SmartActionImagePanelView: View {
 
     private enum Action: String, Identifiable {
         case extractText
-        case translateText
         case recognizeBarcode
         case describeImage
 
@@ -225,7 +224,6 @@ private struct SmartActionImagePanelView: View {
         var titleKey: String {
             switch self {
             case .extractText: "smart_action.extract_text"
-            case .translateText: "smart_action.translate"
             case .recognizeBarcode: "smart_action.barcode"
             case .describeImage: "smart_action.describe_image"
             }
@@ -234,16 +232,22 @@ private struct SmartActionImagePanelView: View {
         var descriptionKey: String {
             switch self {
             case .extractText: "smart_action.extract_text.description"
-            case .translateText: "smart_action.translate.description"
             case .recognizeBarcode: "smart_action.barcode.description"
             case .describeImage: "smart_action.describe_image.description"
+            }
+        }
+
+        var processingKey: String {
+            switch self {
+            case .extractText: "smart_action.image.processing.extract_text"
+            case .recognizeBarcode: "smart_action.image.processing.barcode"
+            case .describeImage: "smart_action.image.processing.describe"
             }
         }
 
         var symbolName: String {
             switch self {
             case .extractText: "text.viewfinder"
-            case .translateText: "character.book.closed"
             case .recognizeBarcode: "barcode.viewfinder"
             case .describeImage: "photo.badge.magnifyingglass"
             }
@@ -262,8 +266,6 @@ private struct SmartActionImagePanelView: View {
     @State private var resultText = ""
     @State private var errorMessage: String?
     @State private var processingTask: Task<Void, Never>?
-
-    private let generator = LocalSmartActionGenerator.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -368,7 +370,7 @@ private struct SmartActionImagePanelView: View {
     }
 
     private var availableActions: [Action] {
-        var actions: [Action] = [.extractText, .translateText, .recognizeBarcode]
+        var actions: [Action] = [.extractText, .recognizeBarcode]
         if #available(macOS 27.0, *) {
             actions.append(.describeImage)
         }
@@ -377,8 +379,6 @@ private struct SmartActionImagePanelView: View {
 
     private func isDisabled(_ action: Action) -> Bool {
         switch action {
-        case .translateText:
-            generator.availability != .available
         case .describeImage:
             if #available(macOS 27.0, *) {
                 !ImageDescriptionGenerator.shared.isAvailable
@@ -395,12 +395,9 @@ private struct SmartActionImagePanelView: View {
             ProgressView()
                 .controlSize(.large)
                 .tint(PastryPalette.warmAccent)
-            Text(L10n["smart_action.image.processing"])
-                .font(.system(size: UIConstants.TypeSize.title, weight: .semibold))
             if let selectedAction {
-                Text(L10n[selectedAction.titleKey])
-                    .font(.system(size: UIConstants.TypeSize.label))
-                    .foregroundStyle(PastryPalette.muted)
+                Text(L10n[selectedAction.processingKey])
+                    .font(.system(size: UIConstants.TypeSize.title, weight: .semibold))
             }
             Button(L10n["smart_action.cancel"]) { returnToChooser() }
                 .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
@@ -413,7 +410,7 @@ private struct SmartActionImagePanelView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeading(
                 title: selectedAction.map { L10n[$0.titleKey] } ?? L10n["smart_action.review"],
-                subtitle: L10n["smart_action.image.complete_result"]
+                subtitle: nil
             )
             TextField("", text: $resultText, axis: .vertical)
                 .textFieldStyle(.plain)
@@ -433,7 +430,7 @@ private struct SmartActionImagePanelView: View {
                 Spacer()
                 Button(L10n["smart_action.back"]) { returnToChooser() }
                     .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
-                Button(L10n["smart_action.copy_result"]) { copyResult() }
+                Button(L10n["smart_action.copy"]) { copyResult() }
                     .buttonStyle(SettingsPillButtonStyle(kind: .primary))
                     .disabled(resultText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
@@ -475,8 +472,6 @@ private struct SmartActionImagePanelView: View {
                 let result = switch action {
                 case .extractText:
                     try await recognizedText()
-                case .translateText:
-                    try await translatedText()
                 case .recognizeBarcode:
                     try await recognizedBarcodes()
                 case .describeImage:
@@ -503,21 +498,6 @@ private struct SmartActionImagePanelView: View {
         let text = recognized.isEmpty ? fallback : recognized
         guard !text.isEmpty else { throw ImageAnalysisError.noText }
         return text
-    }
-
-    private func translatedText() async throws -> String {
-        let text = try await recognizedText()
-        let context = SmartActionContext(
-            text: text,
-            capturedAt: capturedAt,
-            sourceApplication: sourceApplication
-        )
-        guard case .generatedText(let draft) = try await generator.generate(
-            kind: .translate,
-            context: context,
-            instruction: nil
-        ) else { throw SmartActionError.emptyResult }
-        return draft.text
     }
 
     private func recognizedBarcodes() async throws -> String {
@@ -582,11 +562,17 @@ private struct SmartActionPanelView: View {
 
             VStack(alignment: .leading, spacing: SmartActionPanelLayout.contentSpacing) {
                 sourcePreview
-                stageContent
-                if let errorMessage {
-                    errorBanner(errorMessage)
+
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: SmartActionPanelLayout.contentSpacing) {
+                        stageContent
+                        if let errorMessage {
+                            errorBanner(errorMessage)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                Spacer(minLength: 0)
+                .scrollBounceBehavior(.basedOnSize)
             }
             .padding(.horizontal, SmartActionPanelLayout.bodyPadding)
             .padding(.vertical, 14)
@@ -694,7 +680,7 @@ private struct SmartActionPanelView: View {
         VStack(alignment: .leading, spacing: 10) {
             sectionHeading(
                 title: L10n["smart_action.custom"],
-                subtitle: L10n["smart_action.custom.prompt"]
+                subtitle: nil
             )
             TextField(
                 L10n["smart_action.custom.prompt"],
@@ -713,11 +699,17 @@ private struct SmartActionPanelView: View {
                 clip: true
             )
             .accessibilityIdentifier(AccessibilityIdentifiers.SmartAction.customInstruction)
+            .onKeyPress(.return, phases: .down) { keyPress in
+                guard !keyPress.modifiers.contains(.shift) else { return .ignored }
+                submitCustomInstruction()
+                return .handled
+            }
+
             actionFooter {
                 Button(L10n["smart_action.cancel"]) { returnToChooser() }
                     .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
-                Button(L10n["smart_action.generate"]) {
-                    generate(.customText, instruction: customInstruction)
+                Button(L10n["smart_action.execute"]) {
+                    submitCustomInstruction()
                 }
                 .buttonStyle(SettingsPillButtonStyle(kind: .primary))
                 .disabled(customInstruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -731,12 +723,11 @@ private struct SmartActionPanelView: View {
             ProgressView()
                 .controlSize(.large)
                 .tint(PastryPalette.warmAccent)
-            Text(L10n["smart_action.generating"])
-                .font(.system(size: UIConstants.TypeSize.title, weight: .semibold))
-                .foregroundStyle(PastryPalette.ink)
-            Text(L10n["smart_action.review_hint"])
-                .font(.system(size: UIConstants.TypeSize.label))
-                .foregroundStyle(PastryPalette.muted)
+            if let selectedKind {
+                Text(L10n[selectedKind.processingKey])
+                    .font(.system(size: UIConstants.TypeSize.title, weight: .semibold))
+                    .foregroundStyle(PastryPalette.ink)
+            }
             Button(L10n["smart_action.cancel"]) { returnToChooser() }
                 .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
         }
@@ -766,7 +757,7 @@ private struct SmartActionPanelView: View {
             actionFooter {
                 Button(L10n["smart_action.back"]) { returnToChooser() }
                     .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
-                Button(L10n["smart_action.copy_result"]) { copyGeneratedText() }
+                Button(L10n["smart_action.copy"]) { copyGeneratedText() }
                     .buttonStyle(SettingsPillButtonStyle(kind: .primary))
                     .disabled(
                         generatedTextBinding.wrappedValue
@@ -875,7 +866,7 @@ private struct SmartActionPanelView: View {
             actionFooter {
                 Button(L10n["smart_action.back"]) { returnToChooser() }
                     .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
-                Button(L10n["smart_action.copy_result"]) { copyEmailBody() }
+                Button(L10n["smart_action.copy"]) { copyEmailBody() }
                     .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
                 Button(L10n["smart_action.open_mail"]) { openEmailDraft() }
                     .buttonStyle(SettingsPillButtonStyle(kind: .primary))
@@ -895,7 +886,7 @@ private struct SmartActionPanelView: View {
     private var reviewHeading: some View {
         sectionHeading(
             title: selectedKind.map { L10n[$0.titleKey] } ?? L10n["smart_action.review"],
-            subtitle: L10n["smart_action.review_hint"]
+            subtitle: nil
         )
     }
 
@@ -1000,6 +991,12 @@ private struct SmartActionPanelView: View {
         default:
             generate(kind)
         }
+    }
+
+    private func submitCustomInstruction() {
+        let instruction = customInstruction.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !instruction.isEmpty else { return }
+        generate(.customText, instruction: instruction)
     }
 
     private func generate(_ kind: SmartActionKind, instruction: String? = nil) {

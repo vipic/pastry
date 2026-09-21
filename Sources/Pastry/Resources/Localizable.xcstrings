@@ -57,18 +57,25 @@
         "en": { "stringUnit": { "state": "translated", "value": "What would you like to do with this image?" } }
       }
     },
-    "smart_action.image.processing": {
+    "smart_action.image.processing.extract_text": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在设备端处理图片…" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Processing the image on this Mac…" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能提取文字…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to extract text…" } }
       }
     },
-    "smart_action.image.complete_result": {
+    "smart_action.image.processing.barcode": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "以下是完整结果，可检查编辑后复制" } },
-        "en": { "stringUnit": { "state": "translated", "value": "The complete result is shown below for review, editing, and copying" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能识别二维码与条码…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to recognize QR codes and barcodes…" } }
+      }
+    },
+    "smart_action.image.processing.describe": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能描述图片…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to describe the image…" } }
       }
     },
     "smart_action.image.error.unreadable": {
@@ -118,20 +125,6 @@
       "localizations": {
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "按需 OCR，并完整展示识别结果" } },
         "en": { "stringUnit": { "state": "translated", "value": "Run OCR on demand and show the complete result" } }
-      }
-    },
-    "smart_action.translate": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "翻译图片文字" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Translate Image Text" } }
-      }
-    },
-    "smart_action.translate.description": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "识别文字后在中文与英文之间翻译" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Recognize text, then translate between Chinese and English" } }
       }
     },
     "smart_action.barcode": {
@@ -253,18 +246,46 @@
         "en": { "stringUnit": { "state": "translated", "value": "Back" } }
       }
     },
-    "smart_action.generate": {
+    "smart_action.execute": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "生成草稿" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Generate Draft" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "执行" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Run" } }
       }
     },
-    "smart_action.generating": {
+    "smart_action.processing.summarize": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在设备端生成草稿…" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Generating a draft on this Mac…" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能进行总结…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to summarize…" } }
+      }
+    },
+    "smart_action.processing.rewrite": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能进行改写…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to rewrite…" } }
+      }
+    },
+    "smart_action.processing.custom": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能执行自定义指令…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to run the custom instruction…" } }
+      }
+    },
+    "smart_action.processing.calendar": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能分析日历信息…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to analyze calendar details…" } }
+      }
+    },
+    "smart_action.processing.email": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能拟定邮件…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to draft an email…" } }
       }
     },
     "smart_action.cancel": {
@@ -281,18 +302,11 @@
         "en": { "stringUnit": { "state": "translated", "value": "Review Draft" } }
       }
     },
-    "smart_action.review_hint": {
+    "smart_action.copy": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "执行前可以修改所有内容" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Review and edit everything before continuing" } }
-      }
-    },
-    "smart_action.copy_result": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "复制结果" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Copy Result" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "复制" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Copy" } }
       }
     },
     "smart_action.add_calendar": {
