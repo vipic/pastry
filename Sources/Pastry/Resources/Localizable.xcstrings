@@ -8,6 +8,335 @@
         "en": { "stringUnit": { "state": "translated", "value": "Smart Actions…" } }
       }
     },
+    "smart_action.multi.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用设备端 Apple 智能处理多条内容" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Process multiple items with on-device Apple Intelligence" } }
+      }
+    },
+    "smart_action.multi.toolbar": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "智能处理所选内容" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Process Selected Items" } }
+      }
+    },
+    "smart_action.multi.disabled.preference": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "请先在设置中开启 Apple 智能" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Turn on Apple Intelligence in Settings first" } }
+      }
+    },
+    "smart_action.multi.disabled.limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "一次最多智能处理 %d 条内容" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Process up to %d items at a time" } }
+      }
+    },
+    "smart_action.multi.disabled.format": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "多选智能处理暂不支持文件" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Multi-item Smart Actions don't support files yet" } }
+      }
+    },
+    "smart_action.multi.selection_count": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已选择 %d 项" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%d items selected" } }
+      }
+    },
+    "smart_action.multi.text_count": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%d 个文本" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%d text items" } }
+      }
+    },
+    "smart_action.multi.image_count": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%d 张图片" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%d images" } }
+      }
+    },
+    "smart_action.multi.mixed_count": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%d 个文本 · %d 张图片" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%d text · %d images" } }
+      }
+    },
+    "smart_action.multi.choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "选择如何处理这些内容。结果会保留来源编号。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Choose how to process these items. Results preserve source numbers." } }
+      }
+    },
+    "smart_action.multi.source_number": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "原始内容 %d" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Source %d" } }
+      }
+    },
+    "smart_action.multi.original_content": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "原始内容 [%d]" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Original content [%d]" } }
+      }
+    },
+    "smart_action.multi.loading_source": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在加载原始内容" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Loading original content" } }
+      }
+    },
+    "smart_action.multi.text_source": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "文本" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Text" } }
+      }
+    },
+    "smart_action.multi.image_source": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "图片" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Image" } }
+      }
+    },
+    "smart_action.multi.custom.prompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "描述你希望如何处理所选内容" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Describe how to process the selected items" } }
+      }
+    },
+    "smart_action.multi.calendar_candidate": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "日程草稿 %d" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Calendar draft %d" } }
+      }
+    },
+    "smart_action.multi.calendar_added": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已添加" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Added" } }
+      }
+    },
+    "smart_action.multi.error.no_content": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "所选内容中没有可处理的文字" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No usable text was found in the selected items." } }
+      }
+    },
+    "smart_action.multi.error.no_calendar": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "所选内容中没有可确认的日程" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No verifiable calendar events were found." } }
+      }
+    },
+    "smart_action.multi.summarize.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "综合总结" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Combined Summary" } }
+      }
+    },
+    "smart_action.multi.summarize.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "汇总全部内容并标注来源" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Summarize all items with source references" } }
+      }
+    },
+    "smart_action.multi.summarize.processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在综合总结所选内容…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Summarizing the selected items…" } }
+      }
+    },
+    "smart_action.multi.compare.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "比较异同" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Compare" } }
+      }
+    },
+    "smart_action.multi.compare.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "找出共同点、差异与冲突" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Find similarities, differences, and conflicts" } }
+      }
+    },
+    "smart_action.multi.compare.processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在比较所选内容…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Comparing the selected items…" } }
+      }
+    },
+    "smart_action.multi.mergeRewrite.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "合并重写" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Merge and Rewrite" } }
+      }
+    },
+    "smart_action.multi.mergeRewrite.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "整理成一篇连贯文本" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Turn the items into one coherent text" } }
+      }
+    },
+    "smart_action.multi.mergeRewrite.processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在合并重写所选内容…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Merging and rewriting the selected items…" } }
+      }
+    },
+    "smart_action.multi.extractCalendar.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "提取日程" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Extract Events" } }
+      }
+    },
+    "smart_action.multi.extractCalendar.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "生成可逐条确认的日程草稿" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Create calendar drafts to review individually" } }
+      }
+    },
+    "smart_action.multi.extractCalendar.processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在提取日程信息…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Extracting calendar events…" } }
+      }
+    },
+    "smart_action.multi.emailDraft.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "拟定邮件" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Draft Email" } }
+      }
+    },
+    "smart_action.multi.emailDraft.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "根据全部材料生成邮件草稿" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Create an email draft from all items" } }
+      }
+    },
+    "smart_action.multi.emailDraft.processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在根据所选内容拟定邮件…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Drafting an email from the selected items…" } }
+      }
+    },
+    "smart_action.multi.custom.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "自定义" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Custom" } }
+      }
+    },
+    "smart_action.multi.custom.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "描述你需要的文本结果" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Describe the text result you need" } }
+      }
+    },
+    "smart_action.multi.custom.processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在执行自定义指令…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Running the custom instruction…" } }
+      }
+    },
+    "smart_action.multi.extractAllText.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "提取全部文字" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Extract All Text" } }
+      }
+    },
+    "smart_action.multi.extractAllText.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "按来源整理文本和图片文字" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Collect text and image OCR by source" } }
+      }
+    },
+    "smart_action.multi.extractAllText.processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在提取所选内容中的文字…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Extracting text from the selected items…" } }
+      }
+    },
+    "smart_action.multi.recognizeBarcodes.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "识别二维码与条码" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Recognize Codes" } }
+      }
+    },
+    "smart_action.multi.recognizeBarcodes.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "汇总所有图片中的码与来源" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Collect codes from every image with sources" } }
+      }
+    },
+    "smart_action.multi.recognizeBarcodes.processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在识别二维码与条码…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Recognizing QR codes and barcodes…" } }
+      }
+    },
+    "smart_action.multi.describeImages.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "逐张描述" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Describe Images" } }
+      }
+    },
+    "smart_action.multi.describeImages.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "为每张图片生成独立描述" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Generate a separate description for each image" } }
+      }
+    },
+    "smart_action.multi.describeImages.processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在逐张描述所选图片…" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Describing the selected images…" } }
+      }
+    },
     "smart_action.title": {
       "extractionState": "manual",
       "localizations": {

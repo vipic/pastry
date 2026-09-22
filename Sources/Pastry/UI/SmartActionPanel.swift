@@ -2,7 +2,7 @@ import AppKit
 import EventKit
 import SwiftUI
 
-private enum SmartActionPanelLayout {
+enum SmartActionPanelLayout {
     static let width: CGFloat = 660
     static let height: CGFloat = 580
     static let bodyPadding: CGFloat = 18
@@ -12,10 +12,11 @@ private enum SmartActionPanelLayout {
     static let imagePlaceholderSymbolSize: CGFloat = 36
     static let fieldLabelWidth: CGFloat = 78
     static let modelInputLimit = 8_000
-    static let sourcePreviewHeight: CGFloat = 108
+    static let sourcePreviewHeight: CGFloat = 88
+    static let sourceImagePreviewHeight: CGFloat = 170
 }
 
-private struct SmartActionTileButtonStyle: ButtonStyle {
+struct SmartActionTileButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -37,7 +38,7 @@ private struct SmartActionTileButtonStyle: ButtonStyle {
     }
 }
 
-private struct SmartActionPanelHeader: View {
+struct SmartActionPanelHeader: View {
     let subtitleKey: String
 
     var body: some View {
@@ -76,7 +77,7 @@ private struct SmartActionPanelHeader: View {
     }
 }
 
-private struct SmartActionChoiceLabel: View {
+struct SmartActionChoiceLabel: View {
     let titleKey: String
     let descriptionKey: String
     let symbolName: String
@@ -150,6 +151,18 @@ final class SmartActionPanelManager: NSObject, NSWindowDelegate {
             sourceApplication: item.appName
         )
         present(makeContentView(context: context, itemID: item.id))
+    }
+
+    func show(for items: [ClipboardItem]) {
+        guard AppleIntelligencePreference.isEnabled,
+              MultiSmartActionSelection.mode(for: items) != nil
+        else { return }
+        OverlayPanelManager.shared.hide()
+        present(NSHostingView(
+            rootView: MultiSmartActionPanelView(items: items) { [weak self] in
+                self?.window?.close()
+            }
+        ))
     }
 
     private func present(_ contentView: NSView) {
@@ -319,7 +332,10 @@ private struct SmartActionImagePanelView: View {
                 Image(nsImage: previewImage)
                     .resizable()
                     .scaledToFit()
-                    .frame(maxWidth: .infinity, maxHeight: 190)
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: SmartActionPanelLayout.sourceImagePreviewHeight
+                    )
             } else {
                 Image(systemName: "photo")
                     .font(.system(size: SmartActionPanelLayout.imagePlaceholderSymbolSize))
@@ -1191,7 +1207,7 @@ private struct SmartActionPanelView: View {
     }()
 }
 
-private extension View {
+extension View {
     func panelSectionChrome() -> some View {
         padding(12)
             .settingsCardChrome(fill: PastryPalette.cardFill)
@@ -1199,7 +1215,7 @@ private extension View {
 }
 
 @MainActor
-private final class CalendarEventWriter {
+final class CalendarEventWriter {
     static let shared = CalendarEventWriter()
 
     private let eventStore = EKEventStore()
@@ -1243,7 +1259,7 @@ private final class CalendarEventWriter {
     }
 }
 
-private enum CalendarEventWriterError: LocalizedError {
+enum CalendarEventWriterError: LocalizedError {
     case accessDenied
     case noDefaultCalendar
     case invalidDateRange
@@ -1258,7 +1274,7 @@ private enum CalendarEventWriterError: LocalizedError {
 }
 
 @MainActor
-private enum EmailDraftOpener {
+enum EmailDraftOpener {
     static func open(_ draft: EmailDraft) throws {
         guard let service = NSSharingService(named: .composeEmail) else {
             throw EmailDraftOpenerError.unavailable
@@ -1273,7 +1289,7 @@ private enum EmailDraftOpener {
     }
 }
 
-private enum EmailDraftOpenerError: LocalizedError {
+enum EmailDraftOpenerError: LocalizedError {
     case unavailable
 
     var errorDescription: String? { L10n["smart_action.error.mail_unavailable"] }

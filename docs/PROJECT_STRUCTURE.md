@@ -72,6 +72,7 @@ Pastry/
 │       │   ├── ClipboardCardContentViews.swift # 不同格式的卡片内容视图
 │       │   ├── ClipboardCardActions.swift    # 右键菜单、复制、打开、分享和删除
 │       │   ├── SmartActionPanel.swift        # 智能操作选择、草稿编辑及日历/邮件执行
+│       │   ├── MultiSmartActionPanel.swift   # 多选内容的动态智能操作与批量草稿确认
 │       │   ├── ClipboardDisplayMode.swift    # 卡片展示类型判定
 │       │   ├── ClipboardItemPreviewBuilder.swift # Quick Look/文本预览内容构建
 │       │   ├── FilePreviewContent.swift      # 单文件、多文件和缺失文件预览
@@ -118,6 +119,7 @@ Pastry/
 │           ├── LocalNaturalLanguageSearch.swift # Foundation Models 设备端搜索意图解析
 │           ├── LocalSemanticSearch.swift        # 语义标签、句向量召回与候选重排
 │           ├── LocalSmartActions.swift          # 设备端总结、改写、翻译、日历和邮件草稿生成
+│           ├── MultiSmartActions.swift          # 多选类型判定、输入编排与批量智能处理
 │           ├── ImageSmartAnalyzer.swift         # Vision OCR/条码识别与设备端图片描述
 │           └── Watchdog.swift                # 主线程卡死检测、采样和恢复
 │   └── PastryReleaseSmoke/
@@ -146,6 +148,7 @@ Pastry/
 │       ├── L10nTests.swift                            # 本地化 key 和降级
 │       ├── LaunchAtLoginManagerTests.swift            # 登录启动封装
 │       ├── LinkPreviewLoaderTests.swift               # 网页元数据和图片选择
+│       ├── MultiSmartActionTests.swift                # 多选智能操作类型与动作矩阵
 │       ├── NetworkAccessPolicyTests.swift             # 内网、IPv4 和响应限制
 │       ├── OnboardingFlowTests.swift                  # 引导状态机和激活交接
 │       ├── OverlayEmptyStateModelTests.swift          # 空状态文案

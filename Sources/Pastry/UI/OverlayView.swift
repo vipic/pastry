@@ -283,6 +283,7 @@ struct OverlayView: View {
     private enum MultiSelectToolbarAction {
         case paste
         case copy
+        case smart
         case delete
     }
 
@@ -1366,6 +1367,15 @@ struct OverlayView: View {
                     handleCopySelected()
                 }
                 multiSelectActionButton(
+                    action: .smart,
+                    icon: "sparkles",
+                    label: multiSmartActionLabel,
+                    accessibilityId: AccessibilityIdentifiers.Overlay.multiSmartActionButton,
+                    isEnabled: multiSmartActionEnabled
+                ) {
+                    SmartActionPanelManager.shared.show(for: multiSmartActionItems)
+                }
+                multiSelectActionButton(
                     action: .delete,
                     icon: AppIcons.delete,
                     label: L10n["context.delete"],
@@ -1382,6 +1392,7 @@ struct OverlayView: View {
         icon: String,
         label: String,
         accessibilityId: String,
+        isEnabled: Bool = true,
         perform: @escaping () -> Void
     ) -> some View {
         let isHovered = hoverMultiAction == action
@@ -1396,6 +1407,7 @@ struct OverlayView: View {
         .help(label)
         .accessibilityLabel(label)
         .accessibilityIdentifier(accessibilityId)
+        .disabled(!isEnabled)
         .scaleEffect(toolbarHoverScale(isHovered: isHovered))
         .animation(.easeOut(duration: UIConstants.Motion.instant), value: isHovered)
         .onHover { hovering in
@@ -1405,6 +1417,31 @@ struct OverlayView: View {
                 hoverMultiAction = nil
             }
         }
+    }
+
+    private var multiSmartActionItems: [ClipboardItem] {
+        visibleItems.filter { selection.selectedIds.contains($0.id) }
+    }
+
+    private var multiSmartActionEnabled: Bool {
+        appleIntelligenceEnabled
+            && MultiSmartActionSelection.mode(for: multiSmartActionItems) != nil
+    }
+
+    private var multiSmartActionLabel: String {
+        guard appleIntelligenceEnabled else {
+            return L10n["smart_action.multi.disabled.preference"]
+        }
+        guard multiSmartActionItems.count <= MultiSmartActionSelection.maximumItemCount else {
+            return L10n[
+                "smart_action.multi.disabled.limit",
+                MultiSmartActionSelection.maximumItemCount
+            ]
+        }
+        guard MultiSmartActionSelection.mode(for: multiSmartActionItems) != nil else {
+            return L10n["smart_action.multi.disabled.format"]
+        }
+        return L10n["smart_action.multi.toolbar"]
     }
 
     private func tabButton(tab: StoreManager.PinTab, icon: String, label: String, isSelected: Bool) -> some View {

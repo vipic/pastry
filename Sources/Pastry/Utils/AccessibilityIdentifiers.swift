@@ -13,6 +13,7 @@ enum AccessibilityIdentifiers {
         static let pinTrayButton = "overlay.pin-tray-button"
         static let multiPasteButton = "overlay.multi-paste-button"
         static let multiCopyButton = "overlay.multi-copy-button"
+        static let multiSmartActionButton = "overlay.multi-smart-action-button"
         static let multiDeleteButton = "overlay.multi-delete-button"
         static let deleteCancelButton = "overlay.delete-cancel-button"
         static let deleteConfirmButton = "overlay.delete-confirm-button"
@@ -49,6 +50,9 @@ enum AccessibilityIdentifiers {
         static let customInstruction = "smart-action.custom-instruction"
         static let error = "smart-action.error"
         static let generatedText = "smart-action.generated-text"
+        static let multiCustomInstruction = "smart-action.multi-custom-instruction"
+        static let multiResult = "smart-action.multi-result"
+        static let multiSourcePreview = "smart-action.multi-source-preview"
     }
 
     enum Onboarding {
