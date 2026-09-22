@@ -214,7 +214,8 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         case failed
     }
 
-    private struct SearchFilterSnapshot {
+    /// 一次筛选的完整快照。`filteredResults` 依赖它做纯函数过滤，因此对测试可见。
+    struct SearchFilterSnapshot {
         let query: String
         let pinTab: PinTab
         let typeFilter: SourceFormat?
@@ -239,6 +240,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     private let setPinPersistence: (UUID, Bool) -> Bool
     private let clearAllPersistence: () -> Bool
     private let clearClipboard: () -> Void
+    private let updateLinkTitlePersistence: (UUID, String?) -> Void
 
     struct PinUpdateResult: Equatable {
         let requested: Int
@@ -253,6 +255,9 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         setPinPersistence = { DatabaseManager.shared.setPin(id: $0.uuidString, pinned: $1) }
         clearAllPersistence = { DatabaseManager.shared.clearAll() }
         clearClipboard = { PasteboardWriter.clearSystemClipboard() }
+        updateLinkTitlePersistence = { id, linkTitle in
+            DatabaseManager.shared.updateLinkTitle(id: id.uuidString, linkTitle: linkTitle)
+        }
         loadRecent()
 
         ClipboardMonitor.shared.onNewItem = { [weak self] item in
@@ -267,6 +272,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         setPinPersistence: @escaping (UUID, Bool) -> Bool = { _, _ in true },
         clearAllPersistence: @escaping () -> Bool = { true },
         clearClipboard: @escaping () -> Void = {},
+        updateLinkTitlePersistence: @escaping (UUID, String?) -> Void = { _, _ in },
         naturalLanguageSearchInterpreter: NaturalLanguageSearchInterpreting = LocalNaturalLanguageSearchInterpreter.shared
     ) {
         usesDatabaseSearch = false
@@ -275,6 +281,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         self.setPinPersistence = setPinPersistence
         self.clearAllPersistence = clearAllPersistence
         self.clearClipboard = clearClipboard
+        self.updateLinkTitlePersistence = updateLinkTitlePersistence
         self.items = items
         performSearchImmediate()
         refreshAvailableApps()
@@ -413,11 +420,15 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
 
     /// 更新链接预览标题（DB 持久化 + 内存同步）
     func updateLinkTitle(_ itemId: UUID, linkTitle: String?) {
-        DatabaseManager.shared.updateLinkTitle(id: itemId.uuidString, linkTitle: linkTitle)
-        guard let idx = items.firstIndex(where: { $0.id == itemId }) else { return }
-        items[idx].linkTitle = linkTitle
-        // 若正在显示筛选结果，刷新以反映变更
-        if hasActiveFilters { performSearchImmediate() }
+        updateLinkTitlePersistence(itemId, linkTitle)
+        // items 与 filteredItems 是两份独立副本（无筛选时只在切换瞬间赋值），
+        // 异步回填的标题必须同时写入两份，否则默认视图里的卡片永远看不到标题。
+        if let idx = items.firstIndex(where: { $0.id == itemId }) {
+            items[idx].linkTitle = linkTitle
+        }
+        if let idx = filteredItems.firstIndex(where: { $0.id == itemId }) {
+            filteredItems[idx].linkTitle = linkTitle
+        }
     }
 
     /// 更新场景备注（所有条目均可添加；空白文本会清空备注）
@@ -721,11 +732,12 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
             await LocalSemanticSearchEngine.shared.index(item)
         }
 
-        // 文本列表项截断至 256 字符；文件路径完整保留以维持多文件和书签的逐项对应。
+        // 文本列表项截断到 listContentCharacterLimit；文件路径完整保留以维持多文件和书签的逐项对应。
         let keepsFullContent = item.sourceFormat == .fileURL || item.sourceFormat == .image
-        let truncatedContent = keepsFullContent || item.content.count <= 256
+        let contentLimit = DatabaseManager.listContentCharacterLimit
+        let truncatedContent = keepsFullContent || item.content.count <= contentLimit
             ? item.content
-            : String(item.content.prefix(256))
+            : String(item.content.prefix(contentLimit))
         let listItem = ClipboardItem(
             id: item.id, timestamp: item.timestamp,
             content: truncatedContent, sourceFormat: item.sourceFormat, tags: item.tags,
@@ -763,16 +775,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         }
         items.insert(listItem, at: 0)
 
-        let noActiveFilters = searchQuery.isEmpty
-            && typeFilter == nil
-            && appFilter == nil
-            && timeFilter == .any
-            && !urlFilter
-            && !handoffFilter
-            && noteFilter == .any
-            && pinTab == .all
-
-        if noActiveFilters {
+        if !hasActiveFilters {
             filteredItems = items
         } else {
             performSearchImmediate()
@@ -869,16 +872,15 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         }
     }
 
-    nonisolated private static func filteredResults(
+    /// 纯函数过滤：不依赖 MainActor，供 detached 搜索任务在后台计算后回主线程赋值。
+    /// 不 private 是为了让测试直接覆盖「数据库命中 + 内存补充」的合并顺序（收藏 tab 的语义依赖它）。
+    nonisolated static func filteredResults(
         base initialBase: [ClipboardItem],
         recentItems: [ClipboardItem],
         filters: SearchFilterSnapshot,
         searchedInDatabase: Bool
     ) -> [ClipboardItem] {
         var base = initialBase
-        if filters.pinTab == .pinned {
-            base = base.filter { $0.isPinned }
-        }
 
         // 测试注入数据和无数据库路径：content + appName 大小写不敏感子串匹配。
         if !filters.query.isEmpty && !searchedInDatabase {
@@ -926,6 +928,11 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         // 时间筛选
         if let range = filters.dateRange {
             base = base.filter { range.contains($0.timestamp) }
+        }
+
+        // 收藏 tab 必须在所有来源合并之后应用：上面按 App 名命中的内存补充结果可能未收藏
+        if filters.pinTab == .pinned {
+            base = base.filter { $0.isPinned }
         }
 
         return base

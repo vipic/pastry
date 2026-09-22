@@ -87,6 +87,51 @@ final class StoreManagerTests: XCTestCase {
         XCTAssertTrue(store.filteredItems.allSatisfy { $0.isPinned })
     }
 
+    /// 数据库搜索会按 App 名从内存列表补充结果，收藏 tab 的过滤必须在这之后仍然成立
+    func testPinnedTabExcludesUnpinnedAppNameMatches() {
+        let pinned = ClipboardItem(content: "已收藏内容", sourceFormat: .text, appName: "Safari", isPinned: true)
+        let unpinned = ClipboardItem(content: "普通内容", sourceFormat: .text, appName: "Safari 书签", isPinned: false)
+        let filters = StoreManager.SearchFilterSnapshot(
+            query: "Safari",
+            pinTab: .pinned,
+            typeFilter: nil,
+            urlFilter: false,
+            appFilter: nil,
+            handoffFilter: false,
+            noteFilter: .any,
+            dateRange: nil
+        )
+
+        let results = StoreManager.filteredResults(
+            base: [pinned],
+            recentItems: [pinned, unpinned],
+            filters: filters,
+            searchedInDatabase: true
+        )
+
+        XCTAssertEqual(results.map(\.id), [pinned.id])
+    }
+
+    /// 链接标题异步回填后，默认（无筛选）视图必须立即显示，而不是等下一次搜索重算
+    func testLinkTitleUpdateIsVisibleInDefaultList() {
+        let item = ClipboardItem(content: "https://example.com", sourceFormat: .text)
+        var persistedID: UUID?
+        var persistedTitle: String?
+        store = StoreManager(
+            items: [item],
+            updateLinkTitlePersistence: { id, title in
+                persistedID = id
+                persistedTitle = title
+            }
+        )
+
+        store.updateLinkTitle(item.id, linkTitle: "示例标题")
+
+        XCTAssertEqual(store.filteredItems.first?.linkTitle, "示例标题")
+        XCTAssertEqual(persistedID, item.id)
+        XCTAssertEqual(persistedTitle, "示例标题")
+    }
+
     // MARK: - 类型筛选
 
     func testTypeFilterText() {
