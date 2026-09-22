@@ -10,10 +10,14 @@ final class MainThreadWatchdog {
     private let log = PastryLogger(category: "watchdog")
     private let pingInterval: TimeInterval = 2.0    // 每 2s 发一次 ping
     private let hangThreshold: TimeInterval = 5.0    // 5s 无响应视为卡死
+    /// 同一轮卡死最多每 30s 采一次样：`sample` 要采样 1 秒且会阻塞协作线程，
+    /// 逐 tick 触发会在最需要轻载的卡死现场叠加成样本风暴并写满 HangReports。
+    private let minimumSampleInterval: TimeInterval = 30
     private let dumpDir: URL
 
     private var timer: DispatchSourceTimer?
     private var lastPong = Date.distantFuture
+    private var lastSampleAt: Date?
     private let lock = NSLock()
 
     private init() {
@@ -69,11 +73,25 @@ final class MainThreadWatchdog {
             guard let self else { return }
             let lastResponse = self.lock.withLock { self.lastPong }
             if lastResponse < pingTime {
-                self.sampleProcess(reason: "主线程 \\(Int(self.hangThreshold))s 无响应")
+                self.sampleProcessIfDue(reason: "主线程 \(Int(self.hangThreshold))s 无响应")
                 // 自救：强制关闭遮挡整个屏幕的面板，解除全屏遮罩让鼠标事件穿透。
                 self.recoverEventSystem()
             }
         }
+    }
+
+    /// 采样节流：已有采样在近期跑过就跳过，避免卡死期间每个 tick 起一个 `sample` 进程。
+    private func sampleProcessIfDue(reason: String) {
+        let now = Date()
+        let isDue = lock.withLock { () -> Bool in
+            if let lastSampleAt, now.timeIntervalSince(lastSampleAt) < minimumSampleInterval {
+                return false
+            }
+            lastSampleAt = now
+            return true
+        }
+        guard isDue else { return }
+        sampleProcess(reason: reason)
     }
 
     /// 强制恢复事件系统（可在任意线程调用，不依赖主线程）。
