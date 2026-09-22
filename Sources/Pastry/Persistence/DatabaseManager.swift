@@ -356,14 +356,22 @@ final class DatabaseManager {
 
     // MARK: - CRUD
 
+    /// 列表项正文截断长度；`fileURL` / `image` 例外，保留完整路径（多文件书签要与原路径一一对应）。
+    /// `StoreManager` 在内存里做同一截断，两处必须引用同一个常量。
+    static let listContentCharacterLimit = 256
+
     /// 列表查询的公共列（不含 raw_format_data BLOB，该字段仅在粘贴时按需加载）。
     /// 文件路径必须完整保留，否则多文件书签无法与原路径一一对应。
+    /// 所有使用处都必须给 `clips` 起 `c` 别名（FTS 查询需要 JOIN）。
     private static let listColumns = """
-        id, timestamp, \
-        CASE WHEN content_type IN ('fileURL', 'image') THEN content ELSE substr(content, 1, 256) END AS content, \
-        content_type, app_name, text_annotation, image_urls, segments, is_favorite, display_count, \
-        is_handoff, is_url, link_title, favorite_note, favorite_note_updated_at, file_bookmarks
+        c.id, c.timestamp, \
+        CASE WHEN c.content_type IN ('fileURL', 'image') THEN c.content ELSE substr(c.content, 1, \(listContentCharacterLimit)) END AS content, \
+        c.content_type, c.app_name, c.text_annotation, c.image_urls, c.segments, c.is_favorite, c.display_count, \
+        c.is_handoff, c.is_url, c.link_title, c.favorite_note, c.favorite_note_updated_at, c.file_bookmarks
         """
+
+    /// `listColumns` 的列数；`readItems` 按固定下标取值，列投影漂移会静默读到 NULL（见 AUD-02 修复）。
+    private static let listColumnCount = 16
 
     enum InsertResult: Equatable {
         case inserted
@@ -505,11 +513,13 @@ final class DatabaseManager {
             return .skipped
         }
 
-        // FTS 由 AFTER INSERT 触发器自动同步；保留策略与 INSERT 放在同一事务内，
-        // 避免主表插入成功但清理失败时出现部分提交。
+        // FTS 由 AFTER INSERT 触发器自动同步；保留策略在插入已提交后另开一个事务执行。
+        // COMMIT 失败必须回滚，否则连接停在已开启的写事务里，后续 BEGIN IMMEDIATE 全部失败。
         _ = execute("BEGIN IMMEDIATE;")
         enforceHistoryRetentionIfNeeded()
-        _ = execute("COMMIT;")
+        if !execute("COMMIT;") {
+            _ = execute("ROLLBACK;")
+        }
 
         // 更新去重缓存
         lastKey = key
@@ -545,7 +555,9 @@ final class DatabaseManager {
             var ageStmt: OpaquePointer?
             if sqlite3_prepare_v2(db, ageSQL, -1, &ageStmt, nil) == SQLITE_OK {
                 sqlite3_bind_double(ageStmt, 1, cutoff)
-                sqlite3_step(ageStmt)
+                if sqlite3_step(ageStmt) != SQLITE_DONE {
+                    log.error("历史周期清理执行失败: \(self.lastError)")
+                }
                 sqlite3_finalize(ageStmt)
             } else {
                 log.error("历史周期清理 prepare 失败: \(self.lastError)")
@@ -568,7 +580,9 @@ final class DatabaseManager {
             return
         }
         sqlite3_bind_int(stmt, 1, Int32(policy.maxItems))
-        sqlite3_step(stmt)
+        if sqlite3_step(stmt) != SQLITE_DONE {
+            log.error("历史记录淘汰执行失败: \(self.lastError)")
+        }
         sqlite3_finalize(stmt)
     }
 
@@ -665,11 +679,10 @@ final class DatabaseManager {
             return recent(limit: limit)
         }
 
-        // FTS5 搜索（带前缀通配）
+        // FTS5 搜索（带前缀通配）。列投影必须与 listColumns 一致：这里曾手写 substr(content,1,256)
+        // 且漏选 file_bookmarks，导致搜索命中的文件记录粘贴出截断路径、书签跟随失效。
         let ftsSQL = """
-        SELECT c.id, c.timestamp, substr(c.content, 1, 256) AS content, c.content_type, c.app_name,
-               c.text_annotation, c.image_urls, c.segments, c.is_favorite, c.display_count, c.is_handoff, c.is_url,
-               c.link_title, c.favorite_note, c.favorite_note_updated_at
+        SELECT \(Self.listColumns)
         FROM clips c
         JOIN clips_fts f ON c.rowid = f.rowid
         WHERE clips_fts MATCH ?
@@ -718,7 +731,7 @@ final class DatabaseManager {
         let whereClause = Array(repeating: termClause, count: terms.count).joined(separator: " AND ")
         let sql = """
         SELECT \(Self.listColumns)
-        FROM clips
+        FROM clips c
         WHERE \(whereClause)
         ORDER BY timestamp DESC
         LIMIT ?;
@@ -750,7 +763,7 @@ final class DatabaseManager {
         defer { lock.unlock() }
         let sql = """
         SELECT \(Self.listColumns)
-        FROM clips
+        FROM clips c
         ORDER BY timestamp DESC
         LIMIT ?;
         """
@@ -773,7 +786,7 @@ final class DatabaseManager {
         defer { lock.unlock() }
         let sql = """
         SELECT \(Self.listColumns)
-        FROM clips
+        FROM clips c
         WHERE is_favorite = 1
         ORDER BY timestamp DESC
         LIMIT ?;
@@ -1102,7 +1115,7 @@ final class DatabaseManager {
         defer { lock.unlock() }
         guard !ids.isEmpty else { return [] }
         let placeholders = Array(repeating: "?", count: ids.count).joined(separator: ",")
-        let sql = "SELECT \(Self.listColumns) FROM clips WHERE id IN (\(placeholders));"
+        let sql = "SELECT \(Self.listColumns) FROM clips c WHERE c.id IN (\(placeholders));"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
         defer { sqlite3_finalize(stmt) }
@@ -1119,8 +1132,11 @@ final class DatabaseManager {
     func stats() -> ClipboardStats {
         lock.lock()
         defer { lock.unlock() }
+        // 日界必须在 Swift 侧按本机时区计算：`strftime('now','start of day')` 是 UTC 零点，
+        // 非 UTC 时区下「今日」会与 TimeFilter.today（Calendar.current）互相矛盾。
+        let todayStart = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
         let total = scalarInt("SELECT COUNT(*) FROM clips;")
-        let today = scalarInt("SELECT COUNT(*) FROM clips WHERE timestamp > strftime('%s', 'now', 'start of day') * 1.0;")
+        let today = scalarInt("SELECT COUNT(*) FROM clips WHERE timestamp > ?;", boundDouble: todayStart)
         let favs = scalarInt("SELECT COUNT(*) FROM clips WHERE is_favorite = 1;")
         let sizeK = scalarInt("SELECT COALESCE(SUM(LENGTH(content)), 0) / 1024 FROM clips;")
 
@@ -1135,6 +1151,10 @@ final class DatabaseManager {
     // MARK: - 内部方法
 
     private func readItems(from stmt: OpaquePointer?) -> [ClipboardItem] {
+        assert(
+            sqlite3_column_count(stmt) == Self.listColumnCount,
+            "readItems 依赖 listColumns 的列投影：列数不一致会静默读到 NULL"
+        )
         var items: [ClipboardItem] = []
 
         while !Task.isCancelled, sqlite3_step(stmt) == SQLITE_ROW {
@@ -1208,13 +1228,16 @@ final class DatabaseManager {
         return items
     }
 
-    /// 查询所有 image 类型条目的 content 路径（供缓存孤儿清理）
-    func allImageContentPaths() -> Set<String> {
+    /// 查询所有 image 类型条目的 content 路径（供缓存孤儿清理）。
+    ///
+    /// 返回 `nil` 表示查询不可用（数据库未打开/语句准备失败）。调用方必须区分「库里没有图片条目」
+    /// 与「问不到」：把失败当成空集会让孤儿清理删掉全部图片缓存，而原图只存在于缓存目录。
+    func allImageContentPaths() -> Set<String>? {
         lock.lock()
         defer { lock.unlock() }
         let sql = "SELECT content FROM clips WHERE content_type = 'image';"
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
         defer { sqlite3_finalize(stmt) }
         var paths = Set<String>()
         while sqlite3_step(stmt) == SQLITE_ROW {
@@ -1319,13 +1342,16 @@ final class DatabaseManager {
         return true
     }
 
-    private func scalarInt(_ sql: String) -> Int {
+    private func scalarInt(_ sql: String, boundDouble: Double? = nil) -> Int {
         guard let db else { return 0 }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
             return 0
         }
         defer { sqlite3_finalize(stmt) }
+        if let boundDouble {
+            sqlite3_bind_double(stmt, 1, boundDouble)
+        }
 
         if sqlite3_step(stmt) == SQLITE_ROW {
             return Int(sqlite3_column_int(stmt, 0))

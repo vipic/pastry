@@ -37,7 +37,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboardingKeyMonitor: Any?
     private var onboardingOverlayHandoff: OnboardingOverlayHandoff?
     private var shouldOpenOverlayAfterOnboarding = false
-    private let updateErrorPath = "/tmp/pastry_update_error.txt"
     private let diagnosticsLog = PastryLogger(category: "app")
 
     override init() {
@@ -325,10 +324,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func showPendingUpdateErrorIfNeeded() {
-        let url = URL(fileURLWithPath: updateErrorPath)
-        guard let message = try? String(contentsOf: url, encoding: .utf8)
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !message.isEmpty else { return }
+        // 上限防止异常内容整段灌进窗口；helper 正常只写一行失败原因。
+        let maxBytes = 2 * 1024
+        let url = UpdateChecker.updateErrorReportURL
+        guard let data = try? Data(contentsOf: url),
+              let text = String(data: data.prefix(maxBytes), encoding: .utf8)
+        else { return }
+
+        let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else { return }
 
         try? FileManager.default.removeItem(at: url)
         showUpdateErrorWindow(message: message)
@@ -460,9 +464,6 @@ struct PastryApp: App {
 
     @StateObject private var store = StoreManager.shared
 
-    @AppStorage(UserDefaultsKeys.launchAtLogin)
-    private var launchAtLogin = false
-
     private let log = PastryLogger(category: "app")
 
     /// 性能基准模式：`Pastry --bench` 跑完初始化输出耗时后退出
@@ -474,8 +475,11 @@ struct PastryApp: App {
 
         store.start()
 
-        // 清理孤儿图片缓存（数据库中已删除但缓存文件还在的 .png + .orig）
-        ImageCacheManager.shared.cleanupOrphans(activePaths: DatabaseManager.shared.allImageContentPaths())
+        // 清理孤儿图片缓存（数据库中已删除但缓存文件还在的 .png + .orig）。
+        // 数据库不可用时跳过：空集会被当成「所有缓存都是孤儿」，而原图只存在于缓存目录。
+        if let activeImagePaths = DatabaseManager.shared.allImageContentPaths() {
+            ImageCacheManager.shared.cleanupOrphans(activePaths: activeImagePaths)
+        }
 
         if Self.isBenchmark {
             let elapsed = Int((CFAbsoluteTimeGetCurrent() - initializationStart) * 1000)

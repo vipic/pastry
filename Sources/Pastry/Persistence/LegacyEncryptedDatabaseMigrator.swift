@@ -20,6 +20,8 @@ struct LegacyEncryptedDatabaseMigrator {
 
     func migrateIfNeeded() {
         let fm = FileManager.default
+        recoverInterruptedReplacementIfNeeded(fm)
+
         let keyPath = dbPath + ".key"
         guard fm.fileExists(atPath: dbPath), fm.fileExists(atPath: keyPath) else { return }
 
@@ -77,6 +79,47 @@ struct LegacyEncryptedDatabaseMigrator {
                 event: "database_migration.replace.failed",
                 metadata: ["error": error.localizedDescription]
             )
+        }
+    }
+
+    /// 崩溃窗口恢复：替换是「原库改名备份 → 明文改名就位」两步非原子操作。进程若在两步之间被终止，
+    /// `dbPath` 会缺失，下次启动 `migrateIfNeeded` 直接返回、`sqlite3_open` 新建空库，用户历史在界面上消失
+    /// （数据其实还在 `.encrypted-backup` / `.plaintext-migrate` 里）。
+    ///
+    /// 只在 `dbPath` 缺失时动作，优先采用已导出并通过可读性校验的明文库，其次回滚到加密备份
+    /// （`.key` 仍在，下一轮会重试迁移）。
+    private func recoverInterruptedReplacementIfNeeded(_ fm: FileManager) {
+        guard !fm.fileExists(atPath: dbPath) else { return }
+
+        let plaintextPath = dbPath + ".plaintext-migrate"
+        let backupPath = dbPath + ".encrypted-backup"
+
+        if fm.fileExists(atPath: plaintextPath), Self.isReadablePlaintextDatabase(at: plaintextPath) {
+            do {
+                try fm.moveItem(atPath: plaintextPath, toPath: dbPath)
+                try? fm.removeItem(atPath: backupPath)
+                log.notice("检测到中断的旧库迁移，已使用已导出的明文库恢复")
+                diagnosticsLog.critical(
+                    "中断的旧库迁移已恢复（明文）",
+                    event: "database_migration.interrupted_plaintext_restored"
+                )
+                return
+            } catch {
+                log.error("中断迁移的明文恢复失败: \(error.localizedDescription)")
+            }
+        }
+
+        guard fm.fileExists(atPath: backupPath) else { return }
+        do {
+            try fm.moveItem(atPath: backupPath, toPath: dbPath)
+            try? fm.removeItem(atPath: plaintextPath)
+            log.notice("检测到中断的旧库迁移，已回滚到加密备份")
+            diagnosticsLog.critical(
+                "中断的旧库迁移已回滚到加密备份",
+                event: "database_migration.interrupted_backup_restored"
+            )
+        } catch {
+            log.error("中断迁移的回滚失败: \(error.localizedDescription)")
         }
     }
 

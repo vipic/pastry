@@ -147,6 +147,51 @@ final class DatabaseManagerTests: XCTestCase {
         sqlite3_close(plaintext)
     }
 
+    /// 「原库已搬走、明文尚未就位」的崩溃残留：启动时必须恢复明文，而不是新建空库
+    func testLegacyMigratorRecoversPlaintextLeftByInterruptedReplacement() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pastry-interrupted-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let path = directory.appendingPathComponent("clips.db").path
+        // 出作用域后连接关闭并 checkpoint WAL，保证明文内容落在主文件里
+        do {
+            let exported = DatabaseManager(dbPath: path + ".plaintext-migrate")
+            exported.insert(ClipboardItem(content: "中断前已导出的历史", sourceFormat: .text))
+        }
+        try Data("encrypted".utf8).write(to: URL(fileURLWithPath: path + ".encrypted-backup"))
+
+        LegacyEncryptedDatabaseMigrator(
+            dbPath: path,
+            log: Logger(subsystem: "com.nekutai.pastry.tests", category: "database-migrator")
+        ).migrateIfNeeded()
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: path + ".plaintext-migrate"))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: path + ".encrypted-backup"))
+        XCTAssertEqual(DatabaseManager(dbPath: path).recent().first?.content, "中断前已导出的历史")
+    }
+
+    /// 只有加密备份残留（明文导出未完成）时必须回滚备份，避免启动出空库
+    func testLegacyMigratorRollsBackToEncryptedBackupWhenPlaintextMissing() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pastry-interrupted-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let path = directory.appendingPathComponent("clips.db").path
+        try Data("encrypted-backup".utf8).write(to: URL(fileURLWithPath: path + ".encrypted-backup"))
+
+        LegacyEncryptedDatabaseMigrator(
+            dbPath: path,
+            log: Logger(subsystem: "com.nekutai.pastry.tests", category: "database-migrator")
+        ).migrateIfNeeded()
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: path + ".encrypted-backup"))
+    }
+
     func testStartupRepairsLegacyFTSSchemaWithoutVersionGate() throws {
         let path = FileManager.default.temporaryDirectory
             .appendingPathComponent("pastry-legacy-fts-\(UUID().uuidString).db").path
@@ -1118,6 +1163,38 @@ final class DatabaseManagerTests: XCTestCase {
         XCTAssertEqual(results[0].id, item.id)
     }
 
+    /// 搜索命中的文件记录必须保留完整路径与书签；FTS 查询曾手写列投影导致路径被截断、书签丢失
+    func testSearchKeepsFullFilePathsAndBookmarks() {
+        let directory = "/tmp/" + String(repeating: "a", count: 300)
+        let first = directory + "/first.txt"
+        let second = directory + "/second-needle.txt"
+        let item = ClipboardItem(
+            content: "\(first)\n\(second)",
+            sourceFormat: .fileURL,
+            fileBookmarks: [Data([0x01]), nil]
+        )
+        db.insert(item)
+
+        let results = db.search(query: "needle")
+
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results[0].content, "\(first)\n\(second)")
+        XCTAssertEqual(results[0].fileBookmarks?.first, Data([0x01]))
+        XCTAssertTrue(results[0].tags.isMultiFile)
+    }
+
+    /// 「今日」统计按本机日界计算；曾用 UTC 日界，非 UTC 时区下与时间筛选互相矛盾
+    func testStatsTodayUsesLocalDayBoundary() {
+        let todayStart = Calendar.current.startOfDay(for: Date())
+        db.insert(makeItem(content: "今天第一条", timestamp: todayStart.addingTimeInterval(60)))
+        db.insert(makeItem(content: "昨天最后一条", timestamp: todayStart.addingTimeInterval(-60)))
+
+        let stats = db.stats()
+
+        XCTAssertEqual(stats.totalItems, 2)
+        XCTAssertEqual(stats.todayItems, 1)
+    }
+
     /// loadFullContent 返回完整内容（未被截断）
     func testLoadFullContentReturnsFull() {
         let longText = String(repeating: "完整大文本", count: 40) // ~240 字符
@@ -1147,6 +1224,15 @@ final class DatabaseManagerTests: XCTestCase {
 
         let paths = db.allImageContentPaths()
         XCTAssertEqual(paths, [imagePath])
+    }
+
+    /// 数据库不可用时必须返回 nil：调用方据此跳过孤儿清理，空集会让它删掉全部图片缓存
+    func testAllImageContentPathsReturnsNilWhenDatabaseUnavailable() {
+        let broken = DatabaseManager(
+            dbPath: "/nonexistent-directory-\(UUID().uuidString)/clips.db"
+        )
+
+        XCTAssertNil(broken.allImageContentPaths())
     }
 
     // MARK: - segmentsJSON 不解码
