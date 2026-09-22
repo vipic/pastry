@@ -410,40 +410,6 @@ final class UpdateChecker {
         }
     }
 
-    private func fetchLatestRelease() async -> ReleaseInfo? {
-        guard let url = URL(string: "https://api.github.com/repos/vipic/pastry/releases/latest") else {
-            return nil
-        }
-
-        var request = URLRequest(url: url)
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("Pastry/1.0", forHTTPHeaderField: "User-Agent")
-
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
-                log.error(
-                    "GitHub Release API 返回非成功状态",
-                    event: "update.release.http_failed",
-                    metadata: [
-                        "status_code": String((response as? HTTPURLResponse)?.statusCode ?? -1)
-                    ]
-                )
-                return nil
-            }
-            let decoder = JSONDecoder()
-            return try decoder.decode(ReleaseInfo.self, from: data)
-        } catch {
-            log.error(
-                "获取 Release 失败",
-                event: "update.release.failed",
-                metadata: ["error": error.localizedDescription]
-            )
-            return nil
-        }
-    }
-
     static func releaseNotes(from releases: [ReleaseInfo]) -> [ReleaseNote] {
         releases.map {
             ReleaseNote(

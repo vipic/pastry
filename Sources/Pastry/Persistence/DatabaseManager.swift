@@ -869,7 +869,7 @@ final class DatabaseManager {
             log.warning("updateLinkTitle failed: \(self.lastError)")
         }
         sqlite3_finalize(stmt)
-        // FTS 由 AFTER UPDATE 触发器自动同步，无需手动 rebuildFTSRow
+        // FTS 由 AFTER UPDATE 触发器自动同步。
     }
 
     /// 更新场景备注（nil 表示清空；数据库列名沿用 favorite_note 以保持兼容）
@@ -902,7 +902,7 @@ final class DatabaseManager {
         let rc = sqlite3_step(stmt)
         let totalDelta = sqlite3_total_changes(db) - totalBefore
         sqlite3_finalize(stmt)
-        // FTS 由 AFTER UPDATE 触发器自动同步，无需手动 rebuildFTSRow
+        // FTS 由 AFTER UPDATE 触发器自动同步。
         // totalDelta >= 1 表示至少 UPDATE 命中一行（触发器的额外变更只会让 delta 更大）
         return rc == SQLITE_DONE && totalDelta >= 1
     }
@@ -1133,51 +1133,6 @@ final class DatabaseManager {
     }
 
     // MARK: - 内部方法
-
-    private func syncFTS(_ item: ClipboardItem) {
-        let sql = """
-        INSERT INTO clips_fts (rowid, content, link_title, favorite_note)
-        VALUES ((SELECT rowid FROM clips WHERE id = ?), ?, ?, ?);
-        """
-
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
-
-        sqlite3_bind_text(stmt, 1, (item.id.uuidString as NSString).utf8String, -1, nil)
-        sqlite3_bind_text(stmt, 2, (item.content as NSString).utf8String, -1, nil)
-        if let lt = item.linkTitle {
-            sqlite3_bind_text(stmt, 3, (lt as NSString).utf8String, -1, nil)
-        } else {
-            sqlite3_bind_null(stmt, 3)
-        }
-        if let note = item.favoriteNote {
-            sqlite3_bind_text(stmt, 4, (note as NSString).utf8String, -1, nil)
-        } else {
-            sqlite3_bind_null(stmt, 4)
-        }
-        sqlite3_step(stmt)
-        sqlite3_finalize(stmt)
-    }
-
-    private func rebuildFTSRow(id: String) {
-        let deleteSQL = "DELETE FROM clips_fts WHERE rowid = (SELECT rowid FROM clips WHERE id = ?);"
-        var deleteStmt: OpaquePointer?
-        if sqlite3_prepare_v2(db, deleteSQL, -1, &deleteStmt, nil) == SQLITE_OK {
-            sqlite3_bind_text(deleteStmt, 1, (id as NSString).utf8String, -1, nil)
-            sqlite3_step(deleteStmt)
-        }
-        sqlite3_finalize(deleteStmt)
-
-        let insertSQL = """
-        INSERT INTO clips_fts(rowid, content, link_title, favorite_note)
-        SELECT rowid, content, link_title, favorite_note FROM clips WHERE id = ?;
-        """
-        var insertStmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, insertSQL, -1, &insertStmt, nil) == SQLITE_OK else { return }
-        sqlite3_bind_text(insertStmt, 1, (id as NSString).utf8String, -1, nil)
-        sqlite3_step(insertStmt)
-        sqlite3_finalize(insertStmt)
-    }
 
     private func readItems(from stmt: OpaquePointer?) -> [ClipboardItem] {
         var items: [ClipboardItem] = []
