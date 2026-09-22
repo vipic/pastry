@@ -137,7 +137,7 @@ final class ClipboardMonitor: ObservableObject {
 
         // 1Password Quick Open 在 pasteboard 上写 com.agilebits.onepassword 自定义类型。
         // 用它覆写来源——比 frontmostApplication 更可靠。
-        if let types = pb.types, types.contains(where: { $0.rawValue == "com.agilebits.onepassword" }) {
+        if Self.isOnePasswordPasteboard(pb.types) {
             capturedApp = "1Password"
             capturedBundleID = "com.agilebits.onepassword"
         }
@@ -159,25 +159,11 @@ final class ClipboardMonitor: ObservableObject {
         capturedBundleID: String?,
         shouldPlayCopyFeedback: Bool
     ) {
-        // 排除名单：密码管理器等敏感应用不保存剪贴板历史
-        if let bundleID = capturedBundleID {
-            let excluded = UserDefaults.standard.stringArray(forKey: UserDefaultsKeys.excludedBundleIDs) ?? []
-            if excluded.contains(bundleID) {
-                return
-            }
-        }
-
         let pb = NSPasteboard.general
 
-        // 排除敏感 pasteboard 类型
-        if let pbTypes = pb.types {
-            let ignoredRawTypes: Set<String> = [
-                "org.nspasteboard.ConcealedType",
-            ]
-            let hasIgnored = pbTypes.contains(where: { ignoredRawTypes.contains($0.rawValue) })
-            if hasIgnored {
-                return
-            }
+        // 排除名单（密码管理器等敏感来源）与敏感 pasteboard 类型
+        guard !Self.shouldSkipChange(bundleID: capturedBundleID, pasteboardTypes: pb.types) else {
+            return
         }
 
         guard let types = pb.types, !types.isEmpty else {
@@ -320,24 +306,32 @@ final class ClipboardMonitor: ObservableObject {
         }
     }
 
-    // MARK: - 测试入口
+    // MARK: - 采集前过滤（供 production 与测试共用）
 
-    /// 供单元测试：检查 bundleID 是否在排除名单中
-    static func isBundleIDExcludedForTesting(_ bundleID: String) -> Bool {
-        let excluded = UserDefaults.standard.stringArray(forKey: UserDefaultsKeys.excludedBundleIDs) ?? []
-        return excluded.contains(bundleID)
+    /// 不落历史的 pasteboard 类型：`org.nspasteboard.ConcealedType` 是密码管理器等工具的「不要留存」标记。
+    private static let ignoredRawTypeNames: Set<String> = [
+        "org.nspasteboard.ConcealedType",
+    ]
+
+    /// 是否跳过本次剪贴板变化（排除名单内的来源 App，或带敏感标记的 pasteboard）。
+    /// `processChange` 只在该判定为 false 时继续采集。
+    static func shouldSkipChange(
+        bundleID: String?,
+        pasteboardTypes: [NSPasteboard.PasteboardType]?
+    ) -> Bool {
+        if let bundleID {
+            let excluded = UserDefaults.standard.stringArray(forKey: UserDefaultsKeys.excludedBundleIDs) ?? []
+            if excluded.contains(bundleID) {
+                return true
+            }
+        }
+
+        guard let pasteboardTypes else { return false }
+        return pasteboardTypes.contains { ignoredRawTypeNames.contains($0.rawValue) }
     }
 
-    /// 供单元测试：检测 pasteboard types 是否含 ConcealedType
-    static func hasConcealedTypeForTesting(from pb: NSPasteboard) -> Bool {
-        guard let types = pb.types else { return false }
-        return types.contains(where: { $0.rawValue == "org.nspasteboard.ConcealedType" })
+    /// 1Password Quick Open 会在 pasteboard 上带自己的类型，据此识别来源。
+    static func isOnePasswordPasteboard(_ pasteboardTypes: [NSPasteboard.PasteboardType]?) -> Bool {
+        pasteboardTypes?.contains { $0.rawValue == "com.agilebits.onepassword" } ?? false
     }
-
-    /// 供单元测试：检测 pasteboard types 是否含 1Password 标记
-    static func has1PasswordTypeForTesting(from pb: NSPasteboard) -> Bool {
-        guard let types = pb.types else { return false }
-        return types.contains(where: { $0.rawValue == "com.agilebits.onepassword" })
-    }
-
 }

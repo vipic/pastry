@@ -338,41 +338,40 @@ final class ClipboardMonitorTests: XCTestCase {
         XCTAssertEqual(result?.1, pngData, "同时存在 PNG/TIFF 时应优先保留 PNG 原始数据")
     }
 
-    // MARK: - 排除名单（bundleID 过滤）
+    // MARK: - 采集前过滤（排除名单 bundleID + 敏感 pasteboard 类型）
 
-    func testExcludedBundleIDIsBlocked() {
-        let testBundleID = "com.test.excluded-app"
-        UserDefaults.standard.set([testBundleID], forKey: UserDefaultsKeys.excludedBundleIDs)
-        defer { UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.excludedBundleIDs) }
-
-        XCTAssertTrue(ClipboardMonitor.isBundleIDExcludedForTesting(testBundleID),
-                      "排除名单中的 bundleID 应返回 true")
-    }
-
-    func testNonExcludedBundleIDIsAllowed() {
-        let testBundleID = "com.test.normal-app"
+    func testExcludedBundleIDIsSkipped() {
         UserDefaults.standard.set(["com.test.excluded-app"], forKey: UserDefaultsKeys.excludedBundleIDs)
         defer { UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.excludedBundleIDs) }
 
-        XCTAssertFalse(ClipboardMonitor.isBundleIDExcludedForTesting(testBundleID),
-                       "未在排除名单中的 bundleID 应返回 false")
+        XCTAssertTrue(
+            ClipboardMonitor.shouldSkipChange(bundleID: "com.test.excluded-app", pasteboardTypes: [.string]),
+            "排除名单中的 bundleID 不应被采集"
+        )
+        XCTAssertFalse(
+            ClipboardMonitor.shouldSkipChange(bundleID: "com.test.normal-app", pasteboardTypes: [.string]),
+            "未在排除名单中的 bundleID 应被采集"
+        )
     }
 
     func testEmptyExcludedListAllowsAll() {
         UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.excludedBundleIDs)
-        XCTAssertFalse(ClipboardMonitor.isBundleIDExcludedForTesting("com.1password.1password"),
-                       "排除名单为空时所有 App 都应允许")
+        XCTAssertFalse(
+            ClipboardMonitor.shouldSkipChange(bundleID: "com.1password.1password", pasteboardTypes: [.string]),
+            "排除名单为空时所有 App 都应允许"
+        )
     }
 
-    // MARK: - Pasteboard 类型过滤
-
-    /// ConcealedType 应被检测到
-    func testDetectsConcealedType() {
+    /// ConcealedType 应触发跳过
+    func testConcealedTypeSkipsChange() {
         let pb = makeTestPasteboard("concealedType")
         pb.declareTypes([.string, NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")], owner: nil)
         pb.setString("secret", forType: .string)
-        XCTAssertTrue(ClipboardMonitor.hasConcealedTypeForTesting(from: pb),
-                      "含 ConcealedType 的 pasteboard 应返回 true")
+
+        XCTAssertTrue(
+            ClipboardMonitor.shouldSkipChange(bundleID: nil, pasteboardTypes: pb.types),
+            "含 ConcealedType 的 pasteboard 不应被采集"
+        )
     }
 
     /// 无 ConcealedType 的普通剪贴板
@@ -380,17 +379,20 @@ final class ClipboardMonitorTests: XCTestCase {
         let pb = makeTestPasteboard("normalTypes")
         pb.declareTypes([.string], owner: nil)
         pb.setString("hello", forType: .string)
-        XCTAssertFalse(ClipboardMonitor.hasConcealedTypeForTesting(from: pb),
-                       "普通 pasteboard 不应被 ConcealedType 过滤")
+
+        XCTAssertFalse(
+            ClipboardMonitor.shouldSkipChange(bundleID: nil, pasteboardTypes: pb.types),
+            "普通 pasteboard 不应被 ConcealedType 过滤"
+        )
     }
 
-    /// 1Password 自定义类型检测
+    /// 1Password 自定义类型检测（来源覆写依据）
     func testDetects1PasswordType() {
         let pb = makeTestPasteboard("onePassword")
         pb.declareTypes([.string, NSPasteboard.PasteboardType("com.agilebits.onepassword")], owner: nil)
         pb.setString("username", forType: .string)
-        XCTAssertTrue(ClipboardMonitor.has1PasswordTypeForTesting(from: pb),
-                      "含 com.agilebits.onepassword 的 pasteboard 应返回 true")
+
+        XCTAssertTrue(ClipboardMonitor.isOnePasswordPasteboard(pb.types))
     }
 
     /// 无 1Password 标记的普通剪贴板
@@ -398,8 +400,8 @@ final class ClipboardMonitorTests: XCTestCase {
         let pb = makeTestPasteboard("no1pType")
         pb.declareTypes([.string], owner: nil)
         pb.setString("hello", forType: .string)
-        XCTAssertFalse(ClipboardMonitor.has1PasswordTypeForTesting(from: pb),
-                       "普通 pasteboard 不应被识别为 1Password")
+
+        XCTAssertFalse(ClipboardMonitor.isOnePasswordPasteboard(pb.types))
     }
 
     private func generateTestTIFFData(width: Int, height: Int) -> Data {
