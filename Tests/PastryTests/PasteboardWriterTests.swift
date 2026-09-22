@@ -70,11 +70,26 @@ final class PasteboardWriterTests: XCTestCase {
             .appendingPathComponent(UUID().uuidString)
             .appendingPathComponent("missing.txt")
         let item = ClipboardItem(content: missing.path, sourceFormat: .fileURL)
+        pasteboard.setString("用户在别处复制的内容", forType: .string)
 
         let result = await PasteboardWriter.write(item, to: pasteboard, options: .overlaySingle)
 
         XCTAssertEqual(result, .noWritableContent)
-        XCTAssertNil(pasteboard.string(forType: .string))
+        // 判定为不可写时不得清空剪贴板：否则用户同时失去原内容和本次操作
+        XCTAssertEqual(pasteboard.string(forType: .string), "用户在别处复制的内容")
+    }
+
+    func testUnreadableImageKeepsExistingClipboard() async {
+        let missing = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathComponent("missing.png")
+        let item = ClipboardItem(content: missing.path, sourceFormat: .image)
+        pasteboard.setString("用户在别处复制的内容", forType: .string)
+
+        let result = await PasteboardWriter.write(item, to: pasteboard, options: .overlaySingle)
+
+        XCTAssertEqual(result, .noWritableContent)
+        XCTAssertEqual(pasteboard.string(forType: .string), "用户在别处复制的内容")
     }
 
     func testClearSystemClipboardLeavesEmptyStringType() {

@@ -43,20 +43,24 @@ struct PasteboardWriter {
             ImageCacheManager.shared.originalPath(forThumbnail: thumbnailPath)
         }
     ) async -> PasteboardWriteResult {
-        pasteboard.clearContents()
-
+        // 先判定「确实有内容可写」再 clearContents：clear 之后才发现写不出去，
+        // 会让用户同时失去原剪贴板内容和本次操作（例如文件已被移动的卡片）。
         switch item.sourceFormat {
         case .text:
-            pasteboard.setString(loadFullContent(item) ?? item.content, forType: .string)
+            let text = loadFullContent(item) ?? item.content
+            pasteboard.clearContents()
+            pasteboard.setString(text, forType: .string)
             return .written
 
         case .rtf, .html:
-            pasteboard.setString(loadFullContent(item) ?? item.content, forType: .string)
+            let text = loadFullContent(item) ?? item.content
             // 优先用内存中的 rawFormatData，否则按需从 DB 加载
             let raw: (data: Data?, type: String?) = {
                 if let d = item.rawFormatData, let t = item.rawFormatType { return (d, t) }
                 return loadRawFormatData(item) ?? (nil, nil)
             }()
+            pasteboard.clearContents()
+            pasteboard.setString(text, forType: .string)
             if let rawData = raw.data, let typeStr = raw.type {
                 pasteboard.setData(rawData, forType: NSPasteboard.PasteboardType(typeStr))
             }
@@ -68,6 +72,7 @@ struct PasteboardWriter {
                 ? urls.filter { FileManager.default.fileExists(atPath: $0.path) }
                 : urls
             guard !writableURLs.isEmpty else { return .noWritableContent }
+            pasteboard.clearContents()
             pasteboard.writeObjects(writableURLs as [NSURL])
             return .written
 
@@ -91,6 +96,7 @@ struct PasteboardWriter {
                 return .noWritableContent
             }
 
+            pasteboard.clearContents()
             if options.includeImageAnnotation,
                let annotation = item.textAnnotation,
                !annotation.isEmpty {
