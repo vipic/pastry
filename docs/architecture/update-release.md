@@ -14,9 +14,9 @@
 2. 从 GitHub 获取近期 Release，缓存说明并比较版本；新版本必须有 DMG asset，不能把“没有 DMG”当成已是最新。
 3. `StreamingDownloadDelegate` 经 ephemeral URLSession 将 HTTPS 数据流写入临时文件，按预计大小计算进度并执行字节上限。此下载器不是预览模块的 `BoundedRemoteResourceLoader`。
 4. `applyUpdate` 把 DMG 移到稳定临时路径，在当前进程退出前挂载并预检候选 App 签名，拒绝签名验证失败或 ad-hoc 包。
-5. `UpdateInstallScriptBuilder` 对外部路径做 shell quoting、限制版本字符串；helper 在退出后再次挂载，检查正式 bundle ID、预期版本、签名和身份连续性。
-6. helper 先移动旧 App 为备份，再复制候选；复制失败或安装后版本错误时执行恢复路径。成功后删除备份、卸载 DMG 并重启 App。
-7. helper 的显式失败路径写入错误文件，AppDelegate 下次启动读取并展示；诊断入口见[发布流程](../RELEASE.md)。
+5. `UpdateInstallScriptBuilder` 对外部路径做 shell quoting、限制版本字符串；helper 在退出后再次挂载，检查正式 bundle ID、预期版本、签名和身份连续性。读不到旧 App 的 designated requirement 时直接拒绝更新（fail-closed），不退化为「只校验签名有效性」。
+6. helper 先移动旧 App 为备份，再复制候选；复制失败或安装后版本错误时执行恢复路径。成功后删除备份、卸载 DMG 并重启 App。DMG 卸载失败（卷被 Finder/Spotlight 占用）不中断重启，属于尽力而为的收尾。
+7. helper 的日志与显式失败原因写在 App 自己的数据目录（`~/Library/Application Support/<AppName>/`），不是固定且世界可写的 `/tmp`；AppDelegate 下次启动读取错误文件（限制 2 KB）并展示。
 
 ## 发布链与不变量
 
@@ -28,8 +28,9 @@
 
 ## 已知边界与待验证
 
-- 当前 helper 在无法读取旧 App 的 designated requirement 时仅告警并跳过身份连续性检查。这与严格“缺失即拒绝”的安全目标存在差距，后续运行代码改动应单独处理；不能把文档中的目标写成已实现保证。
-- `set -e` 下某些非显式捕获的挂载、移动或卸载失败可能直接退出，不保证所有失败都经过错误窗口与恢复路径。
+- helper 现在要求必须读到旧 App 的 designated requirement，否则拒绝更新；代价是某些不产生 `designated =>` 输出的签名方式会让自动更新永久失败，这是显式接受的 fail-closed 取舍。
+- `set -e` 下挂载、移动失败仍会直接退出：只有 DMG 卸载被显式降级为尽力而为。这类失败没有经过错误窗口，只留在 helper 日志里。
+- 版本号白名单只接受 `x.y.z`（与 `release.sh` 的 tag 规则一致）。若远端出现 `v1.4.0-rc1` 这类预发布 tag，`checkOutcome` 仍会提示有更新，但 helper 会把版本回落成 `0.0.0` 并拒绝安装；发布预发布 tag 前需要先处理这条链路。
 - 当前制品没有 notarization；签名校验不等于系统公证。
 - 固定临时文件名、多进程并发更新和真实磁盘/权限故障未由这次静态核对全面验收。
 

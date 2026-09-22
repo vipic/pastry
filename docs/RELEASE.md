@@ -120,7 +120,7 @@ scripts/diagnostics.sh command publish --full
 
 仓库里有两个 workflow：
 
-- `Tests`：`main` 分支 push 和 pull request 自动触发，执行脚本语法检查、`swift test` 和 release build。
+- `Tests`：`main` 分支 push 和 pull request 自动触发，执行 `mise run check`（文档链接、shell 语法、设计 token、发布门禁测试、带覆盖率测试与门槛、release 编译）。
 - `Release Build Verification`：只支持手动触发，不会因为 push、tag 或 PR 自动运行。
 
 手动验证发布构建：
@@ -142,19 +142,16 @@ CI 不导入或保存 `Nekutai` 私钥，因此不会组装、签名或上传正
 
 ## 自动更新失败日志
 
-应用内自动更新会生成 helper 脚本并替换 `.app`。如果安装失败，日志写入：
+应用内自动更新会生成 helper 脚本并替换 `.app`。helper 的日志与错误原因都写在 App 自己的数据目录（开发版为 `Pastry Dev`）：
 
 ```text
-/tmp/pastry_update.log
+~/Library/Application Support/Pastry/update.log
+~/Library/Application Support/Pastry/update_error.txt
 ```
 
-如果是 Bundle ID、版本号、签名或安装校验失败，helper 还会写入面向用户的错误原因：
+放在这里而不是 `/tmp`：`/tmp` 是固定且世界可写的路径，其他本机账户可以伪造「更新失败」文本，而 App 下次启动会把它展示在真实窗口里。
 
-```text
-/tmp/pastry_update_error.txt
-```
-
-旧 App 被重新打开后会读取该文件并弹出更新错误窗口。排查时优先查看 `pastry_update.log`，需要确认用户看到的错误文案时再查看 `pastry_update_error.txt`。安装脚本会先备份旧版本，再复制新版本；复制失败时会恢复旧 App。
+如果是 Bundle ID、版本号、签名或安装校验失败，helper 会用错误原因覆盖 `update_error.txt`。旧 App 被重新打开后会读取该文件并弹出更新错误窗口。排查时优先查看 `update.log`，需要确认用户看到的错误文案时再查看 `update_error.txt`。安装脚本会先备份旧版本，再复制新版本；复制失败时会恢复旧 App。
 
 ## 发布前检查清单
 

@@ -19,6 +19,8 @@
 
 ## 快速部署开发版
 
+先准备稳定签名证书（下节「代码签名」）：`deploy.sh` 找不到 `Nekutai`（或 `CODESIGN_IDENTITY` 指定的证书）时会直接停止，不会退回 ad-hoc 签名。
+
 ```bash
 git clone https://github.com/vipic/pastry.git
 cd pastry
@@ -95,8 +97,17 @@ scripts/
 ├── check_coverage.sh      # 覆盖率门槛
 ├── check_design_tokens.sh # UI token 防回潮检查
 ├── diagnostics.sh         # 应用和本地命令日志查看
+├── next_version.sh        # Conventional Commits → SemVer（mise version:next）
+├── verify_release.sh      # 正式 App 结构、版本和签名检查
+├── release_smoke.sh       # 挂载正式 DMG 并首次启动验收
+├── generate_release_notes.sh # 从 git log 生成 Release 说明
+├── pbwrite.swift          # 测试用剪贴板写入工具源码
+├── layout_dmg.applescript # DMG 窗口布局
+├── lib/command_log.sh     # deploy/release 命令与阶段耗时日志
 └── tasks/                 # mise 复杂任务的普通 shell 实现
 ```
+
+`check_coverage.sh` 用 `node` 解析 `llvm-cov` 的 JSON 摘要，`diagnostics.sh` / `bench.sh` 用 `python3`；两者都不由 mise 管理，是本仓库除 Swift/mise 之外的脚本级依赖。
 
 根目录只保留两个主要工作流入口：`deploy.sh` 和 `release.sh`。
 
