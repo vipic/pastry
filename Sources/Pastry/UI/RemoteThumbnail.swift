@@ -38,7 +38,9 @@ struct RemoteThumbnail: View {
 
         RemoteImageLoader.shared.load(urlString: urlString) { img in
             guard let img else { return }
-            let cost = img.tiffRepresentation?.count ?? img.representations.reduce(0) { $0 + $1.pixelsWide * $1.pixelsHigh * 4 } / 1024
+            // cost 必须与 totalCostLimit 同单位（字节）；此前回退分支多除了 1024，会让 80MB 上限失效
+            let cost = img.tiffRepresentation?.count
+                ?? img.representations.reduce(0) { $0 + $1.pixelsWide * $1.pixelsHigh * 4 }
             Self.cache.setObject(img, forKey: key, cost: cost)
             image = img
         }

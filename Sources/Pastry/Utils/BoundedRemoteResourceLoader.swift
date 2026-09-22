@@ -48,7 +48,8 @@ final class BoundedRemoteResourceLoader: NSObject, URLSessionDataDelegate, URLSe
         attributes: .concurrent
     )
     private lazy var session: URLSession = {
-        let configuration = URLSessionConfiguration.default
+        // ephemeral：预览的是任意第三方链接，不该把响应与 cookie 落进应用共享的磁盘缓存
+        let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 6
         configuration.timeoutIntervalForResource = 10
         let queue = OperationQueue()
