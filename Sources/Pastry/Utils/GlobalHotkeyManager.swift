@@ -89,7 +89,11 @@ final class GlobalHotkeyManager {
     }
 
     @objc private func defaultsDidChange() {
-        reregister()
+        // UserDefaults.didChangeNotification 在发起变更的线程投递；后台线程写偏好会与主线程的
+        // unregister()（快捷键录制中）并发操作同一组 Carbon 句柄，统一收敛到主线程。
+        DispatchQueue.main.async { [weak self] in
+            self?.reregister()
+        }
     }
 
     // MARK: - 注册
