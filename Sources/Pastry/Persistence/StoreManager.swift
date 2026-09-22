@@ -12,6 +12,12 @@ struct ClipboardInsertAnimation: Equatable {
     let promoteFromIndex: Int
 }
 
+struct NaturalLanguageSearchSummary: Equatable {
+    let topic: String
+    let keywords: String
+    let conditions: [String]
+}
+
 // MARK: - 应用数据管理层
 // 连接 ClipboardMonitor → DatabaseManager → SwiftUI
 @MainActor
@@ -45,6 +51,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
             guard searchQuery != oldValue else { return }
             interpretedSearchQuery = nil
             naturalLanguageDateRange = nil
+            naturalLanguageSearchSummary = nil
             naturalLanguageSearchGeneration += 1
             naturalLanguageSearchState = .idle
             if !suppressFilterDiagnostics,
@@ -133,6 +140,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
                                                          favoriteCount: 0, storageSizeKB: 0)
 
     @Published private(set) var naturalLanguageSearchState: NaturalLanguageSearchState = .idle
+    @Published private(set) var naturalLanguageSearchSummary: NaturalLanguageSearchSummary?
 
     /// clearFilters 批量重置时抑制逐项筛选埋点
     private var suppressFilterDiagnostics = false
@@ -638,6 +646,7 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     ) {
         interpretedSearchQuery = intent.keywords.joined(separator: " ")
         naturalLanguageDateRange = intent.dateRange
+        naturalLanguageSearchSummary = Self.makeNaturalLanguageSearchSummary(intent)
 
         suppressFilterDiagnostics = true
         pinTab = intent.favoritesOnly ? .pinned : .all
@@ -941,6 +950,45 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     private func refreshAvailableApps() {
         let apps = Set(items.compactMap { $0.appName }.filter { $0 != "Finder" && $0 != "loginwindow" })
         availableApps = apps.sorted()
+    }
+
+    private static func makeNaturalLanguageSearchSummary(
+        _ intent: NaturalLanguageSearchIntent
+    ) -> NaturalLanguageSearchSummary {
+        var conditions: [String] = []
+        if let range = intent.dateRange {
+            let formatter = DateIntervalFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+            conditions.append("\(L10n["search.smart_summary_date"]): \(formatter.string(from: range.lowerBound, to: range.upperBound.addingTimeInterval(-1)))")
+        }
+        if let appName = intent.appName {
+            conditions.append("\(L10n["search.smart_summary_app"]): \(appName)")
+        }
+        if intent.contentKind != .any {
+            let kindKey: String = switch intent.contentKind {
+            case .any: ""
+            case .text: "filter.type.text"
+            case .link: "filter.type.link"
+            case .image: "filter.type.image"
+            case .file: "filter.type.fileURL"
+            case .rtf: "filter.type.rtf"
+            case .html: "filter.type.html"
+            }
+            conditions.append("\(L10n["search.smart_summary_type"]): \(L10n[kindKey])")
+        }
+        if intent.favoritesOnly { conditions.append(L10n["search.smart_summary_favorites"]) }
+        if intent.handoffOnly { conditions.append(L10n["search.smart_summary_handoff"]) }
+        switch intent.noteRequirement {
+        case .any: break
+        case .withNote: conditions.append(L10n["search.smart_summary_with_note"])
+        case .withoutNote: conditions.append(L10n["search.smart_summary_without_note"])
+        }
+        return NaturalLanguageSearchSummary(
+            topic: intent.semanticQuery,
+            keywords: intent.keywords.joined(separator: "、"),
+            conditions: conditions
+        )
     }
 
     private func refreshStats() {

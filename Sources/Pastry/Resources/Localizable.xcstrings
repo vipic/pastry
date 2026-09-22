@@ -3104,15 +3104,99 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已理解描述并应用搜索条件"
+            "value": "已应用搜索；点按查看理解结果"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Description understood and search filters applied"
+            "value": "Search applied; click to inspect the interpretation"
           }
         }
+      }
+    },
+    "search.smart_summary_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "本次搜索的理解结果" } },
+        "en": { "stringUnit": { "state": "translated", "value": "How this search was understood" } }
+      }
+    },
+    "search.smart_summary_topic": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "语义主题" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Topic" } }
+      }
+    },
+    "search.smart_summary_keywords": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "精确关键词" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Exact keywords" } }
+      }
+    },
+    "search.smart_summary_filters": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "筛选条件" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Filters" } }
+      }
+    },
+    "search.smart_summary_no_filters": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "未识别到额外筛选条件" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No additional filters were identified" } }
+      }
+    },
+    "search.smart_summary_date": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "时间" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Date" } }
+      }
+    },
+    "search.smart_summary_app": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "来源应用" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Source app" } }
+      }
+    },
+    "search.smart_summary_type": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "类型" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Type" } }
+      }
+    },
+    "search.smart_summary_favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "仅收藏" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Favorites only" } }
+      }
+    },
+    "search.smart_summary_handoff": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "仅来自其他设备" } },
+        "en": { "stringUnit": { "state": "translated", "value": "From other devices only" } }
+      }
+    },
+    "search.smart_summary_with_note": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "仅包含备注" } },
+        "en": { "stringUnit": { "state": "translated", "value": "With notes only" } }
+      }
+    },
+    "search.smart_summary_without_note": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "不含备注" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Without notes" } }
       }
     },
     "search.smart_failed": {

@@ -972,6 +972,10 @@ struct OverlayView: View {
                 showNaturalLanguageSearchStatus = true
                 return
             }
+            if store.naturalLanguageSearchState == .applied {
+                showNaturalLanguageSearchStatus = true
+                return
+            }
             Task {
                 await store.performNaturalLanguageSearch()
                 if naturalLanguageSearchHasIssue {
@@ -1030,9 +1034,16 @@ struct OverlayView: View {
     private var naturalLanguageSearchStatusPopover: some View {
         VStack(alignment: .leading, spacing: UIConstants.Card.contentVerticalPadding) {
             HStack(alignment: .top) {
-                Label(L10n["search.smart_issue_title"], systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: UIConstants.TypeSize.body, weight: .semibold))
-                    .foregroundStyle(PastryPalette.warmAccent)
+                Label(
+                    store.naturalLanguageSearchState == .applied
+                        ? L10n["search.smart_summary_title"]
+                        : L10n["search.smart_issue_title"],
+                    systemImage: store.naturalLanguageSearchState == .applied
+                        ? "sparkles"
+                        : "exclamationmark.triangle.fill"
+                )
+                .font(.system(size: UIConstants.TypeSize.body, weight: .semibold))
+                .foregroundStyle(PastryPalette.warmAccent)
 
                 Spacer()
 
@@ -1046,18 +1057,61 @@ struct OverlayView: View {
                 .accessibilityLabel(L10n["a11y.close"])
             }
 
-            Text(naturalLanguageSearchHelp)
-                .font(.system(size: UIConstants.TypeSize.body))
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
+            if store.naturalLanguageSearchState == .applied,
+               let summary = store.naturalLanguageSearchSummary {
+                naturalLanguageSearchSummaryView(summary)
+            } else {
+                Text(naturalLanguageSearchHelp)
+                    .font(.system(size: UIConstants.TypeSize.body))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            Text(L10n["search.smart_fallback_hint"])
-                .font(.system(size: UIConstants.TypeSize.caption))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                Text(L10n["search.smart_fallback_hint"])
+                    .font(.system(size: UIConstants.TypeSize.caption))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(UIConstants.Overlay.cardSpacing)
         .frame(width: Local.Control.statusPopoverWidth)
+    }
+
+    private func naturalLanguageSearchSummaryView(_ summary: NaturalLanguageSearchSummary) -> some View {
+        VStack(alignment: .leading, spacing: UIConstants.Card.contentVerticalPadding) {
+            summaryRow(title: L10n["search.smart_summary_topic"], value: summary.topic)
+            if !summary.keywords.isEmpty {
+                summaryRow(title: L10n["search.smart_summary_keywords"], value: summary.keywords)
+            }
+            if summary.conditions.isEmpty {
+                Text(L10n["search.smart_summary_no_filters"])
+                    .font(.system(size: UIConstants.TypeSize.caption))
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: UIConstants.Card.contentVerticalPadding / 2) {
+                    Text(L10n["search.smart_summary_filters"])
+                        .font(.system(size: UIConstants.TypeSize.caption, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    ForEach(summary.conditions, id: \.self) { condition in
+                        Text(condition)
+                            .font(.system(size: UIConstants.TypeSize.caption))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    private func summaryRow(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: UIConstants.Card.contentVerticalPadding / 2) {
+            Text(title)
+                .font(.system(size: UIConstants.TypeSize.caption, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(size: UIConstants.TypeSize.body))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var naturalLanguageSearchHelp: String {

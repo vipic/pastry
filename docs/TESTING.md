@@ -32,7 +32,7 @@ mise run test -- --filter SelectionStateTests
 mise run test -- --filter OverlayInteractionModelTests
 ```
 
-`StoreManagerTests` 同时覆盖设备端自然语言搜索意图到关键词、来源、类型、日期和收藏等既有筛选条件的映射；测试使用注入解释器，不调用真实系统模型。`LocalNaturalLanguageSearchTests` 覆盖模型生成条件的确定性校验，确保用户未明确提到的来源应用或内容类型不会参与筛选。`DatabaseManagerTests` 覆盖语义索引生命周期、失效文件记录清理、保留策略和历史删除后的级联清理。
+`StoreManagerTests` 同时覆盖设备端自然语言搜索意图到关键词、来源、类型、日期和收藏等既有筛选条件的映射；测试使用注入解释器，不调用真实系统模型。`LocalNaturalLanguageSearchTests` 覆盖模型生成条件的确定性校验、常见相对日期解析和硬条件匹配；`SemanticSearchFusionTests` 覆盖多路召回排序融合。Foundation Models 的生成结果不作为单元测试依赖，真实设备模型输出需通过人工使用观察。`DatabaseManagerTests` 覆盖语义索引生命周期、失效文件记录清理、保留策略和历史删除后的级联清理。
 
 ### 交互与载荷防回归（建议改相关代码时跑）
 

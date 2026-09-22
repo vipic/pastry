@@ -341,6 +341,7 @@ final class StoreManagerTests: XCTestCase {
         store.applyNaturalLanguageSearchIntent(
             NaturalLanguageSearchIntent(
                 keywords: ["SQLite", "migration"],
+                semanticQuery: "SQLite migration plan",
                 appName: "Safari",
                 contentKind: .text,
                 startDate: start,
@@ -355,6 +356,8 @@ final class StoreManagerTests: XCTestCase {
         XCTAssertEqual(store.filteredItems.first?.appName, "Safari")
         XCTAssertEqual(store.filteredItems.first?.sourceFormat, .text)
         XCTAssertTrue(store.filteredItems.first?.isPinned == true)
+        XCTAssertEqual(store.naturalLanguageSearchSummary?.topic, "SQLite migration plan")
+        XCTAssertTrue(store.naturalLanguageSearchSummary?.conditions.contains(where: { $0.contains("Safari") }) == true)
     }
 
     func testNaturalLanguageLinkIntentUsesURLTagInsteadOfSourceFormat() {
@@ -372,6 +375,7 @@ final class StoreManagerTests: XCTestCase {
         store.applyNaturalLanguageSearchIntent(
             NaturalLanguageSearchIntent(
                 keywords: [],
+                semanticQuery: "release link",
                 appName: "Safari",
                 contentKind: .link,
                 startDate: nil,
@@ -410,6 +414,7 @@ final class StoreManagerTests: XCTestCase {
     func testNaturalLanguageSearchAppliesInjectedModelResult() async {
         let intent = NaturalLanguageSearchIntent(
             keywords: ["release"],
+            semanticQuery: "release URL",
             appName: "Safari",
             contentKind: .link,
             startDate: nil,
