@@ -9,7 +9,7 @@ final class UpdateChecker {
 
     private let log = PastryLogger(category: "update")
     private let session: URLSession
-    private let lastCheckKey = "PastryLastUpdateCheck"
+    private let lastCheckKey = UserDefaultsKeys.lastUpdateCheck
     private let checkInterval: TimeInterval = 86_400 // 24 小时
     private static let maxDownloadBytes: Int64 = 300 * 1024 * 1024
 
@@ -156,9 +156,14 @@ final class UpdateChecker {
 
     // MARK: - 缓存上次检查结果
 
-    private let lastReleaseNotesKey = "PastryLastReleaseNotes"
-    private let lastCheckedVersionKey = "PastryLastCheckedVersion"
-    private let releaseHistoryKey = "PastryReleaseHistory"
+    private let lastReleaseNotesKey = UserDefaultsKeys.lastReleaseNotes
+    private let lastCheckedVersionKey = UserDefaultsKeys.lastCheckedVersion
+    private let releaseHistoryKey = UserDefaultsKeys.releaseHistory
+
+    /// 上次完成检查的时间（Version 页展示用）。与写入方共用同一 key。
+    var lastCheckDate: Date? {
+        UserDefaults.standard.object(forKey: lastCheckKey) as? Date
+    }
 
     /// 缓存成功的检查结果（供 upToDate 页显示上次更新日志）
     private func cacheResult(_ results: [ReleaseInfo]) {
@@ -210,6 +215,16 @@ final class UpdateChecker {
         return try await delegate.download(from: url, using: session)
     }
 
+    /// 更新 helper 的日志与错误文件位置（App 自己的数据目录，不是世界可写的 `/tmp`）。
+    static var updateDiagnosticsDirectory: URL {
+        AppDirectories.applicationSupportDirectory()
+    }
+
+    /// helper 写入的失败原因文件；App 下次启动读取并展示。
+    static var updateErrorReportURL: URL {
+        updateDiagnosticsDirectory.appendingPathComponent("update_error.txt")
+    }
+
     /// 应用更新：挂载 DMG → 校验签名 → 备份替换整个 .app → 重启
     func applyUpdate(dmgAt tempURL: URL, expectedVersion: String) throws {
         let targetPath = Bundle.main.bundlePath
@@ -228,7 +243,8 @@ final class UpdateChecker {
         let script = UpdateInstallScriptBuilder.script(
             stableDMGPath: stableDMG.path,
             targetPath: targetPath,
-            expectedVersion: Self.displayVersion(expectedVersion)
+            expectedVersion: Self.displayVersion(expectedVersion),
+            updateDirectory: Self.updateDiagnosticsDirectory.path
         )
 
         try script.write(toFile: scriptPath, atomically: true, encoding: .utf8)

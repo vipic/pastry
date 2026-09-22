@@ -13,11 +13,20 @@ enum UpdateInstallScriptBuilder {
         return !version.isEmpty && version.unicodeScalars.allSatisfy { allowed.contains($0) }
     }
 
-    static func script(stableDMGPath: String, targetPath: String, expectedVersion: String) -> String {
+    /// `updateDirectory` 是 App 自己的数据目录，helper 的日志与错误文件都写在这里。
+    /// 不要退回 `/tmp`：那是固定且世界可写的路径，本机其他账户可以伪造「更新失败」文本，
+    /// 而 App 下次启动会把它原样展示在真实窗口里。
+    static func script(
+        stableDMGPath: String,
+        targetPath: String,
+        expectedVersion: String,
+        updateDirectory: String
+    ) -> String {
         // 版本号严格校验：只允许数字和点，杜绝 shell 注入面
         let safeVersion = Self.isValidVersionString(expectedVersion) ? expectedVersion : "0.0.0"
         let dmg = Self.shellQuote(stableDMGPath)
         let target = Self.shellQuote(targetPath)
+        let directory = Self.shellQuote(updateDirectory)
 
         return """
         #!/bin/bash
@@ -25,9 +34,12 @@ enum UpdateInstallScriptBuilder {
 
         DMG=\(dmg)
         TARGET=\(target)
+        UPDATE_DIR=\(directory)
         EXPECTED_VERSION="\(safeVersion)"
-        LOG="/tmp/pastry_update.log"
-        ERROR_FILE="/tmp/pastry_update_error.txt"
+        LOG="$UPDATE_DIR/update.log"
+        ERROR_FILE="$UPDATE_DIR/update_error.txt"
+        mkdir -p "$UPDATE_DIR"
+        rm -f "$LOG"
         exec >> "$LOG" 2>&1
         sleep 1
         echo "Pastry update started at $(date)"
@@ -74,14 +86,15 @@ enum UpdateInstallScriptBuilder {
             fail_update "更新包使用 ad-hoc 签名，拒绝自动更新"
         fi
 
+        # 签名身份连续性校验：读取不到当前 App 的 designated requirement 时必须拒绝，
+        # 否则 --verify --strict 只证明签名有效，不证明签名者身份（SWIFT-006）。
         CURRENT_REQ=$(/usr/bin/codesign -dr - "$TARGET" 2>&1 | sed -n 's/^.*designated => //p')
         if [ -z "$CURRENT_REQ" ]; then
-            echo "⚠️  无法读取当前 App 签名要求，跳过签名身份连续性校验" >&2
-        else
-            CANDIDATE_REQ=$(/usr/bin/codesign -dr - "$CANDIDATE" 2>&1 | sed -n 's/^.*designated => //p')
-            if [ "$CANDIDATE_REQ" != "$CURRENT_REQ" ]; then
-                fail_update "更新包签名身份与当前 App 不匹配，拒绝自动更新"
-            fi
+            fail_update "无法读取当前 App 的签名要求，拒绝自动更新"
+        fi
+        CANDIDATE_REQ=$(/usr/bin/codesign -dr - "$CANDIDATE" 2>&1 | sed -n 's/^.*designated => //p')
+        if [ "$CANDIDATE_REQ" != "$CURRENT_REQ" ]; then
+            fail_update "更新包签名身份与当前 App 不匹配，拒绝自动更新"
         fi
 
         # 替换整个 .app；先备份，复制失败时恢复旧版本
@@ -99,8 +112,8 @@ enum UpdateInstallScriptBuilder {
         fi
         rm -rf "$BACKUP"
 
-        # 卸载 DMG
-        hdiutil detach "$VOLUME" -quiet
+        # 卸载 DMG：卷被 Finder/Spotlight 占用时 detach 会失败，不能让它中断后面的重启（set -e）
+        hdiutil detach "$VOLUME" -quiet || true
 
         # 清理
         rm -f "$DMG" "$0"

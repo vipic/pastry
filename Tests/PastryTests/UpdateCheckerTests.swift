@@ -200,12 +200,13 @@ final class UpdateCheckerTests: XCTestCase {
         let script = UpdateInstallScriptBuilder.script(
             stableDMGPath: "/tmp/pastry_update.dmg",
             targetPath: "/Applications/Pastry.app",
-            expectedVersion: "1.3.18"
+            expectedVersion: "1.3.18",
+            updateDirectory: "/Users/x/Library/Application Support/Pastry"
         )
 
         XCTAssertTrue(script.contains("BACKUP=\"$TARGET_PARENT/.${TARGET_NAME}.update-backup-$(date +%s)\""))
-        XCTAssertTrue(script.contains("LOG=\"/tmp/pastry_update.log\""))
-        XCTAssertTrue(script.contains("ERROR_FILE=\"/tmp/pastry_update_error.txt\""))
+        XCTAssertTrue(script.contains(#"LOG="$UPDATE_DIR/update.log""#))
+        XCTAssertTrue(script.contains(#"ERROR_FILE="$UPDATE_DIR/update_error.txt""#))
         XCTAssertTrue(script.contains(#"printf "%s\n" "$1" > "$ERROR_FILE""#))
         XCTAssertTrue(script.contains("exec >> \"$LOG\" 2>&1"))
         XCTAssertTrue(script.contains("mv \"$TARGET\" \"$BACKUP\""))
@@ -218,7 +219,8 @@ final class UpdateCheckerTests: XCTestCase {
         let script = UpdateInstallScriptBuilder.script(
             stableDMGPath: "/tmp/pastry_update.dmg",
             targetPath: "/Applications/Pastry.app",
-            expectedVersion: "1.3.18"
+            expectedVersion: "1.3.18",
+            updateDirectory: "/Users/x/Library/Application Support/Pastry"
         )
 
         XCTAssertTrue(script.contains("EXPECTED_VERSION=\"1.3.18\""))
@@ -232,7 +234,8 @@ final class UpdateCheckerTests: XCTestCase {
         let script = UpdateInstallScriptBuilder.script(
             stableDMGPath: "/tmp/pastry_update.dmg",
             targetPath: "/Applications/Pastry.app",
-            expectedVersion: "1.3.20"
+            expectedVersion: "1.3.20",
+            updateDirectory: "/Users/x/Library/Application Support/Pastry"
         )
 
         XCTAssertTrue(script.contains("Signature=adhoc"))
