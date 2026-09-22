@@ -56,6 +56,11 @@ enum UserDefaultsKeys {
     static let appleIntelligenceEnabled = "semantic_search_enabled"
     /// 已完成的新手引导版本。使用版本号而非布尔值，便于未来只补充重大新增步骤。
     static let onboardingCompletedVersion = "onboarding_completed_version"
+    /// 更新检查缓存。读写双方共用这些常量，避免调用点各自硬编码字面量。
+    static let lastUpdateCheck = "PastryLastUpdateCheck"
+    static let lastReleaseNotes = "PastryLastReleaseNotes"
+    static let lastCheckedVersion = "PastryLastCheckedVersion"
+    static let releaseHistory = "PastryReleaseHistory"
 }
 
 enum AppleIntelligencePreference {

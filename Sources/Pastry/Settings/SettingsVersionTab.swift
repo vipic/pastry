@@ -297,7 +297,7 @@ extension SettingsSceneView {
         guard versionReleaseNotes == nil else { return }
         versionReleaseHistory = UpdateChecker.shared.cachedReleaseHistory()
         versionReleaseNotes = versionReleaseHistory.first?.body ?? UpdateChecker.shared.cachedReleaseNotes()
-        let lastCheck = UserDefaults.standard.object(forKey: "PastryLastUpdateCheck") as? Date
+        let lastCheck = UpdateChecker.shared.lastCheckDate
         versionUpdateState = .upToDate(
             version: AppVersion.displayCurrent,
             build: AppVersion.displayBuild,
@@ -347,7 +347,7 @@ extension SettingsSceneView {
             versionReleaseNotes = cachedNotes
             versionCurrentVersion = nil
             versionLatestVersion = nil
-            let lastCheck = UserDefaults.standard.object(forKey: "PastryLastUpdateCheck") as? Date
+            let lastCheck = UpdateChecker.shared.lastCheckDate
             versionUpdateState = .upToDate(
                 version: AppVersion.displayCurrent,
                 build: AppVersion.displayBuild,
