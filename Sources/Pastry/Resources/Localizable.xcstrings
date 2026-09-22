@@ -18,7 +18,7 @@
     "smart_action.subtitle": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用设备端苹果智能处理这条内容" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用设备端 Apple 智能处理这条内容" } },
         "en": { "stringUnit": { "state": "translated", "value": "Process this content with on-device Apple Intelligence" } }
       }
     },
@@ -39,7 +39,7 @@
     "smart_action.image_subtitle": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用 Vision 与苹果智能按需处理图片" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用 Vision 与 Apple 智能按需处理图片" } },
         "en": { "stringUnit": { "state": "translated", "value": "Process this image on demand with Vision and Apple Intelligence" } }
       }
     },
@@ -60,21 +60,21 @@
     "smart_action.image.processing.extract_text": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能提取文字…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用 Apple 智能提取文字…" } },
         "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to extract text…" } }
       }
     },
     "smart_action.image.processing.barcode": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能识别二维码与条码…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用 Apple 智能识别二维码与条码…" } },
         "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to recognize QR codes and barcodes…" } }
       }
     },
     "smart_action.image.processing.describe": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能描述图片…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用 Apple 智能描述图片…" } },
         "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to describe the image…" } }
       }
     },
@@ -123,8 +123,8 @@
     "smart_action.extract_text.description": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "按需 OCR，并完整展示识别结果" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Run OCR on demand and show the complete result" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "识别图片中的文字，并显示完整结果。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Recognize text in the image and show the full result." } }
       }
     },
     "smart_action.barcode": {
@@ -137,8 +137,8 @@
     "smart_action.barcode.description": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "提取图片中的编码类型与完整内容" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Extract code types and complete payloads" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "识别图片中的二维码和条码，并显示类型及完整内容。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Recognize QR codes and barcodes, including their types and full contents." } }
       }
     },
     "smart_action.describe_image": {
@@ -151,8 +151,8 @@
     "smart_action.describe_image.description": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用支持视觉的设备端模型概括画面" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Summarize the image with a vision-capable on-device model" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用设备端模型生成图片描述。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Generate an image description with the on-device model." } }
       }
     },
     "smart_action.choose": {
@@ -228,8 +228,8 @@
     "smart_action.email.description": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "生成可检查编辑的邮件草稿" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Create an editable email draft" } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "生成邮件草稿，供你检查和编辑。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Create an email draft for you to review and edit." } }
       }
     },
     "smart_action.custom.prompt": {
@@ -256,35 +256,35 @@
     "smart_action.processing.summarize": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能进行总结…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用 Apple 智能进行总结…" } },
         "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to summarize…" } }
       }
     },
     "smart_action.processing.rewrite": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能进行改写…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用 Apple 智能进行改写…" } },
         "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to rewrite…" } }
       }
     },
     "smart_action.processing.custom": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能执行自定义指令…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用 Apple 智能执行自定义指令…" } },
         "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to run the custom instruction…" } }
       }
     },
     "smart_action.processing.calendar": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能分析日历信息…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用 Apple 智能分析日历信息…" } },
         "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to analyze calendar details…" } }
       }
     },
     "smart_action.processing.email": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用苹果智能拟定邮件…" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在利用 Apple 智能拟定邮件…" } },
         "en": { "stringUnit": { "state": "translated", "value": "Using Apple Intelligence to draft an email…" } }
       }
     },
@@ -396,28 +396,28 @@
     "smart_action.relative_date": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "相对日期已按照复制时间 %@ 解释。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Relative dates were interpreted from the copied time: %@." } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "相对日期以复制时间 %@ 为基准。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Relative dates use the copy time %@ as a reference." } }
       }
     },
     "smart_action.error.device_not_eligible": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "这台 Mac 不支持设备端苹果智能模型。" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "这台 Mac 不支持设备端 Apple 智能模型。" } },
         "en": { "stringUnit": { "state": "translated", "value": "This Mac does not support the on-device Apple Intelligence model." } }
       }
     },
     "smart_action.error.apple_intelligence_off": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "请先在系统设置中开启苹果智能。" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "请先在系统设置中开启 Apple 智能。" } },
         "en": { "stringUnit": { "state": "translated", "value": "Turn on Apple Intelligence in System Settings first." } }
       }
     },
     "smart_action.error.model_not_ready": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "苹果智能模型暂未就绪。" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple 智能模型暂未就绪。" } },
         "en": { "stringUnit": { "state": "translated", "value": "The Apple Intelligence model is not ready yet." } }
       }
     },
@@ -452,8 +452,8 @@
     "smart_action.error.invalid_date": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "无法可靠解释事件日期或时间。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "The event date or time could not be interpreted reliably." } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "无法确定日程的日期或时间。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "The event date or time couldn’t be determined." } }
       }
     },
     "smart_action.error.calendar_denied": {
@@ -507,7 +507,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "苹果智能"
+            "value": "Apple 智能"
           }
         },
         "en": {
@@ -524,7 +524,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在本机使用苹果智能进行智能找回和卡片智能操作。"
+            "value": "在本机使用 Apple 智能进行智能找回和卡片智能操作。"
           }
         },
         "en": {
@@ -575,13 +575,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "开机启动"
+            "value": "登录时打开"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Launch at Login"
+            "value": "Open at Login"
           }
         }
       }
@@ -728,13 +728,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "调整日常行为：语言、启动、提示音、托盘位置、左键点击操作、删除确认、历史保留和数据清理。"
+            "value": "调整 Pastry 的日常使用方式。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tune everyday behavior: language, launch, sounds, tray position, left-click action, delete confirmation, history retention, and data cleanup."
+            "value": "Make Pastry work the way you like."
           }
         }
       }
@@ -749,14 +749,14 @@
     "settings.apple_intelligence.feature_title": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "开启苹果智能" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "开启 Apple 智能" } },
         "en": { "stringUnit": { "state": "translated", "value": "Enable Apple Intelligence" } }
       }
     },
     "settings.apple_intelligence.feature_help": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "设备端苹果智能模型可用时才能开启。开启后可使用智能找回和每张卡片的智能操作；所有处理均在本机完成。" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "设备端 Apple 智能模型可用时才能开启。开启后可使用智能找回和每张卡片的智能操作；所有处理均在本机完成。" } },
         "en": { "stringUnit": { "state": "translated", "value": "Requires the Apple on-device model. Enable this to use Smart Retrieval and Smart Actions on each card; all processing stays on this Mac." } }
       }
     },
@@ -777,7 +777,7 @@
     "settings.semantic.model_disabled": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "苹果智能未开启" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple 智能未开启" } },
         "en": { "stringUnit": { "state": "translated", "value": "Apple Intelligence is off" } }
       }
     },
@@ -805,15 +805,15 @@
     "settings.semantic.index_building": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在后台理解历史内容，期间普通关键词搜索不受影响。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Understanding history in the background. Keyword search remains available." } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在后台分析历史记录，你仍可使用关键词搜索。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Analyzing history in the background. Keyword search remains available." } }
       }
     },
     "settings.semantic.index_ready": {
       "extractionState": "manual",
       "localizations": {
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "索引已完成；新复制的内容会在后台自动补充。" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Index is complete; newly copied content is added automatically in the background." } }
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "索引已完成。之后复制的内容会自动加入索引。" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Indexing is complete. New records will be added automatically." } }
       }
     },
     "settings.semantic.index_failed": {
@@ -888,13 +888,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本地优先的剪贴板历史。远程预览默认保持关闭。"
+            "value": "剪贴板历史保存在本机。链接预览默认关闭。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Local-first clipboard history. Network previews stay off until enabled."
+            "value": "Clipboard history stays on this Mac. Link previews are off by default."
           }
         }
       }
@@ -1143,13 +1143,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最大条目"
+            "value": "历史记录上限"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Maximum items"
+            "value": "History Limit"
           }
         }
       }
@@ -1160,13 +1160,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "较早条目自动清理。"
+            "value": "达到上限后，会自动移除较早的记录。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Older items auto-trim."
+            "value": "Older records are removed automatically when the limit is reached."
           }
         }
       }
@@ -1177,7 +1177,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保留记录"
+            "value": "保留期限"
           }
         },
         "en": {
@@ -1262,7 +1262,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已安装 %@ · Build %@"
+            "value": "已安装 %@ · 构建号 %@"
           }
         },
         "en": {
@@ -1364,13 +1364,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "查看 Pastry 的版本、作者、版权和项目资源。"
+            "value": "查看版本信息和项目相关内容。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "View the Pastry version, author, copyright, and project resources."
+            "value": "View version information and project details."
           }
         }
       }
@@ -1568,13 +1568,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "控制 Pastry 可访问的内容、需要忽略的应用，以及链接预览是否可以联网。"
+            "value": "选择 Pastry 可以访问的内容，并管理隐私与权限。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Control what Pastry can access, which apps are ignored, and whether link previews may use the network."
+            "value": "Choose what Pastry can access and manage privacy and permissions."
           }
         }
       }
@@ -1704,13 +1704,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "历史容量"
+            "value": "保留数量"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "History capacity"
+            "value": "Items to Keep"
           }
         }
       }
@@ -1721,13 +1721,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "清理周期"
+            "value": "保留期限"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retention period"
+            "value": "Keep For"
           }
         }
       }
@@ -1738,13 +1738,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "超过容量或保留周期的普通历史会自动清理；所有路径都已失效的文件和图片记录每天清理一次。收藏项目不受影响。"
+            "value": "超过数量上限或保留期限的普通记录会自动清理。所有文件路径均已失效的文件和图片记录每天清理一次。收藏不会自动清理。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Regular history beyond the capacity or retention period is cleaned automatically. File and image records whose paths are all missing are cleaned daily. Favorites are kept."
+            "value": "Regular records are removed when they exceed the item limit or retention period. File and image records with no remaining files are cleared daily. Favorites are kept."
           }
         }
       }
@@ -2146,13 +2146,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "录制器"
+            "value": "快捷键录制"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recorder"
+            "value": "Shortcut Recording"
           }
         }
       }
@@ -2401,13 +2401,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "记录这次复制的场景…"
+            "value": "添加这条内容的备注…"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Note the context for this copy…"
+            "value": "Add a note about this item…"
           }
         }
       }
@@ -2843,13 +2843,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这台 Mac 不支持设备端苹果智能模型"
+            "value": "这台 Mac 不支持设备端 Apple 智能。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This Mac does not support the on-device Apple Intelligence model"
+            "value": "This Mac doesn’t support on-device Apple Intelligence."
           }
         }
       }
@@ -2860,13 +2860,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请先在系统设置中开启苹果智能"
+            "value": "请先在系统设置中开启 Apple 智能。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Turn on Apple Intelligence in System Settings first"
+            "value": "Turn on Apple Intelligence in System Settings first."
           }
         }
       }
@@ -2877,13 +2877,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设备端模型尚未准备好，请稍后再试"
+            "value": "设备端模型尚未准备好，请稍后再试。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The on-device model is not ready yet; try again later"
+            "value": "The on-device model isn’t ready yet. Try again later."
           }
         }
       }
@@ -3149,13 +3149,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "右键卡片并选择收藏后会出现在这里。"
+            "value": "在卡片菜单中选择“加入收藏”，内容就会显示在这里。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Favorite a card from its context menu to keep it here."
+            "value": "Choose “Add to Favorites” from a card’s menu to keep it here."
           }
         }
       }
@@ -3217,13 +3217,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "复制文本、链接、图片或文件后会自动记录。"
+            "value": "复制文本、链接、图片或文件后，这里就会显示记录。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copy text, links, images, or files to start building history."
+            "value": "Copy text, links, images, or files to see them here."
           }
         }
       }
@@ -3268,13 +3268,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "去开启"
+            "value": "打开系统设置"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enable"
+            "value": "Open System Settings"
           }
         }
       }
@@ -3846,13 +3846,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "轻量的剪贴板伴侣。自动记录文本、图片、文件与链接，全局唤起，即搜即用。"
+            "value": "轻巧的剪贴板伴侣。自动记录文本、图片、文件和链接，需要时随时搜索。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A lightweight clipboard companion for text, images, files, and links. Open it anywhere and search instantly."
+            "value": "A lightweight clipboard companion. Pastry saves text, images, files, and links so you can find them when you need them."
           }
         }
       }
@@ -3982,7 +3982,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "任何时间"
+            "value": "不限时间"
           }
         },
         "en": {
@@ -4373,13 +4373,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "切换卡片选中"
+            "value": "选中或取消选中卡片"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toggle card selection"
+            "value": "Select or deselect a card"
           }
         }
       }
@@ -4390,13 +4390,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "区间选中"
+            "value": "连续选择卡片"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Range select"
+            "value": "Select a range of cards"
           }
         }
       }
@@ -4594,7 +4594,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "从 iPhone/iPad 复制的内容会标记为 Handoff 来源"
+            "value": "从 iPhone/iPad 复制的内容会标记为接力来源"
           }
         },
         "en": {
@@ -4645,7 +4645,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "右键「预览」可用 Quick Look 查看文件内容"
+            "value": "右键「预览」即可用快速查看浏览文件内容"
           }
         },
         "en": {
@@ -4798,13 +4798,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "获取网页元数据和预览图片。"
+            "value": "获取网页标题和预览图片。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fetch page metadata and preview images."
+            "value": "Get webpage titles and preview images."
           }
         }
       }
@@ -4883,13 +4883,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "来自排除应用的剪贴板内容不会保存到历史，例如密码管理器。"
+            "value": "排除应用中的复制内容不会保存到历史记录，例如密码管理器中的内容。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Clipboard content from excluded apps, such as password managers, will not be saved to history."
+            "value": "Clipboard content from excluded apps, such as password managers, isn’t saved to history."
           }
         }
       }
@@ -5172,13 +5172,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "⌘ 单击"
+            "value": "按住 ⌘ 并单击"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "⌘ Click"
+            "value": "⌘-click"
           }
         }
       }
@@ -5189,13 +5189,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "⇧ 单击"
+            "value": "按住 ⇧ 并单击"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "⇧ Click"
+            "value": "⇧-click"
           }
         }
       }
@@ -5342,13 +5342,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "找回你复制过的每一项内容"
+            "value": "找回复制过的内容"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Find anything you copied"
+            "value": "Find what you’ve copied"
           }
         }
       }
@@ -5495,13 +5495,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "按下当前快捷键。引导期间只会确认按键，不会打开剪贴板托盘。"
+            "value": "按下当前快捷键。此步骤只验证快捷键，不会打开面板。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Press your current shortcut. During setup, it confirms the shortcut without opening the overlay."
+            "value": "Press your current shortcut. This step checks it without opening the panel."
           }
         }
       }
@@ -5580,13 +5580,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建第一条剪贴板历史"
+            "value": "创建第一条剪贴板记录"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create your first clipboard history item"
+            "value": "Create your first clipboard record"
           }
         }
       }
@@ -5631,13 +5631,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "稍后打开面板时，这条内容会出现在最前面。"
+            "value": "打开面板后，这条记录会显示在最前面。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "It will appear first when you open the panel."
+            "value": "This record will appear at the top when you open the panel."
           }
         }
       }
@@ -5733,13 +5733,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "权限只用于把选中的历史内容粘贴到其他应用，不影响 Pastry 继续记录剪贴板。"
+            "value": "此权限仅用于将选中的历史记录粘贴到其他应用。即使未授权，Pastry 仍会继续记录剪贴板。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This permission is only used to paste selected history into other apps. Pastry can still capture without it."
+            "value": "This permission is only used to paste selected history into other apps. Pastry can still capture clipboard content without it."
           }
         }
       }
@@ -5750,13 +5750,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "现在不授权也没关系，首次粘贴时 Pastry 会再次说明。"
+            "value": "可以稍后再授权。第一次粘贴时，Pastry 会再次说明。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You can skip this for now. Pastry will explain again the first time you paste."
+            "value": "You can grant access later. Pastry will explain again the first time you paste."
           }
         }
       }
@@ -5767,13 +5767,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "菜单栏入口已找到"
+            "value": "已通过菜单栏打开 Pastry"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Menu bar action detected"
+            "value": "Pastry opened from the menu bar"
           }
         }
       }
@@ -5784,13 +5784,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "点击菜单栏图标打开面板的操作成功了；你也可以继续试试上面的快捷键。"
+            "value": "你已通过菜单栏图标打开 Pastry。也可以试试上方的快捷键。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The menu bar action to open Pastry worked. You can also try the shortcut above."
+            "value": "You opened Pastry from the menu bar. You can also try the shortcut above."
           }
         }
       }
