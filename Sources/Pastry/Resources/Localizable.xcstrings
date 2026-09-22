@@ -955,13 +955,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择托盘打开时所在的屏幕边缘；拖动托盘后会使用新的位置。"
+            "value": "选择托盘默认打开的屏幕边缘；拖动只调整当前显示。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose the screen edge where the tray opens. Dragging the tray updates this position."
+            "value": "Choose the default screen edge. Dragging only moves the current tray."
           }
         }
       }
@@ -1296,6 +1296,23 @@
         }
       }
     },
+    "settings.general.section_interaction": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "交互"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interaction"
+          }
+        }
+      }
+    },
     "settings.general.language_help": {
       "extractionState": "manual",
       "localizations": {
@@ -1387,13 +1404,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "快速粘贴会立即粘贴；先选中适合预览、多选和批量操作。"
+            "value": "快速粘贴会立即执行；先选中便于预览和批量操作。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quick Paste pastes immediately; Select First is better for previewing and multi-select actions."
+            "value": "Quick Paste acts immediately; Select First supports previews and batch actions."
           }
         }
       }

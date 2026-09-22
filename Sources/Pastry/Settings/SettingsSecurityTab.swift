@@ -1,6 +1,11 @@
 import SwiftUI
 import AppKit
 
+private enum Local {
+    static let excludedAppsRowSpacing: CGFloat = 8
+    static let excludedAppsVisibleRowCount = 4
+}
+
 // MARK: - Security Tab
 
 extension SettingsSceneView {
@@ -16,47 +21,36 @@ extension SettingsSceneView {
 
                 securityPermissionCard
 
-                HStack(alignment: .top, spacing: 12) {
-                    settingsSection(title: L10n["settings.security.privacy"]) {
-                        settingsRow(
-                            title: L10n["settings.link_preview_network"],
-                            help: L10n["settings.link_preview_network_hint"]
-                        ) {
-                            Toggle(L10n["settings.link_preview_network"], isOn: $linkPreviewNetworkEnabled)
-                                .labelsHidden()
-                                .toggleStyle(SettingsSwitchStyle())
-                                .accessibilityRepresentation {
-                                    Toggle(L10n["settings.link_preview_network"], isOn: $linkPreviewNetworkEnabled)
-                                }
-                                .accessibilityIdentifier(AccessibilityIdentifiers.Settings.linkPreviewNetworkToggle)
-                        }
-
-                    }
-                    .frame(maxWidth: .infinity, alignment: .top)
-
-                    settingsSection(title: excludedAppsSectionTitle) {
-                        VStack(spacing: 8) {
-                            if installedExcludedBundleIDs.isEmpty {
-                                excludedEmptyRow
-                            } else {
-                                ForEach(installedExcludedBundleIDs, id: \.self) { bundleID in
-                                    excludedAppRow(bundleID)
-                                }
-                            }
-
-                            Button(action: addExcludedApp) {
-                                Text(L10n["settings.excluded_add"])
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
+                settingsSection(title: L10n["settings.security.privacy"]) {
+                    settingsRow(
+                        title: L10n["settings.link_preview_network"],
+                        help: L10n["settings.link_preview_network_hint"]
+                    ) {
+                        Toggle(L10n["settings.link_preview_network"], isOn: $linkPreviewNetworkEnabled)
+                            .labelsHidden()
+                            .toggleStyle(SettingsSwitchStyle())
                             .accessibilityRepresentation {
-                                Button(L10n["settings.excluded_add"], action: addExcludedApp)
-                                    .accessibilityIdentifier(AccessibilityIdentifiers.Settings.excludedAddButton)
+                                Toggle(L10n["settings.link_preview_network"], isOn: $linkPreviewNetworkEnabled)
                             }
-                        }
-                        .padding(UIConstants.Settings.rowHorizontalPadding)
+                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.linkPreviewNetworkToggle)
                     }
-                    .frame(maxWidth: .infinity, alignment: .top)
+                }
+
+                settingsSection(title: excludedAppsSectionTitle) {
+                    VStack(spacing: Local.excludedAppsRowSpacing) {
+                        excludedAppsList
+
+                        Button(action: addExcludedApp) {
+                            Text(L10n["settings.excluded_add"])
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SettingsPillButtonStyle(kind: .secondary))
+                        .accessibilityRepresentation {
+                            Button(L10n["settings.excluded_add"], action: addExcludedApp)
+                                .accessibilityIdentifier(AccessibilityIdentifiers.Settings.excludedAddButton)
+                        }
+                    }
+                    .padding(UIConstants.Settings.rowHorizontalPadding)
                 }
 
                 settingsSection(title: L10n["settings.advanced"]) {
@@ -139,6 +133,33 @@ extension SettingsSceneView {
             .frame(maxWidth: .infinity, minHeight: UIConstants.Badge.statusSize, alignment: .leading)
             .padding(.horizontal, 10)
             .background(SettingsPalette.ink.opacity(UIConstants.Settings.washOpacity), in: RoundedRectangle(cornerRadius: UIConstants.Radius.card, style: .continuous))
+    }
+
+    @ViewBuilder
+    var excludedAppsList: some View {
+        if installedExcludedBundleIDs.isEmpty {
+            excludedEmptyRow
+        } else {
+            ScrollView(.vertical) {
+                LazyVStack(spacing: Local.excludedAppsRowSpacing) {
+                    ForEach(installedExcludedBundleIDs, id: \.self) { bundleID in
+                        excludedAppRow(bundleID)
+                    }
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: excludedAppsListHeight)
+        }
+    }
+
+    var excludedAppsListHeight: CGFloat {
+        let visibleCount = min(
+            installedExcludedBundleIDs.count,
+            Local.excludedAppsVisibleRowCount
+        )
+        let rowHeights = CGFloat(visibleCount) * UIConstants.Badge.statusSize
+        let spacingCount = max(visibleCount - 1, 0)
+        return rowHeights + CGFloat(spacingCount) * Local.excludedAppsRowSpacing
     }
 
     func excludedAppRow(_ bundleID: String) -> some View {

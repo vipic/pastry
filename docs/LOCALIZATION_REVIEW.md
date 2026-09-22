@@ -117,7 +117,7 @@
 | 设置 > 通用 > 「登录启动」 | **开机启动** | **登录时打开** | **Launch** at Login | **Open** at Login |
 | 设置 > 通用 > 「操作提示音」 | 操作提示音 | 操作提示音 | Sound Feedback | Sound Feedback |
 | 设置 > 通用 > 「托盘打开位置」 | 托盘打开位置 | 托盘打开位置 | Tray Opening Position | Tray Opening Position |
-| 设置 > 通用 > 「选择托盘打开时所在的屏幕边缘；拖动托盘后会使用新的位置。」 | 选择托盘打开时所在的屏幕边缘；拖动托盘后会使用新的位置。 | 选择托盘打开时所在的屏幕边缘；拖动托盘后会使用新的位置。 | Choose the screen edge where the tray opens. Dragging the tray updates this position. | Choose the screen edge where the tray opens. Dragging the tray updates this position. |
+| 设置 > 通用 > 「选择托盘默认打开的屏幕边缘；拖动只调整当前显示。」 | 选择托盘默认打开的屏幕边缘；拖动只调整当前显示。 | 选择托盘默认打开的屏幕边缘；拖动只调整当前显示。 | Choose the default screen edge. Dragging only moves the current tray. | Choose the default screen edge. Dragging only moves the current tray. |
 | 设置 > 通用 > 「位于屏幕底侧」 | 位于屏幕底侧 | 位于屏幕底侧 | Bottom of Screen | Bottom of Screen |
 | 设置 > 通用 > 「位于屏幕左侧」 | 位于屏幕左侧 | 位于屏幕左侧 | Left Side of Screen | Left Side of Screen |
 | 设置 > 通用 > 「位于屏幕右侧」 | 位于屏幕右侧 | 位于屏幕右侧 | Right Side of Screen | Right Side of Screen |
@@ -146,12 +146,13 @@
 | 设置 > 通用 > 「收藏」 | 收藏 | 收藏 | Favorites | Favorites |
 | 设置 > 通用 > 「来源应用」 | 来源应用 | 来源应用 | Source apps | Source apps |
 | 设置 > 通用 > 「应用」 | 应用 | 应用 | Application | Application |
+| 设置 > 通用 > 「交互」 | 交互 | 交互 | Interaction | Interaction |
 | 设置 > 通用 > 「默认跟随系统语言。」 | 默认跟随系统语言。 | 默认跟随系统语言。 | Uses your system language by default. | Uses your system language by default. |
 | 设置 > 通用 > 「登录 macOS 时静默启动 Pastry。」 | 登录 macOS 时静默启动 Pastry。 | 登录 macOS 时静默启动 Pastry。 | Open Pastry quietly when you log in to macOS. | Open Pastry quietly when you log in to macOS. |
 | 设置 > 通用 > 「更改失败，已恢复为系统中的实际状态。」 | 更改失败，已恢复为系统中的实际状态。 | 更改失败，已恢复为系统中的实际状态。 | The change failed and was restored to the actual system state. | The change failed and was restored to the actual system state. |
 | 设置 > 通用 > 「复制和粘贴时播放提示音。」 | 复制和粘贴时播放提示音。 | 复制和粘贴时播放提示音。 | Play a sound when copying or pasting. | Play a sound when copying or pasting. |
 | 设置 > 通用 > 「左键点击操作」 | 左键点击操作 | 左键点击操作 | Left-click Action | Left-click Action |
-| 设置 > 通用 > 「快速粘贴会立即粘贴；先选中适合预览、多选和批量操作。」 | 快速粘贴会立即粘贴；先选中适合预览、多选和批量操作。 | 快速粘贴会立即粘贴；先选中适合预览、多选和批量操作。 | Quick Paste pastes immediately; Select First is better for previewing and multi-select actions. | Quick Paste pastes immediately; Select First is better for previewing and multi-select actions. |
+| 设置 > 通用 > 「快速粘贴会立即执行；先选中便于预览和批量操作。」 | 快速粘贴会立即执行；先选中便于预览和批量操作。 | 快速粘贴会立即执行；先选中便于预览和批量操作。 | Quick Paste acts immediately; Select First supports previews and batch actions. | Quick Paste acts immediately; Select First supports previews and batch actions. |
 | 设置 > 通用 > 「快速粘贴」 | 快速粘贴 | 快速粘贴 | Quick Paste | Quick Paste |
 | 设置 > 通用 > 「先选中」 | 先选中 | 先选中 | Select First | Select First |
 | 设置 > 通用 > 「删除需要确认」 | 删除需要确认 | 删除需要确认 | Confirm Before Delete | Confirm Before Delete |

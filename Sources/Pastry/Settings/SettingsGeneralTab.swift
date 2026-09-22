@@ -5,9 +5,10 @@ import OSLog
 // MARK: - File-local layout (not shared design tokens)
 private enum Local {
     enum Settings {
-        static let clickModeControlWidth: CGFloat = 172
-        static let clickModeSpacing: CGFloat = 6
+        static let choiceSpacing: CGFloat = 6
         static let controlColumnWidth: CGFloat = 112
+        static let interactionRowSpacing: CGFloat = 10
+        static let interactionRowVerticalPadding: CGFloat = 12
     }
 }
 
@@ -100,51 +101,8 @@ extension SettingsSceneView {
                                 .accessibilityIdentifier(AccessibilityIdentifiers.Settings.soundToggle)
                         }
 
-                        settingsDivider
-
-                        settingsRow(
-                            title: L10n["settings.tray_placement"],
-                            help: L10n["settings.tray_placement.help"]
-                        ) {
-                            Picker("", selection: trayPlacementBinding) {
-                                ForEach(TrayPlacement.allCases) { placement in
-                                    Text(trayPlacementLabel(placement)).tag(placement)
-                                }
-                            }
-                            .settingsMenuPickerChrome()
-                            .frame(width: Local.Settings.controlColumnWidth)
-                            .accessibilityLabel(L10n["settings.tray_placement"])
-                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.trayPlacementPicker)
-                        }
-
-                        settingsDivider
-
-                        settingsRow(
-                            title: L10n["settings.card_click_mode"],
-                            help: L10n["settings.card_click_mode.help"]
-                        ) {
-                            CardClickModePicker(selection: cardClickModeBinding)
-                                .frame(width: Local.Settings.clickModeControlWidth)
-                                .accessibilityLabel(L10n["settings.card_click_mode"])
-                                .accessibilityIdentifier(AccessibilityIdentifiers.Settings.cardClickModeToggle)
-                        }
-
-                        settingsDivider
-
-                        settingsRow(
-                            title: L10n["settings.delete_requires_confirmation"],
-                            help: L10n["settings.delete_requires_confirmation.help"]
-                        ) {
-                            Toggle(L10n["settings.delete_requires_confirmation"], isOn: $deleteRequiresConfirmation)
-                                .labelsHidden()
-                                .toggleStyle(SettingsSwitchStyle())
-                                .accessibilityRepresentation {
-                                    Toggle(L10n["settings.delete_requires_confirmation"], isOn: $deleteRequiresConfirmation)
-                                }
-                                .accessibilityIdentifier(AccessibilityIdentifiers.Settings.deleteRequiresConfirmationToggle)
-                        }
                     }
-                    .frame(maxWidth: .infinity, minHeight: generalSectionHeight, alignment: .top)
+                    .frame(maxWidth: .infinity, alignment: .top)
 
                     settingsSection(title: L10n["settings.history.section"]) {
                         settingsRow(
@@ -193,7 +151,44 @@ extension SettingsSceneView {
                                 }
                         }
                     }
-                    .frame(maxWidth: .infinity, minHeight: generalSectionHeight, alignment: .top)
+                    .frame(maxWidth: .infinity, alignment: .top)
+                }
+
+                settingsSection(title: L10n["settings.general.section_interaction"]) {
+                    interactionSettingsRow(
+                        title: L10n["settings.tray_placement"],
+                        help: L10n["settings.tray_placement.help"]
+                    ) {
+                        TrayPlacementPicker(selection: trayPlacementBinding)
+                            .accessibilityLabel(L10n["settings.tray_placement"])
+                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.trayPlacementPicker)
+                    }
+
+                    settingsDivider
+
+                    interactionSettingsRow(
+                        title: L10n["settings.card_click_mode"],
+                        help: L10n["settings.card_click_mode.help"]
+                    ) {
+                        CardClickModePicker(selection: cardClickModeBinding)
+                            .accessibilityLabel(L10n["settings.card_click_mode"])
+                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.cardClickModeToggle)
+                    }
+
+                    settingsDivider
+
+                    settingsRow(
+                        title: L10n["settings.delete_requires_confirmation"],
+                        help: L10n["settings.delete_requires_confirmation.help"]
+                    ) {
+                        Toggle(L10n["settings.delete_requires_confirmation"], isOn: $deleteRequiresConfirmation)
+                            .labelsHidden()
+                            .toggleStyle(SettingsSwitchStyle())
+                            .accessibilityRepresentation {
+                                Toggle(L10n["settings.delete_requires_confirmation"], isOn: $deleteRequiresConfirmation)
+                            }
+                            .accessibilityIdentifier(AccessibilityIdentifiers.Settings.deleteRequiresConfirmationToggle)
+                    }
                 }
 
             }
@@ -253,22 +248,63 @@ extension SettingsSceneView {
         )
     }
 
-    func trayPlacementLabel(_ placement: TrayPlacement) -> String {
-        switch placement {
-        case .bottom: return L10n["settings.tray_placement.bottom"]
-        case .left: return L10n["settings.tray_placement.left"]
-        case .right: return L10n["settings.tray_placement.right"]
+    private func interactionSettingsRow<Control: View>(
+        title: String,
+        help: String,
+        @ViewBuilder control: () -> Control
+    ) -> some View {
+        VStack(alignment: .leading, spacing: Local.Settings.interactionRowSpacing) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: UIConstants.TypeSize.body, weight: .semibold))
+                    .foregroundStyle(SettingsPalette.ink)
+                Text(help)
+                    .font(.system(size: UIConstants.TypeSize.label))
+                    .foregroundStyle(SettingsPalette.muted)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            control()
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(.horizontal, UIConstants.Settings.rowHorizontalPadding)
+        .padding(.vertical, Local.Settings.interactionRowVerticalPadding)
+    }
+}
+
+private struct TrayPlacementPicker: View {
+    @Binding var selection: TrayPlacement
+
+    var body: some View {
+        HStack(spacing: Local.Settings.choiceSpacing) {
+            ForEach(TrayPlacement.allCases) { placement in
+                SettingsChoiceButton(
+                    title: label(for: placement),
+                    isSelected: selection == placement
+                ) {
+                    selection = placement
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
     }
 
-    var generalSectionHeight: CGFloat { 390 }
+    private func label(for placement: TrayPlacement) -> String {
+        switch placement {
+        case .bottom: L10n["settings.tray_placement.bottom"]
+        case .left: L10n["settings.tray_placement.left"]
+        case .right: L10n["settings.tray_placement.right"]
+        }
+    }
 }
 
 private struct CardClickModePicker: View {
     @Binding var selection: CardClickMode
 
     var body: some View {
-        HStack(spacing: Local.Settings.clickModeSpacing) {
+        HStack(spacing: Local.Settings.choiceSpacing) {
             modeButton(.speed, title: L10n["settings.card_click_mode.speed"])
             modeButton(.enhanced, title: L10n["settings.card_click_mode.select_first"])
         }
@@ -276,10 +312,19 @@ private struct CardClickModePicker: View {
     }
 
     private func modeButton(_ mode: CardClickMode, title: String) -> some View {
-        let isSelected = selection == mode
-        return Button {
+        SettingsChoiceButton(title: title, isSelected: selection == mode) {
             selection = mode
-        } label: {
+        }
+    }
+}
+
+private struct SettingsChoiceButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
             Text(title)
                 .font(.system(size: UIConstants.TypeSize.label, weight: .semibold))
                 .foregroundStyle(isSelected ? .white : PastryPalette.ink)
