@@ -404,6 +404,26 @@ final class ClipboardMonitorTests: XCTestCase {
         XCTAssertFalse(ClipboardMonitor.isOnePasswordPasteboard(pb.types))
     }
 
+    func testReadsGenericSourceBundleID() {
+        let pb = makeTestPasteboard("genericSource")
+        let sourceType = NSPasteboard.PasteboardType("org.nspasteboard.source")
+        pb.declareTypes([.string, sourceType], owner: nil)
+        pb.setString("hello", forType: .string)
+        pb.setString("com.example.dictation", forType: sourceType)
+
+        XCTAssertEqual(ClipboardMonitor.sourceBundleID(from: pb), "com.example.dictation")
+    }
+
+    func testEmptyGenericSourceBundleIDFallsBack() {
+        let pb = makeTestPasteboard("emptyGenericSource")
+        let sourceType = NSPasteboard.PasteboardType("org.nspasteboard.source")
+        pb.declareTypes([.string, sourceType], owner: nil)
+        pb.setString("hello", forType: .string)
+        pb.setString("  ", forType: sourceType)
+
+        XCTAssertNil(ClipboardMonitor.sourceBundleID(from: pb))
+    }
+
     private func generateTestTIFFData(width: Int, height: Int) -> Data {
         let image = NSImage(size: NSSize(width: width, height: height))
         image.lockFocus()

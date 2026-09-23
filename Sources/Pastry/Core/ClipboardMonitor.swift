@@ -120,6 +120,34 @@ final class ClipboardMonitor: ObservableObject {
         return (frontApp?.localizedName, frontApp?.bundleIdentifier)
     }
 
+    /// `org.nspasteboard.source` 提供写入方 bundle ID；有值时优先于前台应用。
+    /// 缺失或空白时保留原有来源判定（包括 1Password 的专用标记）。
+    private func resolveSourceApp(for pasteboard: NSPasteboard) -> (name: String?, bundleID: String?) {
+        if let sourceBundleID = Self.sourceBundleID(from: pasteboard) {
+            let name = NSWorkspace.shared.urlForApplication(withBundleIdentifier: sourceBundleID)
+                .map { FileManager.default.displayName(atPath: $0.path) }
+                .map { ($0 as NSString).deletingPathExtension }
+            return (name ?? sourceBundleID, sourceBundleID)
+        }
+
+        var (name, bundleID) = resolveSourceApp()
+        if Self.isOnePasswordPasteboard(pasteboard.types) {
+            name = "1Password"
+            bundleID = "com.agilebits.onepassword"
+        }
+        return (name, bundleID)
+    }
+
+    static func sourceBundleID(from pasteboard: NSPasteboard) -> String? {
+        let marker = NSPasteboard.PasteboardType("org.nspasteboard.source")
+        guard let value = pasteboard.string(forType: marker)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty else {
+            return nil
+        }
+        return value
+    }
+
     private func poll() {
         guard !isSuspended else { return }
 
@@ -133,14 +161,7 @@ final class ClipboardMonitor: ObservableObject {
         }
         let shouldPlayCopyFeedback = copyFeedbackPlayedChangeCounts.remove(currentChange) == nil
 
-        var (capturedApp, capturedBundleID) = resolveSourceApp()
-
-        // 1Password Quick Open 在 pasteboard 上写 com.agilebits.onepassword 自定义类型。
-        // 用它覆写来源——比 frontmostApplication 更可靠。
-        if Self.isOnePasswordPasteboard(pb.types) {
-            capturedApp = "1Password"
-            capturedBundleID = "com.agilebits.onepassword"
-        }
+        let (capturedApp, capturedBundleID) = resolveSourceApp(for: pb)
 
         DispatchQueue.main.async {
             [weak self] in

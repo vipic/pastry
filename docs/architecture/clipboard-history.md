@@ -22,7 +22,7 @@
 ## 采集数据流
 
 1. `ClipboardMonitor` 使用 50 ms `Timer` 轮询 `changeCount`，并注册到主 RunLoop 的 `.common` mode，避免菜单、拖拽或滚动期间暂停。
-2. 发现新变更后立即记录当前 `NSWorkspace.shared.frontmostApplication`。如果 pasteboard 含密码管理器自定义类型，则按敏感来源处理。
+2. 发现新变更后优先读取 `org.nspasteboard.source` 的 bundle ID，并用该 ID 作为来源及排除名单键；标记缺失或空白时回退到当前 `NSWorkspace.shared.frontmostApplication`，1Password 自定义类型继续作为回退来源覆写依据。
 3. 命中排除 bundle ID 或 `org.nspasteboard.ConcealedType` 时直接跳过。Handoff 类型会标记远程来源并清空普通应用名。
 4. 内容按用户意图优先级解析：文件 URL、网页 URL、图片、HTML、RTF、纯文本。采集文件 URL 时同时保存文件书签；原路径失效后，预览、打开、在 Finder 中显示、拖拽及写回剪贴板会通过书签继续定位同一卷内被移动的文件。图片的磁盘写入和富文本解析在后台任务完成，最终回到主线程发布。
 5. `StoreManager` 注册的 `ClipboardMonitor.onNewItem` 回调接收记录，交给 `DatabaseManager` 去重和写入，再刷新最近历史、筛选来源和统计。
