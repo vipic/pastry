@@ -114,28 +114,27 @@ final class ClipboardMonitor: ObservableObject {
 
     // MARK: - 轮询
 
-    /// 来源检测：前台 App（`NSWorkspace.shared.frontmostApplication`）
-    private func resolveSourceApp() -> (name: String?, bundleID: String?) {
-        let frontApp = NSWorkspace.shared.frontmostApplication
-        return (frontApp?.localizedName, frontApp?.bundleIdentifier)
-    }
-
-    /// `org.nspasteboard.source` 提供写入方 bundle ID；有值时优先于前台应用。
-    /// 缺失或空白时保留原有来源判定（包括 1Password 的专用标记）。
     private func resolveSourceApp(for pasteboard: NSPasteboard) -> (name: String?, bundleID: String?) {
-        if let sourceBundleID = Self.sourceBundleID(from: pasteboard) {
-            let name = NSWorkspace.shared.urlForApplication(withBundleIdentifier: sourceBundleID)
+        let frontApp = NSWorkspace.shared.frontmostApplication
+        guard let bundleID = Self.resolvedSourceBundleID(from: pasteboard, frontmostBundleID: frontApp?.bundleIdentifier)
+        else { return (nil, nil) }
+        if bundleID == "com.agilebits.onepassword", Self.isOnePasswordPasteboard(pasteboard.types) {
+            return ("1Password", bundleID)
+        }
+        let name = bundleID == frontApp?.bundleIdentifier ? frontApp?.localizedName :
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
                 .map { FileManager.default.displayName(atPath: $0.path) }
                 .map { ($0 as NSString).deletingPathExtension }
-            return (name ?? sourceBundleID, sourceBundleID)
-        }
+        return (name ?? bundleID, bundleID)
+    }
 
-        var (name, bundleID) = resolveSourceApp()
-        if Self.isOnePasswordPasteboard(pasteboard.types) {
-            name = "1Password"
-            bundleID = "com.agilebits.onepassword"
+    /// 显式空来源表示未知，不等同于标记缺失；前台应用仍只是无标记时的推测。
+    static func resolvedSourceBundleID(from pasteboard: NSPasteboard, frontmostBundleID: String?) -> String? {
+        if pasteboard.types?.contains(NSPasteboard.PasteboardType("org.nspasteboard.source")) == true {
+            return sourceBundleID(from: pasteboard)
         }
-        return (name, bundleID)
+        if isOnePasswordPasteboard(pasteboard.types) { return "com.agilebits.onepassword" }
+        return frontmostBundleID
     }
 
     static func sourceBundleID(from pasteboard: NSPasteboard) -> String? {
@@ -161,103 +160,73 @@ final class ClipboardMonitor: ObservableObject {
         }
         let shouldPlayCopyFeedback = copyFeedbackPlayedChangeCounts.remove(currentChange) == nil
 
-        let (capturedApp, capturedBundleID) = resolveSourceApp(for: pb)
+        processChange(from: pb, expectedChange: currentChange, shouldPlayCopyFeedback: shouldPlayCopyFeedback)
+    }
 
-        DispatchQueue.main.async {
-            [weak self] in
-            self?.processChange(
-                capturedApp: capturedApp,
-                capturedBundleID: capturedBundleID,
-                shouldPlayCopyFeedback: shouldPlayCopyFeedback
-            )
+    /// 只在同一代剪贴板内返回结果；后台处理只能接收已经稳定读取的内存数据。
+    static func readStableValue<T>(
+        from pasteboard: NSPasteboard,
+        expectedChange: Int,
+        read: () -> T?
+    ) -> T? {
+        guard pasteboard.changeCount == expectedChange else { return nil }
+        let result = read()
+        guard pasteboard.changeCount == expectedChange else { return nil }
+        return result
+    }
+
+    private enum CapturedContent {
+        case item(ClipboardItem)
+        case image(NSImage, Data, String?)
+        case html(Data, String, URL?, ClipboardItem?)
+        case rtf(Data, ClipboardItem?)
+    }
+
+    private func processChange(from pb: NSPasteboard, expectedChange: Int, shouldPlayCopyFeedback: Bool) {
+        let captured = Self.readStableValue(from: pb, expectedChange: expectedChange) {
+            () -> (String?, Bool, CapturedContent)? in
+            guard let types = pb.types, !types.isEmpty,
+                  !Self.shouldSkipChange(bundleID: nil, pasteboardTypes: types) else { return nil }
+            let source = resolveSourceApp(for: pb)
+            guard !Self.shouldSkipChange(bundleID: source.bundleID, pasteboardTypes: types) else { return nil }
+            let isHandoff = types.contains { $0.rawValue == "com.apple.is-remote-clipboard" }
+            let appName = isHandoff ? nil : source.name
+            guard let content = captureContent(from: pb, appName: appName, isHandoff: isHandoff) else { return nil }
+            return (appName, isHandoff, content)
+        }
+        guard let (appName, isHandoff, content) = captured else { return }
+        if shouldPlayCopyFeedback { SoundFeedback.play(Self.copySound) }
+        switch content {
+        case .item(let item):
+            publish(item)
+        case .image(let image, let data, let annotation):
+            saveImageAndPublish(image: image, data: data, appName: appName,
+                                isHandoff: isHandoff, textAnnotation: annotation)
+        case .html(let data, let html, let url, let fallback):
+            parseRichContentAndPublish(htmlData: data, html: html, rtfData: nil,
+                                       fallbackText: fallback, appName: appName, isHandoff: isHandoff,
+                                       sourceURL: url)
+        case .rtf(let data, let fallback):
+            parseRichContentAndPublish(htmlData: nil, html: nil, rtfData: data,
+                                       fallbackText: fallback, appName: appName, isHandoff: isHandoff,
+                                       sourceURL: nil)
         }
     }
 
-    // MARK: - 处理剪贴板变化
-
-    private func processChange(
-        capturedApp: String?,
-        capturedBundleID: String?,
-        shouldPlayCopyFeedback: Bool
-    ) {
-        let pb = NSPasteboard.general
-
-        // 排除名单（密码管理器等敏感来源）与敏感 pasteboard 类型
-        guard !Self.shouldSkipChange(bundleID: capturedBundleID, pasteboardTypes: pb.types) else {
-            return
-        }
-
-        guard let types = pb.types, !types.isEmpty else {
-            return
-        }
-
-        // 类型非空，确认有效复制 → 播提示音
-        if shouldPlayCopyFeedback {
-            SoundFeedback.play(Self.copySound)
-        }
-
-        // 检测 Handoff/通用剪贴板来源
-        let isRemoteClipboard = types.contains(where: { $0.rawValue == "com.apple.is-remote-clipboard" })
-        let effectiveApp = isRemoteClipboard ? nil : capturedApp  // Handoff 时不给 appName，之后 UI 层特殊处理
-
-        // 文件 URL 优先：Finder 复制文件时剪贴板同时有图片数据，fileURL 更能代表用户意图
-        if let item = readFileURLs(from: pb, appName: effectiveApp, isHandoff: isRemoteClipboard) {
-            publish(item)
-            return
-        }
-
-        // URL 链接：在图片之前检测，避免 http 字符串被当作纯文本
-        if let item = readURL(from: pb, appName: effectiveApp, isHandoff: isRemoteClipboard) {
-            publish(item)
-            return
-        }
-
-        // 图片处理：主线程读取数据，后台任务生成缩略图并写入磁盘
+    private func captureContent(from pb: NSPasteboard, appName: String?, isHandoff: Bool) -> CapturedContent? {
+        if let item = readFileURLs(from: pb, appName: appName, isHandoff: isHandoff) { return .item(item) }
+        if let item = readURL(from: pb, appName: appName, isHandoff: isHandoff) { return .item(item) }
         if let (image, data) = readImageData(from: pb) {
-            let textAnnotation = readText(from: pb, appName: nil)?.content
-            saveImageAndPublish(
-                image: image,
-                data: data,
-                appName: effectiveApp,
-                isHandoff: isRemoteClipboard,
-                textAnnotation: textAnnotation
-            )
-            return
+            return .image(image, data, readText(from: pb, appName: nil)?.content)
         }
-
-        if let htmlData = pb.data(forType: .html),
-           let html = String(data: htmlData, encoding: .utf8) {
-            let sourceURL = readChromiumSourceURL(from: pb)
-            let fallbackText = readText(from: pb, appName: effectiveApp, isHandoff: isRemoteClipboard)
-            parseRichContentAndPublish(
-                htmlData: htmlData,
-                html: html,
-                rtfData: nil,
-                fallbackText: fallbackText,
-                appName: effectiveApp,
-                isHandoff: isRemoteClipboard,
-                sourceURL: sourceURL
-            )
-            return
+        if let data = pb.data(forType: .html), let html = String(data: data, encoding: .utf8) {
+            return .html(data, html, readChromiumSourceURL(from: pb),
+                         readText(from: pb, appName: appName, isHandoff: isHandoff))
         }
-
-        if let rtfData = pb.data(forType: .rtf) {
-            let fallbackText = readText(from: pb, appName: effectiveApp, isHandoff: isRemoteClipboard)
-            parseRichContentAndPublish(
-                htmlData: nil,
-                html: nil,
-                rtfData: rtfData,
-                fallbackText: fallbackText,
-                appName: effectiveApp,
-                isHandoff: isRemoteClipboard,
-                sourceURL: nil
-            )
-            return
+        if let data = pb.data(forType: .rtf) {
+            return .rtf(data, readText(from: pb, appName: appName, isHandoff: isHandoff))
         }
-
-        if let item = readText(from: pb, appName: effectiveApp, isHandoff: isRemoteClipboard) {
-            publish(item)
-        }
+        return readText(from: pb, appName: appName, isHandoff: isHandoff).map(CapturedContent.item)
     }
 
     private func parseRichContentAndPublish(
@@ -329,9 +298,11 @@ final class ClipboardMonitor: ObservableObject {
 
     // MARK: - 采集前过滤（供 production 与测试共用）
 
-    /// 不落历史的 pasteboard 类型：`org.nspasteboard.ConcealedType` 是密码管理器等工具的「不要留存」标记。
+    /// 按通用约定跳过敏感、临时中转与非主动复制的自动生成内容。
     private static let ignoredRawTypeNames: Set<String> = [
         "org.nspasteboard.ConcealedType",
+        "org.nspasteboard.TransientType",
+        "org.nspasteboard.AutoGeneratedType",
     ]
 
     /// 是否跳过本次剪贴板变化（排除名单内的来源 App，或带敏感标记的 pasteboard）。
