@@ -187,11 +187,30 @@ final class ClipboardMonitor: ObservableObject {
             () -> (String?, Bool, CapturedContent)? in
             guard let types = pb.types, !types.isEmpty,
                   !Self.shouldSkipChange(bundleID: nil, pasteboardTypes: types) else { return nil }
-            let source = resolveSourceApp(for: pb)
-            guard !Self.shouldSkipChange(bundleID: source.bundleID, pasteboardTypes: types) else { return nil }
+            let filterSource = resolveSourceApp(for: pb)
+            guard !Self.shouldSkipChange(bundleID: filterSource.bundleID, pasteboardTypes: types) else { return nil }
             let isHandoff = types.contains { $0.rawValue == "com.apple.is-remote-clipboard" }
-            let appName = isHandoff ? nil : source.name
-            guard let content = captureContent(from: pb, appName: appName, isHandoff: isHandoff) else { return nil }
+            // Match Maccy's timing: exclude using the source observed at the change, then
+            // attribute from the current frontmost app after the pasteboard payload is read.
+            guard var content = captureContent(from: pb, appName: nil, isHandoff: isHandoff) else { return nil }
+            let attributionSource = resolveSourceApp(for: pb)
+            guard !Self.shouldSkipChange(bundleID: attributionSource.bundleID, pasteboardTypes: types) else { return nil }
+            let appName = isHandoff ? nil : attributionSource.name
+            switch content {
+            case .item(var item):
+                item.appName = appName
+                content = .item(item)
+            case .image:
+                break
+            case let .html(data, html, url, fallbackValue):
+                var fallback = fallbackValue
+                fallback?.appName = appName
+                content = .html(data, html, url, fallback)
+            case let .rtf(data, fallbackValue):
+                var fallback = fallbackValue
+                fallback?.appName = appName
+                content = .rtf(data, fallback)
+            }
             return (appName, isHandoff, content)
         }
         guard let (appName, isHandoff, content) = captured else { return }

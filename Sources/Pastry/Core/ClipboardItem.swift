@@ -91,7 +91,7 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
     let content: String         // 文本内容 / 图片缓存路径 / 文件URL拼接
     let sourceFormat: SourceFormat
     let tags: ContentTags
-    let appName: String?        // 来源应用名
+    var appName: String?        // 来源应用名；剪贴板数据读取后可更新前台应用归属
     let isHandoff: Bool          // 是否来自 Handoff（iPhone/iPad 通用剪贴板）
     let textAnnotation: String?       // 图片附带的文字（同时复制图文时保留）
     var linkTitle: String?            // 链接预览抓取的页面标题（og:title / <title>）（可变，不计入 hash）
