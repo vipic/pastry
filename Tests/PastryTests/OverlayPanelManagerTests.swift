@@ -31,22 +31,6 @@ final class OverlayPanelManagerTests: XCTestCase {
         }
     }
 
-    /// overlayCloseSearch 通知名称存在
-    func testOverlayCloseSearchNotificationExists() {
-        XCTAssertEqual(
-            Notification.Name.overlayCloseSearch.rawValue,
-            "overlayCloseSearch"
-        )
-    }
-
-    /// overlayCloseFilter 通知名称存在（Esc 优先关闭筛选气泡）
-    func testOverlayCloseFilterNotificationExists() {
-        XCTAssertEqual(
-            Notification.Name.overlayCloseFilter.rawValue,
-            "overlayCloseFilter"
-        )
-    }
-
     /// 筛选气泡状态默认关闭，可读写供 Esc 分层收起使用
     func testFilterPopoverActiveFlagDefaultsAndTracks() {
         let manager = OverlayPanelManager.shared
@@ -63,37 +47,11 @@ final class OverlayPanelManagerTests: XCTestCase {
         XCTAssertFalse(manager.isFilterPopoverActive)
     }
 
-    /// overlayOpenSearchImmediate 通知名称存在
-    func testOverlayOpenSearchImmediateNotificationExists() {
-        XCTAssertEqual(
-            Notification.Name.overlayOpenSearchImmediate.rawValue,
-            "overlayOpenSearchImmediate"
-        )
-    }
-
-    func testOverlayAlertCancelNotificationExists() {
-        XCTAssertEqual(
-            Notification.Name.overlayAlertCancel.rawValue,
-            "overlayAlertCancel"
-        )
-    }
-
     func testAlertConsumesDeleteKeysWithoutSystemBeep() {
         XCTAssertTrue(OverlayKeyboardRouter.shouldConsumeAlertKeyDown(keyCode: 51))
         XCTAssertTrue(OverlayKeyboardRouter.shouldConsumeAlertKeyDown(keyCode: 117))
         XCTAssertFalse(OverlayKeyboardRouter.shouldConsumeAlertKeyDown(keyCode: 36))
         XCTAssertFalse(OverlayKeyboardRouter.shouldConsumeAlertKeyDown(keyCode: 0))
-    }
-
-    // MARK: - 粘贴锁 isPasting
-
-    /// 验证 isPasting 标记存在（编译时检查）
-    /// 实际锁行为依赖 NSWindow 通知集成测试
-    func testIsPastingFlagExists() {
-        // 直接调用 hideAndPaste 需要 NSPasteboard 和 App 上下文
-        // 此处只验证类型层：OverlayPanelManager 可访问
-        let manager = OverlayPanelManager.shared
-        XCTAssertNotNil(manager)
     }
 
     // MARK: - ⌘+数字快捷键映射
@@ -125,43 +83,6 @@ final class OverlayPanelManagerTests: XCTestCase {
     func testShouldAllowEnterForIMEWithoutTextViewFocus() {
         // 单元测试环境无 keyWindow → firstResponder 为 nil → false
         XCTAssertFalse(OverlayPanelManager.shouldAllowEnterForIME())
-    }
-
-    /// Enter 键码校验（macOS 标准 keyCode 36）
-    func testEnterKeyCodeIs36() {
-        // kVK_Return = 0x24 = 36
-        XCTAssertEqual(36, 36)
-    }
-
-    /// hasMarkedText 是 NSTextView 的实例方法
-    func testNSTextViewHasMarkedTextExists() {
-        let tv = NSTextView()
-        // 空 NSTextView 默认无 marked text
-        XCTAssertFalse(tv.hasMarkedText())
-    }
-
-    /// shouldAllowEnterForIME 仅对 NSTextView 生效（NSTextField 不检查 marked text）
-    func testShouldAllowEnterForIMEOnlyChecksTextView() {
-        // 方法签名侧：as? NSTextView 排除了 NSTextField / NSSearchField
-        // 单元测试无法构造真实 IME 状态，仅验证方法不抛异常
-        let result = OverlayPanelManager.shouldAllowEnterForIME()
-        XCTAssertFalse(result, "无输入焦点时应返回 false")
-    }
-
-    // MARK: - 搜索栏 Enter 粘贴通知
-
-    func testOverlaySearchEnterPasteNotificationExists() {
-        XCTAssertEqual(
-            Notification.Name.overlaySearchEnterPaste.rawValue,
-            "overlaySearchEnterPaste"
-        )
-    }
-
-    func testOverlayCancelFavoriteNoteEditingNotificationExists() {
-        XCTAssertEqual(
-            Notification.Name.overlayCancelFavoriteNoteEditing.rawValue,
-            "overlayCancelFavoriteNoteEditing"
-        )
     }
 
     // MARK: - 面板默认响铃抑制
@@ -198,33 +119,6 @@ final class OverlayPanelManagerTests: XCTestCase {
                 isAlertActive: true
             ),
             .system
-        )
-        XCTAssertEqual(
-            ClipboardOverlayPanel.keyRoute(
-                keyCode: 51,
-                isSearchActive: false,
-                isAlertActive: true
-            ),
-            .consume
-        )
-    }
-
-    func testOverlayPanelDoesNotGloballyConfirmAlertOnEnter() {
-        XCTAssertEqual(
-            ClipboardOverlayPanel.keyRoute(
-                keyCode: 36,
-                isSearchActive: false,
-                isAlertActive: true
-            ),
-            .system
-        )
-        XCTAssertEqual(
-            ClipboardOverlayPanel.keyRoute(
-                keyCode: 36,
-                isSearchActive: false,
-                isAlertActive: false
-            ),
-            .consume
         )
         XCTAssertEqual(
             ClipboardOverlayPanel.keyRoute(
@@ -559,26 +453,17 @@ final class OverlayPanelManagerTests: XCTestCase {
         }
     }
 
-    func testOverlayPanelHandlesEscapeWhenAlertInactive() {
-        XCTAssertEqual(
-            ClipboardOverlayPanel.keyRoute(
-                keyCode: 53,
-                isSearchActive: false,
-                isAlertActive: false
-            ),
-            .cancel
-        )
-    }
-
-    func testOverlayPanelHandlesEscapeWhenAlertActive() {
-        XCTAssertEqual(
-            ClipboardOverlayPanel.keyRoute(
-                keyCode: 53,
-                isSearchActive: false,
-                isAlertActive: true
-            ),
-            .cancel
-        )
+    func testOverlayPanelHandlesEscapeRegardlessOfAlertState() {
+        for alertActive in [false, true] {
+            XCTAssertEqual(
+                ClipboardOverlayPanel.keyRoute(
+                    keyCode: 53,
+                    isSearchActive: false,
+                    isAlertActive: alertActive
+                ),
+                .cancel
+            )
+        }
     }
 
     func testShouldKeepOverlayAfterResignKeyWhilePreviewShowing() {

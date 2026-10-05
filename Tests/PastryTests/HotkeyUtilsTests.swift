@@ -114,18 +114,6 @@ final class HotkeyUtilsTests: XCTestCase {
         ))
     }
 
-    // MARK: - NSEvent vs Carbon 编码差异验证（关键测试）
-
-    func testNSEventCommandNotEqualToCarbonCmdKey() {
-        // 确认 NSEvent.command.rawValue (0x100000) ≠ Carbon cmdKey (0x0100)
-        XCTAssertNotEqual(UInt32(NSEvent.ModifierFlags.command.rawValue), UInt32(cmdKey),
-            "NSEvent 和 Carbon 修饰键编码不同 — 转换函数必不可少")
-    }
-
-    func testNSEventShiftNotEqualToCarbonShiftKey() {
-        XCTAssertNotEqual(UInt32(NSEvent.ModifierFlags.shift.rawValue), UInt32(shiftKey))
-    }
-
     // MARK: - shortcutDisplayString
 
     func testShortcutDisplayStringCmdShiftV() {
