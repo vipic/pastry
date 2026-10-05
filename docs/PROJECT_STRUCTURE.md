@@ -128,7 +128,6 @@ Pastry/
 ├── Tests/
 │   └── PastryTests/
 │       ├── AccessibilityPermissionCheckerTests.swift # 授权查询和提示
-│       ├── AccessibilityPermissionRowModelTests.swift # 授权状态展示
 │       ├── AppDirectoriesTests.swift                  # 应用目录计算和创建
 │       ├── AppIconProviderTests.swift                 # 图标、主题色和缓存
 │       ├── AppVersionInfoTests.swift                  # 版本信息降级逻辑
@@ -151,11 +150,9 @@ Pastry/
 │       ├── MultiSmartActionTests.swift                # 多选智能操作类型与动作矩阵
 │       ├── NetworkAccessPolicyTests.swift             # 内网、IPv4 和响应限制
 │       ├── OnboardingFlowTests.swift                  # 引导状态机和激活交接
-│       ├── OverlayEmptyStateModelTests.swift          # 空状态文案
 │       ├── OverlayInteractionModelTests.swift         # 点击、滚动和修饰键交互
 │       ├── OverlayPanelManagerTests.swift             # 面板配置和辅助逻辑
 │       ├── PasteboardWriterTests.swift                # 独立 pasteboard 写回
-│       ├── ReleaseWorkflowContractTests.swift          # 发布工作流契约
 │       ├── BoundedRemoteResourceLoaderTests.swift    # 重定向与流式响应限制
 │       ├── SelectionStateTests.swift                  # 多选和区间选择
 │       ├── SigningConfigurationTests.swift            # 签名脚本和文档一致性

@@ -2,7 +2,10 @@
 set -euo pipefail
 
 minimum="${1:-20}"
-profile="$(find .build -path '*/debug/codecov/default.profdata' -print -quit)"
+profile=".build/out/Products/Debug/codecov/default.profdata"
+if [[ ! -f "$profile" ]]; then
+  profile="$(find .build -path '*/debug/codecov/default.profdata' -print -quit)"
+fi
 
 if [[ -z "$profile" ]]; then
   echo "Coverage profile not found. Run: swift test --enable-code-coverage" >&2
@@ -10,7 +13,10 @@ if [[ -z "$profile" ]]; then
 fi
 
 debug_dir="${profile%/codecov/default.profdata}"
-binary="$debug_dir/PastryPackageTests.xctest/Contents/MacOS/PastryPackageTests"
+binary="$debug_dir/PastryTests.xctest/Contents/MacOS/PastryTests"
+if [[ ! -x "$binary" ]]; then
+  binary="$debug_dir/PastryPackageTests.xctest/Contents/MacOS/PastryPackageTests"
+fi
 
 if [[ ! -x "$binary" ]]; then
   echo "Coverage test binary not found: $binary" >&2

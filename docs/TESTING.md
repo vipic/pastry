@@ -10,7 +10,7 @@ Pastry 的测试命令分成三类：日常开发、UI/人工验证、发布验�
 mise run check
 ```
 
-`check` 顺序执行文档校验、shell 语法、设计 token、带覆盖率测试、覆盖率门槛和 release 编译。各项也可单独运行：
+`check` 顺序执行文档校验、shell 语法、设计 token、发布门禁行为测试、带覆盖率测试、覆盖率门槛和 release 编译。各项也可单独运行：
 
 - `mise run test:coverage`：运行全部单元测试并生成 coverage 数据。
 - `mise run coverage`：检查线覆盖率门槛，默认 20%。必须紧跟 coverage 测试运行，之后如果又跑了普通 build/test，coverage 数据可能会过期。
@@ -59,6 +59,8 @@ mise run test -- --filter AppIconProviderTests
 | `PasteboardWriterTests` | 独立 pasteboard 写回（非 general） |
 | `ClipboardSearchTests` | `filtered(by:)` content / linkTitle / favoriteNote / appName |
 
+不为授权提示行、空状态图标、固定文案等纯展示映射编写单测；保留偏好迁移、筛选与选择状态、数据保留策略及安全边界测试。CI 工作流由配置审阅确认，发布失败阻断通过 `mise run test:release-gate` 执行行为验证。
+
 **不适合单测（靠 smoke / 人工）**：SwiftUI 视图手势树、NSPanel 层级、真系统剪贴板、真辅助功能弹窗、Live 网络抓取。
 
 剪贴板单元测试必须使用独立实例，不能读写 `NSPasteboard.general`：
@@ -102,6 +104,8 @@ mise run coverage
 mise run coverage -- 20
 mise run coverage -- 25
 ```
+
+覆盖率脚本兼容 SwiftPM 的 `debug` 目录和新版构建布局 `out/Products/Debug`。
 
 当前 CI 门槛是 20%。这是防止明显倒退的保守门槛，不代表目标覆盖率上限。
 

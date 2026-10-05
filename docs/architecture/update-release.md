@@ -36,4 +36,4 @@
 
 ## 验证
 
-[UpdateCheckerTests](../../Tests/PastryTests/UpdateCheckerTests.swift)、[UpdateInstallScriptBuilderTests](../../Tests/PastryTests/UpdateInstallScriptBuilderTests.swift)、[SigningConfigurationTests](../../Tests/PastryTests/SigningConfigurationTests.swift) 与 [ReleaseWorkflowContractTests](../../Tests/PastryTests/ReleaseWorkflowContractTests.swift) 覆盖版本、脚本文本契约和签名配置；网络和最终制品测试按[测试说明](../TESTING.md)显式执行。不能仅凭脚本文本断言就宣称回滚已经过真实故障验证。
+[UpdateCheckerTests](../../Tests/PastryTests/UpdateCheckerTests.swift)、[UpdateInstallScriptBuilderTests](../../Tests/PastryTests/UpdateInstallScriptBuilderTests.swift)、[SigningConfigurationTests](../../Tests/PastryTests/SigningConfigurationTests.swift) 覆盖版本、脚本文本契约和签名配置；[发布门禁行为测试](../../Tests/Scripts/release_gate_test.sh) 验证检查失败后不会推送或创建发布；网络和最终制品测试按[测试说明](../TESTING.md)显式执行。不能仅凭脚本文本断言就宣称回滚已经过真实故障验证。
