@@ -15,7 +15,7 @@ description = "Run tests with coverage enabled"
 run = "swift test --enable-code-coverage"
 
 [tasks.coverage]
-description = "Check the latest Swift coverage report; pass a threshold after --"
+description = "输出最新一次带覆盖率测试的行覆盖率（只报告，不设门槛）"
 run = "scripts/check_coverage.sh"
 
 [tasks."lint:scripts"]

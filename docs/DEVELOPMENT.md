@@ -94,7 +94,7 @@ scripts/
 ├── smoke.sh               # 部署、填充样本并截图
 ├── check_shell.sh         # 仓库全部 shell 语法检查
 ├── check_docs.swift       # 离线文档链接、仓库边界与索引校验
-├── check_coverage.sh      # 覆盖率门槛
+├── check_coverage.sh      # 覆盖率报告
 ├── check_design_tokens.sh # UI token 防回潮检查
 ├── diagnostics.sh         # 应用和本地命令日志查看
 ├── next_version.sh        # Conventional Commits → SemVer（mise version:next）

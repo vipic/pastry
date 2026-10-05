@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-minimum="${1:-20}"
 profile=".build/out/Products/Debug/codecov/default.profdata"
 if [[ ! -f "$profile" ]]; then
   profile="$(find .build -path '*/debug/codecov/default.profdata' -print -quit)"
@@ -43,11 +42,4 @@ coverage="$(
   '
 )"
 
-echo "Line coverage: ${coverage}% (minimum: ${minimum}%)"
-
-awk -v coverage="$coverage" -v minimum="$minimum" 'BEGIN {
-  if (coverage + 0 < minimum + 0) {
-    printf("Coverage %.2f%% is below %.2f%%\n", coverage, minimum) > "/dev/stderr"
-    exit 1
-  }
-}'
+echo "Line coverage: ${coverage}%（仅报告，不设门槛）"

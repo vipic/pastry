@@ -120,7 +120,7 @@ scripts/diagnostics.sh command publish --full
 
 仓库里有两个 workflow：
 
-- `Tests`：`main` 分支 push 和 pull request 自动触发，执行 `mise run check`（文档链接、shell 语法、设计 token、发布门禁测试、带覆盖率测试与门槛、release 编译）。
+- `Tests`：`main` 分支 push 和 pull request 自动触发，执行 `mise run check`（文档链接、shell 语法、设计 token、发布门禁测试、带覆盖率测试与覆盖率报告、release 编译）。
 - `Release Build Verification`：只支持手动触发，不会因为 push、tag 或 PR 自动运行。
 
 手动验证发布构建：

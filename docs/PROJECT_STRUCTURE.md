@@ -192,7 +192,7 @@ Pastry/
 │   ├── diagnostics.sh                 # 查看应用和命令日志
 │   ├── check_docs.swift                # 离线文档链接、仓库边界与索引校验
 │   ├── check_shell.sh                 # 全部 shell 语法检查
-│   ├── check_coverage.sh              # Swift 覆盖率门槛
+│   ├── check_coverage.sh              # Swift 覆盖率报告
 │   ├── check_design_tokens.sh         # UI token 防回潮检查
 │   ├── next_version.sh                # Conventional Commits → SemVer
 │   ├── verify_release.sh              # 正式 App 结构、版本和签名检查
