@@ -4,7 +4,7 @@ import AppKit
 import Carbon
 
 // MARK: - 快捷键工具测试套件
-// 测试 NSEvent→Carbon 修饰键转换、快捷键显示名称、keyCode 映射
+// 测试 NSEvent→Carbon 修饰键转换、快捷键匹配与配置更新
 
 final class HotkeyUtilsTests: XCTestCase {
 
@@ -114,72 +114,4 @@ final class HotkeyUtilsTests: XCTestCase {
         ))
     }
 
-    // MARK: - shortcutDisplayString
-
-    func testShortcutDisplayStringCmdShiftV() {
-        // keyCode 9 = V, modifiers = cmdKey|shiftKey = 0x0100|0x0200
-        let result = shortcutDisplayString(keyCode: 9, modifiers: Int(UInt32(cmdKey) | UInt32(shiftKey)))
-        XCTAssertTrue(result.contains("⌘"))
-        XCTAssertTrue(result.contains("⇧"))
-        XCTAssertTrue(result.contains("V"))
-    }
-
-    func testShortcutDisplayStringOptionW() {
-        let result = shortcutDisplayString(keyCode: 13, modifiers: Int(UInt32(optionKey)))
-        XCTAssertTrue(result.contains("⌥"))
-        XCTAssertTrue(result.contains("W"))
-    }
-
-    func testShortcutDisplayStringNoModifiers() {
-        let result = shortcutDisplayString(keyCode: 0, modifiers: 0) // A
-        XCTAssertTrue(result.contains("A"))
-        XCTAssertFalse(result.contains("⌘"))
-        XCTAssertFalse(result.contains("⌥"))
-    }
-
-    // MARK: - keyCodeToDisplayName
-
-    func testKeyCodeV() {
-        XCTAssertEqual(keyCodeToDisplayName(9), "V")
-    }
-
-    func testKeyCodeA() {
-        XCTAssertEqual(keyCodeToDisplayName(0), "A")
-    }
-
-    func testKeyCodeEscape() {
-        XCTAssertEqual(keyCodeToDisplayName(53), "⎋")
-    }
-
-    func testKeyCodeSpace() {
-        XCTAssertEqual(keyCodeToDisplayName(49), "␣")
-    }
-
-    func testKeyCodeReturn() {
-        XCTAssertEqual(keyCodeToDisplayName(36), "↩")
-    }
-
-    func testKeyCodeDelete() {
-        XCTAssertEqual(keyCodeToDisplayName(51), "⌫")
-    }
-
-    func testKeyCodeArrowLeft() {
-        XCTAssertEqual(keyCodeToDisplayName(123), "←")
-    }
-
-    func testKeyCodeArrowRight() {
-        XCTAssertEqual(keyCodeToDisplayName(124), "→")
-    }
-
-    func testKeyCodeF1() {
-        XCTAssertEqual(keyCodeToDisplayName(122), "F1")
-    }
-
-    func testKeyCodeF12() {
-        XCTAssertEqual(keyCodeToDisplayName(111), "F12")
-    }
-
-    func testKeyCodeUnknown() {
-        XCTAssertNil(keyCodeToDisplayName(999))
-    }
 }

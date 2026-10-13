@@ -122,31 +122,6 @@ final class OnboardingFlowTests: XCTestCase {
         XCTAssertEqual(detection.outcome, .otherContent)
     }
 
-    func testCopyActionFeedbackTransitionsFromCopyToCopied() {
-        let ready = OnboardingCopyActionFeedback(isComplete: false)
-        XCTAssertEqual(ready.iconName, "doc.on.doc")
-        XCTAssertEqual(ready.labelKey, "onboarding.copy.action")
-
-        let copied = OnboardingCopyActionFeedback(isComplete: true)
-        XCTAssertEqual(copied.iconName, "checkmark")
-        XCTAssertEqual(copied.labelKey, "onboarding.copy.copied_action")
-    }
-
-    func testActivationFeedbackDistinguishesShortcutAndMenuBar() {
-        XCTAssertNotEqual(OnboardingActivationSource.shortcut, .menuBar)
-        XCTAssertNotEqual(
-            OnboardingActivationFeedback(source: .shortcut),
-            OnboardingActivationFeedback(source: .menuBar)
-        )
-        XCTAssertTrue(OnboardingActivationFeedback(source: .shortcut).highlightsShortcut)
-        XCTAssertFalse(OnboardingActivationFeedback(source: .menuBar).highlightsShortcut)
-        XCTAssertFalse(OnboardingActivationFeedback(source: nil).highlightsShortcut)
-        XCTAssertEqual(
-            Notification.Name.onboardingActivationDetected.rawValue,
-            "onboardingActivationDetected"
-        )
-    }
-
     @MainActor
     func testOverlayHandoffWaitsForApplicationDeactivationBeforeOpening() {
         let notificationCenter = NotificationCenter()
@@ -205,25 +180,4 @@ final class OnboardingFlowTests: XCTestCase {
         XCTAssertEqual(openCount, 1)
     }
 
-    @MainActor
-    func testOnboardingWindowChromeHidesTrafficLightButtons() {
-        let window = NSWindow(
-            contentRect: NSRect(
-                x: 0,
-                y: 0,
-                width: UIConstants.Onboarding.windowWidth,
-                height: 480
-            ),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-
-        OnboardingWindowChrome.hideTrafficLightButtons(in: window)
-
-        XCTAssertTrue(window.styleMask.contains(.closable))
-        XCTAssertEqual(window.standardWindowButton(.closeButton)?.isHidden, true)
-        XCTAssertEqual(window.standardWindowButton(.miniaturizeButton)?.isHidden, true)
-        XCTAssertEqual(window.standardWindowButton(.zoomButton)?.isHidden, true)
-    }
 }

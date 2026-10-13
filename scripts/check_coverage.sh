@@ -33,13 +33,4 @@ if ! summary="$(xcrun llvm-cov export \
   exit 1
 fi
 
-coverage="$(
-  SUMMARY_JSON="$summary" node -e '
-    const data = JSON.parse(process.env.SUMMARY_JSON);
-    const lines = data.data?.[0]?.totals?.lines;
-    if (!lines || typeof lines.percent !== "number") process.exit(2);
-    process.stdout.write(lines.percent.toFixed(2));
-  '
-)"
-
-echo "Line coverage: ${coverage}%（仅报告，不设门槛）"
+printf '%s' "$summary" | node scripts/coverage_gate.mjs

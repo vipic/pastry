@@ -15,7 +15,7 @@ description = "Run tests with coverage enabled"
 run = "swift test --enable-code-coverage"
 
 [tasks.coverage]
-description = "输出最新一次带覆盖率测试的行覆盖率（只报告，不设门槛）"
+description = "验证关键业务与安全逻辑的逐文件行覆盖率门禁"
 run = "scripts/check_coverage.sh"
 
 [tasks."lint:scripts"]
@@ -32,7 +32,11 @@ run = "Tests/Scripts/release_gate_test.sh"
 
 [tasks.check]
 description = "Run the standard local validation suite"
-run = "mise run docs:check && mise run lint:scripts && mise run lint:design && mise run test:release-gate && mise run test:coverage && mise run coverage && mise run build:release"
+run = "mise run docs:check && mise run lint:scripts && mise run lint:design && mise run test:release-gate && mise run test:coverage-gate && mise run test:coverage && mise run coverage && mise run build:release"
+
+[tasks."test:coverage-gate"]
+description = "离线验证覆盖率门禁的失败与边界行为"
+run = "node --test Tests/Scripts/coverage_gate.test.mjs"
 
 [tasks."docs:check"]
 description = "离线检查文档链接、仓库边界与架构/ADR 索引"

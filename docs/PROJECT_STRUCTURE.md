@@ -142,7 +142,7 @@ Pastry/
 │       ├── DragPayloadBuilderTests.swift              # 文本、URL 和文件载荷
 │       ├── FTSQueryBuilderTests.swift                 # FTS5 查询转义
 │       ├── FilePreviewTests.swift                     # 文件预览和多文件行为
-│       ├── HotkeyUtilsTests.swift                     # 键码和快捷键显示
+│       ├── HotkeyUtilsTests.swift                     # 修饰键转换、匹配和配置更新
 │       ├── ImageCacheManagerTests.swift               # 图片缓存和淘汰
 │       ├── L10nTests.swift                            # 本地化 key 和降级
 │       ├── LaunchAtLoginManagerTests.swift            # 登录启动封装
@@ -192,7 +192,9 @@ Pastry/
 │   ├── diagnostics.sh                 # 查看应用和命令日志
 │   ├── check_docs.swift                # 离线文档链接、仓库边界与索引校验
 │   ├── check_shell.sh                 # 全部 shell 语法检查
-│   ├── check_coverage.sh              # Swift 覆盖率报告
+│   ├── check_coverage.sh              # Swift 关键业务覆盖率门禁
+│   ├── coverage_gate.mjs               # 覆盖率数据校验与门槛判定
+│   ├── coverage-policy.json            # 逐文件业务与安全覆盖率下限
 │   ├── check_design_tokens.sh         # UI token 防回潮检查
 │   ├── next_version.sh                # Conventional Commits → SemVer
 │   ├── verify_release.sh              # 正式 App 结构、版本和签名检查

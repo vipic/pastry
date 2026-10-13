@@ -10,10 +10,10 @@ Pastry 的测试命令分成三类：日常开发、UI/人工验证、发布验�
 mise run check
 ```
 
-`check` 顺序执行文档校验、shell 语法、设计 token、发布门禁行为测试、带覆盖率测试、覆盖率报告和 release 编译。各项也可单独运行：
+`check` 顺序执行文档校验、shell 语法、设计 token、发布与覆盖率门禁行为测试、带覆盖率测试、覆盖率门禁和 release 编译。各项也可单独运行：
 
 - `mise run test:coverage`：运行全部单元测试并生成 coverage 数据。
-- `mise run coverage`：输出线覆盖率数字，只报告，不设门槛。必须紧跟 coverage 测试运行，之后如果又跑了普通 build/test，coverage 数据可能会过期。
+- `mise run coverage`：验证关键业务与安全逻辑的逐文件行覆盖率门禁。必须紧跟 coverage 测试运行，之后如果又跑了普通 build/test，coverage 数据可能会过期。
 - `mise run build:release`：确认 release 编译可过。
 
 只想快速跑单测时：
@@ -98,7 +98,9 @@ mise run test:coverage
 mise run coverage
 ```
 
-`mise run coverage` 只打印线覆盖率，不设门槛：UI 视图层大部分不适合单测，固定百分比会迫使补无意义断言或下调数字。覆盖率用于观察趋势与定位未覆盖的生产逻辑，是否补测按 `docs/TESTING.md` 的测试边界和风险评估决定。
+`mise run coverage` 按 [coverage-policy.json](../scripts/coverage-policy.json) 对可独立测试的核心模型、读取器、数据库、状态逻辑与网络安全边界逐文件设下限。UI 渲染、系统权限和设备模型适配不纳入统一全仓百分比；不因门禁为图标、文案或固定布局凑断言。阈值基于现有有效行为测试留出小幅余量，新增或变更业务逻辑时仍需审阅正常、失败与边界场景，达到百分比不代表测试充分。
+
+受控文件缺失、零有效行、损坏数据或任一文件低于阈值均会阻断 `check`。`mise run test:coverage-gate` 离线验证这些失败分支。增删受控模块应同步审阅策略，不能为通过检查擅自降低门槛或移出名单。下载器使用注入 URLProtocol 验证真实 URLSession 委托链的成功、声明/流式超限和错误完成；初始私网 URL 与重定向拦截独立验证，不依赖公网服务。
 
 覆盖率脚本兼容 SwiftPM 的 `debug` 目录和新版构建布局 `out/Products/Debug`。
 

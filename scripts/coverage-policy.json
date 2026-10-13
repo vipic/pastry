@@ -1,0 +1,17 @@
+{
+  "Core/ClipboardItem.swift": 95,
+  "Core/ClipboardMonitorReaders.swift": 85,
+  "Core/FileLocationResolver.swift": 95,
+  "Core/ImageCacheManager.swift": 75,
+  "Persistence/DatabaseManager.swift": 80,
+  "Persistence/LegacyEncryptedDatabaseMigrator.swift": 80,
+  "Persistence/StoreManager.swift": 50,
+  "UI/ClipboardDisplayMode.swift": 95,
+  "UI/OverlayInteractionModel.swift": 90,
+  "UI/SelectionState.swift": 95,
+  "Utils/DeveloperDiagnostics.swift": 85,
+  "Utils/DragPayloadBuilder.swift": 75,
+  "Utils/NetworkAccessPolicy.swift": 85,
+  "Utils/BoundedRemoteResourceLoader.swift": 95,
+  "Utils/UpdateInstallScriptBuilder.swift": 95
+}

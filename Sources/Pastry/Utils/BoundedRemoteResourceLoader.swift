@@ -41,6 +41,7 @@ final class BoundedRemoteResourceLoader: NSObject, URLSessionDataDelegate, URLSe
     }
 
     private let lock = NSLock()
+    private let configuration: URLSessionConfiguration
     private var states: [Int: State] = [:]
     private let validationQueue = DispatchQueue(
         label: "com.nekutai.pastry.remote-resource-validation",
@@ -49,16 +50,23 @@ final class BoundedRemoteResourceLoader: NSObject, URLSessionDataDelegate, URLSe
     )
     private lazy var session: URLSession = {
         // ephemeral：预览的是任意第三方链接，不该把响应与 cookie 落进应用共享的磁盘缓存
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = 6
-        configuration.timeoutIntervalForResource = 10
+        let configuration = self.configuration
         let queue = OperationQueue()
         queue.name = "com.nekutai.pastry.remote-resource"
         queue.maxConcurrentOperationCount = 1
         return URLSession(configuration: configuration, delegate: self, delegateQueue: queue)
     }()
 
-    private override init() {}
+    init(configuration: URLSessionConfiguration = .ephemeral) {
+        self.configuration = configuration.copy() as! URLSessionConfiguration
+        self.configuration.timeoutIntervalForRequest = 6
+        self.configuration.timeoutIntervalForResource = 10
+        super.init()
+    }
+
+    func invalidateAndCancel() {
+        session.invalidateAndCancel()
+    }
 
     func load(
         request: URLRequest,
