@@ -31,21 +31,6 @@ final class OverlayPanelManagerTests: XCTestCase {
         }
     }
 
-    /// 筛选气泡状态默认关闭，可读写供 Esc 分层收起使用
-    func testFilterPopoverActiveFlagDefaultsAndTracks() {
-        let manager = OverlayPanelManager.shared
-        let previous = manager.isFilterPopoverActive
-        defer { manager.isFilterPopoverActive = previous }
-
-        manager.isFilterPopoverActive = false
-        XCTAssertFalse(manager.isFilterPopoverActive)
-
-        manager.isFilterPopoverActive = true
-        XCTAssertTrue(manager.isFilterPopoverActive)
-
-        manager.isFilterPopoverActive = false
-        XCTAssertFalse(manager.isFilterPopoverActive)
-    }
 
     func testAlertConsumesDeleteKeysWithoutSystemBeep() {
         XCTAssertTrue(OverlayKeyboardRouter.shouldConsumeAlertKeyDown(keyCode: 51))

@@ -59,6 +59,8 @@ mise run test -- --filter AppIconProviderTests
 | `PasteboardWriterTests` | 独立 pasteboard 写回（非 general） |
 | `ClipboardSearchTests` | `filtered(by:)` content / linkTitle / favoriteNote / appName |
 
+`FilePreviewTests` 的文件存在性、URL 识别与多文件判断直接调用卡片的生产属性，文本拼接调用 `DragPayloadBuilder`；不求值 SwiftUI `body`，不复制测试专用算法。文件标签的字面排版和文本统计副本不纳入单测。
+
 不为授权提示行、空状态图标、固定文案等纯展示映射编写单测；保留偏好迁移、筛选与选择状态、数据保留策略及安全边界测试。CI 工作流由配置审阅确认，发布失败阻断通过 `mise run test:release-gate` 执行行为验证。
 
 **不适合单测（靠 smoke / 人工）**：SwiftUI 视图手势树、NSPanel 层级、真系统剪贴板、真辅助功能弹窗、Live 网络抓取。

@@ -130,25 +130,4 @@ struct FilePreviewContent: View {
         }
         .frame(maxWidth: .infinity)
     }
-
-    // MARK: - 测试入口
-
-    /// 供单元测试：格式化文件名 + 文件大小标签
-    static func formattedFileLabelForTesting(url: URL, size: Int64?) -> String {
-        let sizes: [URL: Int64]
-        if let size {
-            sizes = [url: size]
-        } else {
-            sizes = [:]
-        }
-        let content = FilePreviewContent(
-            urls: [url],
-            missingURLs: [],
-            thumbnailImage: nil,
-            fileIcons: [:],
-            fileSizes: sizes,
-            styleForURL: { _ in .systemIcon }
-        )
-        return content.formattedFileLabel(url: url)
-    }
 }
