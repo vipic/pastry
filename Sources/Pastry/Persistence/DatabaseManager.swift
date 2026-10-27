@@ -76,7 +76,7 @@ final class DatabaseManager {
                 event: "database.open.failed",
                 metadata: ["error": lastError]
             )
-            log.error("无法打开数据库: \(self.dbPath)")
+            log.error("无法打开数据库")
             db = nil
         } else {
             // 开启 WAL 模式，提升并发性能
@@ -88,7 +88,7 @@ final class DatabaseManager {
                 event: "database.open.succeeded",
                 metadata: ["storage": "plaintext"]
             )
-            log.info("数据库已打开: \(self.dbPath)")
+            log.info("数据库已打开")
         }
     }
 

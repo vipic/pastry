@@ -126,7 +126,7 @@ final class MainThreadWatchdog {
                 log.critical(
                     "主线程无响应，sample 已写入",
                     event: "watchdog.sample.succeeded",
-                    metadata: ["reason": reason, "report_path": fileURL.path]
+                    metadata: ["reason": reason, "report_name": filename]
                 )
             } else {
                 log.critical(

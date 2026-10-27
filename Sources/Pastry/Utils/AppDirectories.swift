@@ -35,7 +35,8 @@ enum AppDirectories {
             return true
         } catch {
             let logger = Logger(subsystem: "com.nekutai.pastry", category: logCategory)
-            logger.error("无法创建目录: \(url.path, privacy: .public), error: \(error.localizedDescription)")
+            let nsError = error as NSError
+            logger.error("无法创建目录（\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public)）")
             return false
         }
     }
