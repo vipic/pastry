@@ -11,6 +11,29 @@ final class DatabaseManagerTests: XCTestCase {
     var db: DatabaseManager!
     var tempPath: String!
 
+    func testFailedRecoveryDoesNotCreateEmptyDatabase() throws {
+        final class FailedMoves: FileManager, @unchecked Sendable {
+            override func moveItem(atPath srcPath: String, toPath dstPath: String) throws {
+                throw CocoaError(.fileWriteNoPermission)
+            }
+        }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let path = root.appendingPathComponent("clips.db").path
+        let candidate = path + ".plaintext-migrate"
+        var handle: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(candidate, &handle), SQLITE_OK)
+        XCTAssertEqual(sqlite3_exec(handle, "CREATE TABLE retained(value TEXT);", nil, nil, nil), SQLITE_OK)
+        sqlite3_close(handle)
+        let before = try Data(contentsOf: URL(fileURLWithPath: candidate))
+        let manager = DatabaseManager(dbPath: path, migrationFileManager: FailedMoves())
+        withExtendedLifetime(manager) {
+            XCTAssertFalse(FileManager.default.fileExists(atPath: path))
+        }
+        XCTAssertEqual(try Data(contentsOf: URL(fileURLWithPath: candidate)), before)
+    }
+
     override func setUp() {
         super.setUp()
         UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.historyMaxItems)

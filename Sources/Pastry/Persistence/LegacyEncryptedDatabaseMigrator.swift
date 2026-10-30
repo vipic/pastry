@@ -10,24 +10,32 @@ import OSLog
 /// 新安装不会创建密钥；迁移成功后会删除旧 `.key`。这个类型仅保留升级兼容能力。
 struct LegacyEncryptedDatabaseMigrator {
     private let dbPath: String
+    private let fileManager: FileManager
     private let log: Logger
     private let diagnosticsLog = PastryLogger(category: "database-migration")
 
-    init(dbPath: String, log: Logger) {
+    init(dbPath: String, log: Logger, fileManager: FileManager = .default) {
         self.dbPath = dbPath
         self.log = log
+        self.fileManager = fileManager
     }
 
-    func migrateIfNeeded() {
-        let fm = FileManager.default
+    @discardableResult
+    func migrateIfNeeded() -> Bool {
+        let fm = fileManager
         recoverInterruptedReplacementIfNeeded(fm)
+        if !fm.fileExists(atPath: dbPath),
+           fm.fileExists(atPath: dbPath + ".plaintext-migrate") || fm.fileExists(atPath: dbPath + ".encrypted-backup") {
+            diagnosticsLog.critical("旧库恢复未完成，停止数据库初始化", event: "database_migration.recovery.blocked")
+            return false
+        }
 
         let keyPath = dbPath + ".key"
-        guard fm.fileExists(atPath: dbPath), fm.fileExists(atPath: keyPath) else { return }
+        guard fm.fileExists(atPath: dbPath), fm.fileExists(atPath: keyPath) else { return true }
 
         if Self.isReadablePlaintextDatabase(at: dbPath) {
             try? fm.removeItem(atPath: keyPath)
-            return
+            return true
         }
 
         guard let key = readLegacyKey(at: keyPath) else {
@@ -35,7 +43,7 @@ struct LegacyEncryptedDatabaseMigrator {
                 "旧数据库密钥不可读，保留原数据库",
                 event: "database_migration.legacy_key_unreadable"
             )
-            return
+            return false
         }
 
         let plaintextPath = dbPath + ".plaintext-migrate"
@@ -51,7 +59,7 @@ struct LegacyEncryptedDatabaseMigrator {
                 "旧加密数据库转换失败，保留原数据库",
                 event: "database_migration.decrypt.failed"
             )
-            return
+            return false
         }
 
         do {
@@ -73,13 +81,15 @@ struct LegacyEncryptedDatabaseMigrator {
                 event: "database_migration.decrypt.completed"
             )
         } catch {
-            try? fm.removeItem(atPath: plaintextPath)
+            // 保留候选与旧库，供后续恢复。
             diagnosticsLog.critical(
                 "替换明文数据库失败",
                 event: "database_migration.replace.failed",
                 metadata: ["error": error.localizedDescription]
             )
+            return false
         }
+        return true
     }
 
     /// 崩溃窗口恢复：替换是「原库改名备份 → 明文改名就位」两步非原子操作。进程若在两步之间被终止，

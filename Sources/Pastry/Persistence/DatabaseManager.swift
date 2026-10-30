@@ -33,7 +33,7 @@ final class DatabaseManager {
         AppDirectories.ensureDirectory(dir, logCategory: "database")
 
         dbPath = dir.appendingPathComponent("clips.db").path
-        LegacyEncryptedDatabaseMigrator(dbPath: dbPath, log: log).migrateIfNeeded()
+        guard LegacyEncryptedDatabaseMigrator(dbPath: dbPath, log: log).migrateIfNeeded() else { return }
         openDatabase()
         createTables()
         reconcileSchema()
@@ -48,8 +48,9 @@ final class DatabaseManager {
     }
 
     /// 测试专用：使用临时数据库，不污染生产数据。
-    init(dbPath: String) {
+    init(dbPath: String, migrationFileManager: FileManager = .default) {
         self.dbPath = dbPath
+        guard LegacyEncryptedDatabaseMigrator(dbPath: dbPath, log: log, fileManager: migrationFileManager).migrateIfNeeded() else { return }
         openDatabase()
         createTables()
         reconcileSchema()

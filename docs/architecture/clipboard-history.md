@@ -104,3 +104,5 @@ FTS 表通过 `clips` 的 INSERT、UPDATE、DELETE 触发器同步。外部内�
 - `ImageCacheManagerTests`、`PasteboardWriterTests`：图片缓存和各格式写回。
 
 测试不得使用 `NSPasteboard.general`；每个测试使用 `NSPasteboard.withUniqueName()`，避免触发后台运行的 Pastry 或污染真实剪贴板。完整验证入口见[测试说明](../TESTING.md)。
+
+旧库恢复或迁移失败会停止数据库初始化，保留候选与备份，避免恢复失败后创建空库。
