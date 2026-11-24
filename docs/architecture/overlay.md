@@ -57,7 +57,7 @@ Esc 按当前 UI 层级逐层处理：确认层、备注编辑、筛选、Quick 
 
 ## 选择与拖拽
 
-`SelectionState` 是选择行为的事实来源。`OverlayView` 只负责从键盘或鼠标事件获取意图，再把可见条目顺序交给状态机。
+`SelectionState` 是选择行为的事实来源。`OverlayView` 从键盘或鼠标事件获取意图，再把可见条目顺序交给状态机。「全部」标签中的全选删除（包括通过快捷键全选仅有的一条记录）只提交非收藏记录；键盘、工具栏和右键批量删除共用此规则。
 
 单选和多选拖拽都使用 SwiftUI `.onDrag`。多选时由 `DragPayloadBuilder.providerForSelection` 生成一个多行文本 `NSItemProvider`；不要在卡片上重新引入 AppKit 事件覆盖层，因为覆盖层会截获 mouseDown，破坏 Command/Shift 选择。
 

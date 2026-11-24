@@ -4,7 +4,10 @@ import Foundation
 
 /// 封装 OverlayView 的选中/光标/区间逻辑，不依赖任何 UI 框架。
 struct SelectionState {
-    var selectedIds: Set<UUID> = []
+    var selectedIds: Set<UUID> = [] {
+        didSet { didSelectAll = false }
+    }
+    private var didSelectAll = false
     var cursorIndex: Int? = nil
     var shiftAnchorIdx: Int? = nil
     var lastClickId: UUID? = nil
@@ -106,7 +109,19 @@ struct SelectionState {
         }
     }
 
-    // MARK: - 重置 / 默认选中
+    // MARK: - 全选 / 重置 / 默认选中
+
+    mutating func selectAll(visibleItems: [ClipboardItem]) {
+        selectedIds = Set(visibleItems.map(\.id))
+        didSelectAll = !selectedIds.isEmpty
+    }
+
+    /// 单条记录只在显式全选时算作全选；多条记录也允许手动选满。
+    func isEntireSelection(visibleItems: [ClipboardItem]) -> Bool {
+        (didSelectAll || selectedIds.count > 1)
+            && selectedIds.count == visibleItems.count
+            && visibleItems.allSatisfy { selectedIds.contains($0.id) }
+    }
 
     mutating func reset() {
         selectedIds = []

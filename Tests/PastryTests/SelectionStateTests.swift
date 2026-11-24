@@ -21,6 +21,33 @@ final class SelectionStateTests: XCTestCase {
         }
     }
 
+    // MARK: - 全选
+
+    func testSingleItemCountsAsEntireSelectionOnlyAfterExplicitSelectAll() {
+        var state = SelectionState()
+        let items = makeItems(1)
+
+        state.selectFirst(visibleItems: items)
+        XCTAssertFalse(state.isEntireSelection(visibleItems: items))
+
+        state.selectAll(visibleItems: items)
+        XCTAssertTrue(state.isEntireSelection(visibleItems: items))
+
+        state.handleTap(item: items[0], cmdDown: false, shiftDown: false, visibleItems: items)
+        XCTAssertFalse(state.isEntireSelection(visibleItems: items))
+    }
+
+    func testEntireSelectionRequiresAllVisibleItems() {
+        var state = SelectionState()
+        let items = makeItems(3)
+        state.selectedIds = Set(items.prefix(2).map(\.id))
+        XCTAssertFalse(state.isEntireSelection(visibleItems: items))
+
+        state.selectedIds.insert(items[2].id)
+        XCTAssertTrue(state.isEntireSelection(visibleItems: items))
+        XCTAssertFalse(state.isEntireSelection(visibleItems: Array(items.prefix(2))))
+    }
+
     // MARK: - 方向键基础移动
 
     func testArrowDownFromEmpty() {

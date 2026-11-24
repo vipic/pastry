@@ -486,19 +486,26 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         return PinUpdateResult(requested: requested, completed: completed, failed: failed)
     }
 
-    /// 批量删除选中项。返回实际删除的记录 ID。收藏不豁免用户删除（仅自动保留策略跳过收藏）。
+    /// 全选删除时，确认框只统计可删除的非收藏记录。
+    func nonFavoriteIDs(in ids: Set<UUID>) -> Set<UUID> {
+        Set(items.lazy.filter { !$0.isPinned && ids.contains($0.id) }.map(\.id))
+    }
+
+    /// 批量删除选中项。返回实际删除的记录 ID；启用收藏保护时按执行时的收藏状态跳过。
     @discardableResult
     func deleteSelected(
         _ ids: Set<UUID>,
-        clearSystemClipboardWhenEmpty: Bool = true
+        clearSystemClipboardWhenEmpty: Bool = true,
+        preservingFavorites: Bool = false
     ) -> Set<UUID> {
         var deletedIds = Set<UUID>()
         var deletedFavorite = false
 
-        ClipboardMonitor.shared.suspend()
+        let monitor = usesDatabaseSearch ? ClipboardMonitor.shared : nil
+        monitor?.suspend()
         for id in ids {
-            guard let item = items.first(where: { $0.id == id }) else { continue }
-            if item.isPinned { deletedFavorite = true }
+            guard let item = items.first(where: { $0.id == id }),
+                  !preservingFavorites || !item.isPinned else { continue }
             let deletedFromDatabase = !usesDatabaseSearch
                 || DatabaseManager.shared.delete(id: id.uuidString)
             guard deletedFromDatabase else {
@@ -511,13 +518,14 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
             }
             items.removeAll { $0.id == id }
             deletedIds.insert(id)
+            if item.isPinned { deletedFavorite = true }
         }
 
-        if clearSystemClipboardWhenEmpty, items.isEmpty {
-            PasteboardWriter.clearSystemClipboard()
+        if clearSystemClipboardWhenEmpty, !deletedIds.isEmpty, items.isEmpty {
+            clearClipboard()
         }
 
-        ClipboardMonitor.shared.resume()
+        monitor?.resume()
         performSearchImmediate()
         refreshAvailableApps()
 
@@ -534,9 +542,10 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
     /// 清空全部（含 pinned）
     @discardableResult
     func clearAll() -> Bool {
-        ClipboardMonitor.shared.suspend()
+        let monitor = usesDatabaseSearch ? ClipboardMonitor.shared : nil
+        monitor?.suspend()
+        defer { monitor?.resume() }
         guard clearAllPersistence() else {
-            ClipboardMonitor.shared.resume()
             diagnosticsLog.error("清空历史失败", event: "store.clear_all.persistence_failed")
             return false
         }
@@ -544,7 +553,6 @@ final class StoreManager: ObservableObject, @unchecked Sendable {
         filteredItems.removeAll()
         refreshStats()
         clearClipboard()
-        ClipboardMonitor.shared.resume()
         DeveloperDiagnostics.record(DiagnosticsEvent.clearAll)
         return true
     }

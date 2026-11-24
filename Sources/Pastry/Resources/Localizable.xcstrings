@@ -1557,13 +1557,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除全部历史并清空系统剪贴板。"
+            "value": "删除全部历史（包括收藏），并清空系统剪贴板。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Delete all history and clear the system clipboard."
+            "value": "Delete all history, including favorites, and clear the system clipboard."
           }
         }
       }
@@ -2339,13 +2339,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "确认清空？"
+            "value": "确认清空全部记录？"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Confirm Clear?"
+            "value": "Clear All Records?"
           }
         }
       }
@@ -2390,13 +2390,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此操作不可撤销，所有剪贴板历史将被删除。"
+            "value": "这将删除全部剪贴板历史，包括收藏，并清空系统剪贴板。此操作无法撤销。"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This cannot be undone. All clipboard history will be deleted."
+            "value": "This deletes all clipboard history, including favorites, and clears the system clipboard. This can’t be undone."
           }
         }
       }
@@ -3790,6 +3790,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Delete %lld items?"
+          }
+        }
+      }
+    },
+    "delete.confirm_msg_preserving_favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确定删除 %lld 条记录吗？收藏将保留。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete %lld items? Favorites will be kept."
           }
         }
       }

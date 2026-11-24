@@ -172,6 +172,8 @@ final class OverlayKeyboardRouter {
         // Delete / Forward Delete — 若焦点在文本输入框则放行
         if event.keyCode == 51 || event.keyCode == 117 {
             if Self.isTextInputFocused() { return event }
+            // 全选删除后会选中第一张保留的卡片，长按不能接着删掉它。
+            guard !event.isARepeat else { return nil }
             NotificationCenter.default.post(name: .overlayDeleteSelected, object: nil)
             return nil
         }

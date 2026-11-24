@@ -638,21 +638,42 @@ final class StoreManagerTests: XCTestCase {
         XCTAssertEqual(clipboardClearCount, 0)
     }
 
-    func testClearSuccessUsesOnlyInjectedClipboard() {
+    func testClearSuccessRemovesFavoritesAndUsesOnlyInjectedClipboard() {
         let item = ClipboardItem(content: "A", sourceFormat: .text)
+        let favorite = ClipboardItem(content: "B", sourceFormat: .text, isPinned: true)
         var clipboardClearCount = 0
         store = StoreManager(
-            items: [item],
+            items: [item, favorite],
             clearAllPersistence: { true },
             clearClipboard: { clipboardClearCount += 1 }
         )
 
         XCTAssertTrue(store.clearAll())
         XCTAssertTrue(store.items.isEmpty)
+        XCTAssertTrue(store.filteredItems.isEmpty)
         XCTAssertEqual(clipboardClearCount, 1)
     }
 
     // MARK: - deleteSelected
+
+    func testDeleteSelectionPreservingFavoritesRechecksBeforeDeletion() {
+        let favorite = ClipboardItem(content: "A", sourceFormat: .text, isPinned: true)
+        let newlyPinned = ClipboardItem(content: "B", sourceFormat: .text)
+        let ordinary = ClipboardItem(content: "C", sourceFormat: .text)
+        var clipboardClearCount = 0
+        store = StoreManager(
+            items: [favorite, newlyPinned, ordinary],
+            clearClipboard: { clipboardClearCount += 1 }
+        )
+
+        let targets = store.nonFavoriteIDs(in: [favorite.id, newlyPinned.id, ordinary.id])
+        XCTAssertEqual(targets, [newlyPinned.id, ordinary.id])
+        XCTAssertTrue(store.togglePin(newlyPinned))
+
+        XCTAssertEqual(store.deleteSelected(targets, preservingFavorites: true), [ordinary.id])
+        XCTAssertEqual(Set(store.filteredItems.map(\.id)), [favorite.id, newlyPinned.id])
+        XCTAssertEqual(clipboardClearCount, 0)
+    }
 
     func testDeleteSelectedRemovesPinnedByDefault() {
         store = makeStoreWithItems([

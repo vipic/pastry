@@ -236,10 +236,7 @@ struct OverlayView: View {
     @State private var selection = SelectionState()
     @State private var renderedIds: Set<UUID> = []    // 当前已渲染（可见）的卡片 ID
     @State private var commandShortcutIds: [UUID] = []
-    @State private var showDeleteConfirm = false
-    @State private var pendingDeleteIds: Set<UUID> = []
-    /// 右键删除不主动清剪贴板；键盘 / 工具栏批量删除在历史变空时同步清空。
-    @State private var pendingClearClipboardWhenEmpty = true
+    @State private var pendingDeletion: DeletionRequest?
     @State private var showSearch = false
     @State private var showFilterPopover = false
     @State private var showNaturalLanguageSearchStatus = false
@@ -305,8 +302,8 @@ struct OverlayView: View {
                 .opacity(cardVisible ? 1 : 0)
             .animation(reduceMotion ? nil : .easeInOut(duration: UIConstants.Motion.medium), value: showSearch)
 
-            if showDeleteConfirm {
-                deleteConfirmOverlay
+            if let pendingDeletion {
+                deleteConfirmOverlay(for: pendingDeletion)
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }
@@ -408,8 +405,9 @@ struct OverlayView: View {
                 DeveloperDiagnostics.record(DiagnosticsEvent.searchOpen)
             }
             .onReceive(NotificationCenter.default.publisher(for: .overlaySelectAll)) { _ in
-                let ids = Set(visibleItems.map { $0.id })
-                withAnimation(.easeInOut(duration: UIConstants.Motion.instant)) { selection.selectedIds = ids }
+                withAnimation(.easeInOut(duration: UIConstants.Motion.instant)) {
+                    selection.selectAll(visibleItems: visibleItems)
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
                 updateLayoutForCurrentScreen()
@@ -707,8 +705,7 @@ struct OverlayView: View {
         iconPrefetchTask?.cancel()
         iconPrefetchTask = nil
         cardVisible = false
-        showDeleteConfirm = false
-        pendingDeleteIds = []
+        pendingDeletion = nil
         showSearch = false
         showFilterPopover = false
         isSearchFocused = false
@@ -768,35 +765,32 @@ struct OverlayView: View {
 
     // MARK: - 批量删除
 
-    private func deleteSelected() {
-        let ids = pendingDeleteIds.isEmpty ? selection.selectedIds : pendingDeleteIds
-        _ = store.deleteSelected(
-            ids,
-            clearSystemClipboardWhenEmpty: pendingClearClipboardWhenEmpty
+    private struct DeletionRequest {
+        let ids: Set<UUID>
+        let clearSystemClipboardWhenEmpty: Bool
+        let preservingFavorites: Bool
+    }
+
+    private var showDeleteConfirm: Bool { pendingDeletion != nil }
+
+    private func deleteSelected(_ request: DeletionRequest) {
+        store.deleteSelected(
+            request.ids,
+            clearSystemClipboardWhenEmpty: request.clearSystemClipboardWhenEmpty,
+            preservingFavorites: request.preservingFavorites
         )
-        // deleteSelected 会刷新 filteredItems；onChange 在 ID 列表变化时选中第一张。
         // 若删除未改变可见 ID 列表（例如删的是筛掉的项），仍强制回到第一张。
         selectFirstVisibleCard()
     }
 
     private func confirmDeleteSelected() {
-        guard !pendingDeleteIds.isEmpty else {
-            showDeleteConfirm = false
-            return
-        }
-        deleteSelected()
-        showDeleteConfirm = false
-        pendingDeleteIds = []
-        pendingClearClipboardWhenEmpty = true
-        NotificationCenter.default.post(name: .overlayAlertActive,
-                                        object: nil,
-                                        userInfo: ["active": false])
+        guard let request = pendingDeletion else { return }
+        deleteSelected(request)
+        cancelDeleteConfirm()
     }
 
     private func cancelDeleteConfirm() {
-        showDeleteConfirm = false
-        pendingDeleteIds = []
-        pendingClearClipboardWhenEmpty = true
+        pendingDeletion = nil
         NotificationCenter.default.post(name: .overlayAlertActive,
                                         object: nil,
                                         userInfo: ["active": false])
@@ -804,17 +798,21 @@ struct OverlayView: View {
 
     /// - Parameter clearSystemClipboardWhenEmpty: 键盘 / 工具栏为 true；右键为 false（保留 ⌘V 内容）。
     private func requestDelete(ids: Set<UUID>, clearSystemClipboardWhenEmpty: Bool = true) {
-        guard !ids.isEmpty else {
+        let preservingFavorites = store.pinTab == .all
+            && ids == selection.selectedIds
+            && selection.isEntireSelection(visibleItems: visibleItems)
+        let targets = preservingFavorites ? store.nonFavoriteIDs(in: ids) : ids
+        guard !targets.isEmpty else {
             SoundFeedback.invalidAction()
             return
         }
-        pendingDeleteIds = ids
-        pendingClearClipboardWhenEmpty = clearSystemClipboardWhenEmpty
-
+        let request = DeletionRequest(
+            ids: targets,
+            clearSystemClipboardWhenEmpty: clearSystemClipboardWhenEmpty,
+            preservingFavorites: preservingFavorites
+        )
         guard DeleteConfirmationPreference.requiresConfirmation else {
-            deleteSelected()
-            pendingDeleteIds = []
-            pendingClearClipboardWhenEmpty = true
+            deleteSelected(request)
             return
         }
 
@@ -822,14 +820,14 @@ struct OverlayView: View {
                                         object: nil,
                                         userInfo: ["active": true])
         withAnimation(.easeOut(duration: UIConstants.Motion.fast)) {
-            showDeleteConfirm = true
+            pendingDeletion = request
         }
     }
 
-    private var deleteConfirmOverlay: some View {
+    private func deleteConfirmOverlay(for request: DeletionRequest) -> some View {
         ConfirmationOverlay(
             title: L10n["delete.confirm_title"],
-            message: deleteConfirmMessage,
+            message: deleteConfirmMessage(for: request),
             cancelTitle: L10n["delete.confirm_cancel"],
             confirmTitle: L10n["delete.confirm_ok"],
             onCancel: cancelDeleteConfirm,
@@ -838,16 +836,19 @@ struct OverlayView: View {
         .animation(.easeOut(duration: UIConstants.Motion.fast), value: showDeleteConfirm)
     }
 
-    private var deleteConfirmMessage: String {
+    private func deleteConfirmMessage(for request: DeletionRequest) -> String {
+        if request.preservingFavorites {
+            return L10n["delete.confirm_msg_preserving_favorites", store.nonFavoriteIDs(in: request.ids).count]
+        }
         let favoriteCount = store.items.reduce(into: 0) { count, item in
-            if pendingDeleteIds.contains(item.id), item.isPinned {
+            if request.ids.contains(item.id), item.isPinned {
                 count += 1
             }
         }
         if favoriteCount > 0 {
-            return L10n["delete.confirm_msg_with_favorites", pendingDeleteIds.count, favoriteCount]
+            return L10n["delete.confirm_msg_with_favorites", request.ids.count, favoriteCount]
         }
-        return L10n["delete.confirm_msg", pendingDeleteIds.count]
+        return L10n["delete.confirm_msg", request.ids.count]
     }
 
     // MARK: - 搜索框（内联在 header 中）

@@ -180,28 +180,22 @@ struct SettingsSceneView: View {
                     selectedTab = tab
                 }
             }
-
-            if showingClearConfirm {
-                ConfirmationOverlay(
-                    title: L10n["settings.clear_confirm_title"],
-                    message: L10n["settings.clear_warning"],
-                    cancelTitle: L10n["settings.clear_cancel"],
-                    confirmTitle: L10n["settings.clear_btn"],
-                    onCancel: { showingClearConfirm = false },
-                    onConfirm: {
-                        showingClearConfirm = false
-                        if !store.clearAll() {
-                            clearHistoryErrorMessage = "历史记录和系统剪贴板均未清空，请重试。"
-                        }
-                    }
-                )
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
-            }
         }
         .frame(
             minWidth: Local.Settings.windowMinWidth,
             minHeight: Local.Settings.windowMinHeight
         )
+        .alert(L10n["settings.clear_confirm_title"], isPresented: $showingClearConfirm) {
+            Button(L10n["settings.clear_cancel"], role: .cancel) {}
+                .keyboardShortcut(.defaultAction)
+            Button(L10n["settings.clear_all"], role: .destructive) {
+                if !store.clearAll() {
+                    clearHistoryErrorMessage = "历史记录和系统剪贴板均未清空，请重试。"
+                }
+            }
+        } message: {
+            Text(L10n["settings.clear_warning"])
+        }
         .alert("无法清空历史", isPresented: Binding(
             get: { clearHistoryErrorMessage != nil },
             set: { if !$0 { clearHistoryErrorMessage = nil } }
